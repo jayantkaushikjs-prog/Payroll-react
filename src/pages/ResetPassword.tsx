@@ -113,7 +113,7 @@ const ResetPassword: React.FC = () => {
               Reset Password
             </Typography>
             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-              Enter the reset token and choose a new password
+              Enter the reset OTP and choose a new password
             </Typography>
           </Box>
 
@@ -131,7 +131,7 @@ const ResetPassword: React.FC = () => {
 
           <form onSubmit={handleSubmit}>
             <TextField
-              label="Reset Token"
+              label="One-Time Password (OTP)"
               fullWidth
               variant="outlined"
               margin="normal"

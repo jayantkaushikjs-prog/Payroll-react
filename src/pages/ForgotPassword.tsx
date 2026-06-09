@@ -110,8 +110,8 @@ const ForgotPassword: React.FC = () => {
             </Typography>
             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5, textAlign: 'center' }}>
               {!token
-                ? 'Enter your email address and we will generate a password reset token'
-                : 'Reset token successfully generated!'}
+                ? 'Enter your email address and we will send a password reset OTP'
+                : 'Reset OTP successfully generated and sent!'}
             </Typography>
           </Box>
 
@@ -153,13 +153,13 @@ const ForgotPassword: React.FC = () => {
                   textTransform: 'none',
                 }}
               >
-                {loading ? <CircularProgress size={24} sx={{ color: 'var(--color-text-primary)' }} /> : 'Request Reset Token'}
+                {loading ? <CircularProgress size={24} sx={{ color: 'var(--color-text-primary)' }} /> : 'Request Reset OTP'}
               </Button>
             </form>
           ) : (
             <Box>
               <Alert severity="info" sx={{ mb: 3, bgcolor: 'rgba(59, 130, 246, 0.15)', color: 'var(--color-info)' }}>
-                For sandbox testing, please copy the token below to reset your password.
+                For sandbox testing / Yopmail access, please copy the OTP below to reset your password.
               </Alert>
 
               <Box
