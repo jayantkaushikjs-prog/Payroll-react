@@ -203,20 +203,8 @@ const Login: React.FC = () => {
           </form>
 
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-              Don't have an account?{' '}
-              <Link
-                component={RouterLink}
-                to="/signup"
-                sx={{
-                  color: 'var(--color-primary-hover)',
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  '&:hover': { textDecoration: 'underline' },
-                }}
-              >
-                Sign Up
-              </Link>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>
+              Only administrative users can manage organization credentials.
             </Typography>
           </Box>
         </CardContent>

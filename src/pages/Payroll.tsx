@@ -8,7 +8,7 @@ import {
   TableHead, TableRow, Grid, Select, MenuItem, FormControl, InputLabel,
   Snackbar, Alert, CircularProgress, Chip,
 } from '@mui/material';
-import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon } from '@mui/icons-material';
+import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon } from '@mui/icons-material';
 
 const ss = {
   '& .MuiOutlinedInput-root': { color: 'var(--color-text-primary)', borderRadius: 'var(--radius-control)',
@@ -45,13 +45,28 @@ const Payroll: React.FC = () => {
   });
 
   const stMut = useMutation(async (s: 'draft'|'completed') => (await api.put(`/payroll/status?month=${mo}&year=${yr}`, { status: s })).data, {
-    onSuccess: (_, s) => { qc.invalidateQueries(['payroll']); qc.invalidateQueries(['dashboardData']); qc.invalidateQueries(['advances']); setNote({ open: true, msg: s === 'completed' ? 'Payroll locked & finalized!' : 'Payroll unlocked to draft.', sev: 'success' }); },
+    onSuccess: (_, s) => { qc.invalidateQueries(['payroll']); qc.invalidateQueries(['dashboardData']); qc.invalidateQueries(['advances']); setNote({ open: true, msg: s === 'completed' ? 'Payroll locked & disbursed!' : 'Payroll unlocked to draft.', sev: 'success' }); },
     onError: (e: any) => setNote({ open: true, msg: e.response?.data?.message || 'Status update failed', sev: 'error' }),
   });
 
   const allDone = payrolls.length > 0 && payrolls.every((p: any) => p.status === 'completed');
   const hasDraft = payrolls.some((p: any) => p.status === 'draft');
   const sum = (key: string) => payrolls.reduce((s: number, p: any) => s + Number(p[key]), 0);
+
+  const downloadCsv = async (url: string, filename: string) => {
+    try {
+      const res = await api.get(url, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setNote({ open: true, msg: `${filename} downloaded successfully!`, sev: 'success' });
+    } catch (err: any) {
+      setNote({ open: true, msg: err.response?.data?.message || 'Download failed', sev: 'error' });
+    }
+  };
 
   return (
     <Box>
@@ -63,7 +78,7 @@ const Payroll: React.FC = () => {
         {canEdit && (
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             {allDone && <Button variant="outlined" startIcon={<UnlockIcon />} onClick={() => stMut.mutate('draft')} sx={{ borderColor: 'rgba(251,191,36,0.3)', color: 'var(--color-warning)', textTransform: 'none', borderRadius: 'var(--radius-control)' }}>Unlock</Button>}
-            {hasDraft && <Button variant="outlined" startIcon={<LockIcon />} onClick={() => stMut.mutate('completed')} sx={{ borderColor: 'rgba(16,185,129,0.3)', color: 'var(--color-success)', textTransform: 'none', borderRadius: 'var(--radius-control)' }}>Lock & Finalize</Button>}
+            {hasDraft && <Button variant="outlined" startIcon={<LockIcon />} onClick={() => stMut.mutate('completed')} sx={{ borderColor: 'rgba(16,185,129,0.3)', color: 'var(--color-success)', textTransform: 'none', borderRadius: 'var(--radius-control)' }}>Lock & Disburse</Button>}
             <Button variant="contained" startIcon={<GenIcon />} onClick={() => genMut.mutate()} disabled={genMut.isLoading} sx={{ background: 'var(--color-primary)', boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)', borderRadius: 'var(--radius-control)', textTransform: 'none' }}>
               {genMut.isLoading ? 'Generating...' : 'Generate Payroll'}
             </Button>
@@ -72,20 +87,60 @@ const Payroll: React.FC = () => {
       </Box>
 
       <Paper sx={{ background: 'var(--color-surface)',  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', p: 3, mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={3}>
             <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Month</InputLabel>
               <Select value={mo} label="Month" onChange={e => setMo(e.target.value as number)}>
                 {months.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
             <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
               <Select value={yr} label="Year" onChange={e => setYr(e.target.value as number)}>
                 {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
               </Select>
             </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              disabled={payrolls.length === 0}
+              onClick={() => downloadCsv(`/reports/payroll/csv?month=${mo}&year=${yr}`, `payroll_register_${mo}_${yr}.csv`)}
+              sx={{
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-secondary)',
+                textTransform: 'none',
+                borderRadius: 'var(--radius-control)',
+                '&:hover': {
+                  borderColor: 'var(--color-border-strong)',
+                  bgcolor: 'var(--color-surface-subtle)',
+                  color: 'var(--color-text-primary)',
+                },
+              }}
+            >
+              Export Register
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              disabled={payrolls.length === 0}
+              onClick={() => downloadCsv(`/reports/bank-transfer/csv?month=${mo}&year=${yr}`, `bank_transfer_${mo}_${yr}.csv`)}
+              sx={{
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-secondary)',
+                textTransform: 'none',
+                borderRadius: 'var(--radius-control)',
+                '&:hover': {
+                  borderColor: 'var(--color-border-strong)',
+                  bgcolor: 'var(--color-surface-subtle)',
+                  color: 'var(--color-text-primary)',
+                },
+              }}
+            >
+              Export Bank Sheet
+            </Button>
           </Grid>
         </Grid>
       </Paper>
@@ -127,7 +182,7 @@ const Payroll: React.FC = () => {
                   <TableCell align="right" sx={{ color: 'var(--color-warning)' }}>{formatCurrency(pr.tax_deduction)}</TableCell>
                   <TableCell align="right" sx={{ color: pr.advance_recovery > 0 ? '#fb923c' : 'var(--color-text-muted)' }}>{pr.advance_recovery > 0 ? formatCurrency(pr.advance_recovery) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-success)', fontWeight: 700 }}>{formatCurrency(pr.net_salary)}</TableCell>
-                  <TableCell align="center"><Chip label={pr.status === 'completed' ? 'Finalized' : 'Draft'} size="small" sx={{ fontWeight: 700, fontSize: '0.72rem', bgcolor: pr.status === 'completed' ? 'rgba(16,185,129,0.15)' : 'rgba(251,191,36,0.15)', color: pr.status === 'completed' ? 'var(--color-success)' : 'var(--color-warning)' }} /></TableCell>
+                  <TableCell align="center"><Chip label={pr.status === 'completed' ? 'Disbursed' : 'Draft'} size="small" sx={{ fontWeight: 700, fontSize: '0.72rem', bgcolor: pr.status === 'completed' ? 'rgba(16,185,129,0.15)' : 'rgba(251,191,36,0.15)', color: pr.status === 'completed' ? 'var(--color-success)' : 'var(--color-warning)' }} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>

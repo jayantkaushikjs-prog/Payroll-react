@@ -287,6 +287,7 @@ const PFSettings: React.FC = () => {
         autoHideDuration={6000}
         onClose={() => setNotification(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{ zIndex: 2000 }}
       >
         <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
           {notification?.message}

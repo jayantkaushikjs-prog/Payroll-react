@@ -34,6 +34,7 @@ import {
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -68,6 +69,16 @@ const Advances: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [openDialog, setOpenDialog] = useState(false);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
+  const [formErrors, setFormErrors] = useState({
+    employee_id: '',
+    amount: '',
+    date: '',
+    reason: '',
+    recovery_type: '',
+    installment_amount: '',
+    start_month: '',
+    start_year: '',
+  });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -97,6 +108,47 @@ const Advances: React.FC = () => {
     return res.data;
   });
 
+  const handleMutationError = (err: any, fallbackMessage: string) => {
+    const backendMessage = err.response?.data?.message;
+    const errors = {
+      employee_id: '',
+      amount: '',
+      date: '',
+      reason: '',
+      recovery_type: '',
+      installment_amount: '',
+      start_month: '',
+      start_year: '',
+    };
+
+    if (Array.isArray(backendMessage)) {
+      backendMessage.forEach((msg: string) => {
+        const lowerMsg = msg.toLowerCase();
+        if (lowerMsg.includes('employee id') || lowerMsg.includes('employee')) {
+          errors.employee_id = msg;
+        } else if (lowerMsg.includes('amount') && !lowerMsg.includes('installment')) {
+          errors.amount = msg;
+        } else if (lowerMsg.includes('date')) {
+          errors.date = msg;
+        } else if (lowerMsg.includes('reason')) {
+          errors.reason = msg;
+        } else if (lowerMsg.includes('recovery type')) {
+          errors.recovery_type = msg;
+        } else if (lowerMsg.includes('installment')) {
+          errors.installment_amount = msg;
+        } else if (lowerMsg.includes('month')) {
+          errors.start_month = msg;
+        } else if (lowerMsg.includes('year')) {
+          errors.start_year = msg;
+        }
+      });
+      setFormErrors(errors);
+      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+    } else {
+      setNotification({ open: true, message: backendMessage || fallbackMessage, severity: 'error' });
+    }
+  };
+
   // Create mutation
   const createMutation = useMutation(
     async (payload: any) => {
@@ -110,7 +162,7 @@ const Advances: React.FC = () => {
         setOpenDialog(false);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to issue advance', severity: 'error' });
+        handleMutationError(err, 'Failed to issue advance');
       },
     }
   );
@@ -132,6 +184,16 @@ const Advances: React.FC = () => {
   );
 
   const handleOpenAdd = () => {
+    setFormErrors({
+      employee_id: '',
+      amount: '',
+      date: '',
+      reason: '',
+      recovery_type: '',
+      installment_amount: '',
+      start_month: '',
+      start_year: '',
+    });
     setFormData({
       employee_id: '',
       amount: 0,
@@ -147,13 +209,50 @@ const Advances: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors = {
+      employee_id: '',
+      amount: '',
+      date: '',
+      reason: '',
+      recovery_type: '',
+      installment_amount: '',
+      start_month: '',
+      start_year: '',
+    };
+    let isValid = true;
+
     if (!formData.employee_id) {
-      setNotification({ open: true, message: 'Please select an employee', severity: 'error' });
-      return;
+      nextErrors.employee_id = 'Please select an employee';
+      isValid = false;
     }
 
-    if (formData.recovery_type === 'installment' && !formData.installment_amount) {
-      setNotification({ open: true, message: 'Installment amount is required for installment recovery', severity: 'error' });
+    if (Number(formData.amount) < 1) {
+      nextErrors.amount = 'Advance amount must be at least 1';
+      isValid = false;
+    }
+
+    if (!formData.date) {
+      nextErrors.date = 'Advance date is required';
+      isValid = false;
+    }
+
+    if (formData.recovery_type === 'installment') {
+      if (!formData.installment_amount) {
+        nextErrors.installment_amount = 'Installment amount is required for installment recovery';
+        isValid = false;
+      } else if (Number(formData.installment_amount) < 1) {
+        nextErrors.installment_amount = 'Installment amount must be at least 1';
+        isValid = false;
+      } else if (Number(formData.installment_amount) > Number(formData.amount)) {
+        nextErrors.installment_amount = 'Installment amount cannot exceed the advance amount';
+        isValid = false;
+      }
+    }
+
+    setFormErrors(nextErrors);
+
+    if (!isValid) {
+      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
       return;
     }
 
@@ -167,6 +266,22 @@ const Advances: React.FC = () => {
       start_month: Number(formData.start_month),
       start_year: Number(formData.start_year),
     });
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await api.get('/reports/advances/csv', { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `advances-report_${today}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setNotification({ open: true, message: 'Advances report exported successfully!', severity: 'success' });
+    } catch (err: any) {
+      setNotification({ open: true, message: err.response?.data?.message || 'Failed to export CSV', severity: 'error' });
+    }
   };
 
   const handleDelete = (id: number) => {
@@ -203,21 +318,41 @@ const Advances: React.FC = () => {
             Issue short-term company loans and configure automatic payroll recovery schedules.
           </Typography>
         </Box>
-        {isFinanceOrAdmin && (
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAdd}
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportCsv}
             sx={{
-              background: 'var(--color-primary)',
-              boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-              borderRadius: 'var(--radius-control)',
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-secondary)',
               textTransform: 'none',
+              borderRadius: 'var(--radius-control)',
+              '&:hover': {
+                borderColor: 'var(--color-border-strong)',
+                bgcolor: 'var(--color-surface-subtle)',
+                color: 'var(--color-text-primary)',
+              },
             }}
           >
-            Issue Advance
+            Export CSV
           </Button>
-        )}
+          {isFinanceOrAdmin && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenAdd}
+              sx={{
+                background: 'var(--color-primary)',
+                boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+                borderRadius: 'var(--radius-control)',
+                textTransform: 'none',
+              }}
+            >
+              Issue Advance
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Advances list table */}
@@ -335,7 +470,7 @@ const Advances: React.FC = () => {
           <DialogContent sx={{ py: 3 }}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
-                <FormControl fullWidth required sx={selectStyles}>
+                <FormControl fullWidth required error={!!formErrors.employee_id} sx={selectStyles}>
                   <InputLabel id="employee-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Select Employee</InputLabel>
                   <Select
                     labelId="employee-select-label"
@@ -347,6 +482,11 @@ const Advances: React.FC = () => {
                       <MenuItem key={e.id} value={e.id}>{e.employee_code} - {e.name}</MenuItem>
                     ))}
                   </Select>
+                  {formErrors.employee_id && (
+                    <Typography variant="caption" color="var(--color-error)" sx={{ mt: 0.5, ml: 1.5 }}>
+                      {formErrors.employee_id}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -358,6 +498,8 @@ const Advances: React.FC = () => {
                   inputProps={{ min: 1 }}
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.amount}
+                  helperText={formErrors.amount}
                   sx={inputStyles}
                 />
               </Grid>
@@ -370,6 +512,8 @@ const Advances: React.FC = () => {
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.date}
+                  helperText={formErrors.date}
                   sx={inputStyles}
                 />
               </Grid>
@@ -381,6 +525,8 @@ const Advances: React.FC = () => {
                   rows={2}
                   value={formData.reason}
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                  error={!!formErrors.reason}
+                  helperText={formErrors.reason}
                   sx={inputStyles}
                 />
               </Grid>
@@ -394,7 +540,7 @@ const Advances: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required sx={selectStyles}>
+                <FormControl fullWidth required error={!!formErrors.recovery_type} sx={selectStyles}>
                   <InputLabel id="recovery-type-label" sx={{ color: 'var(--color-text-secondary)' }}>Recovery Type</InputLabel>
                   <Select
                     labelId="recovery-type-label"
@@ -405,6 +551,11 @@ const Advances: React.FC = () => {
                     <MenuItem value="one_time">One Time Recovery</MenuItem>
                     <MenuItem value="installment">Installment Schedule</MenuItem>
                   </Select>
+                  {formErrors.recovery_type && (
+                    <Typography variant="caption" color="var(--color-error)" sx={{ mt: 0.5, ml: 1.5 }}>
+                      {formErrors.recovery_type}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -417,11 +568,13 @@ const Advances: React.FC = () => {
                   inputProps={{ min: 1 }}
                   value={formData.installment_amount}
                   onChange={(e) => setFormData({ ...formData, installment_amount: e.target.value })}
+                  error={!!formErrors.installment_amount}
+                  helperText={formErrors.installment_amount}
                   sx={inputStyles}
                 />
               </Grid>
               <Grid item xs={6}>
-                <FormControl fullWidth sx={selectStyles}>
+                <FormControl fullWidth error={!!formErrors.start_month} sx={selectStyles}>
                   <InputLabel id="start-month-label" sx={{ color: 'var(--color-text-secondary)' }}>Start Month</InputLabel>
                   <Select
                     labelId="start-month-label"
@@ -433,10 +586,15 @@ const Advances: React.FC = () => {
                       <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
                     ))}
                   </Select>
+                  {formErrors.start_month && (
+                    <Typography variant="caption" color="var(--color-error)" sx={{ mt: 0.5, ml: 1.5 }}>
+                      {formErrors.start_month}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
               <Grid item xs={6}>
-                <FormControl fullWidth sx={selectStyles}>
+                <FormControl fullWidth error={!!formErrors.start_year} sx={selectStyles}>
                   <InputLabel id="start-year-label" sx={{ color: 'var(--color-text-secondary)' }}>Start Year</InputLabel>
                   <Select
                     labelId="start-year-label"
@@ -448,6 +606,11 @@ const Advances: React.FC = () => {
                       <MenuItem key={y} value={y}>{y}</MenuItem>
                     ))}
                   </Select>
+                  {formErrors.start_year && (
+                    <Typography variant="caption" color="var(--color-error)" sx={{ mt: 0.5, ml: 1.5 }}>
+                      {formErrors.start_year}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
             </Grid>
@@ -478,6 +641,7 @@ const Advances: React.FC = () => {
         autoHideDuration={6000}
         onClose={() => setNotification(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{ zIndex: 2000 }}
       >
         <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
           {notification?.message}

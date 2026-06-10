@@ -18,9 +18,8 @@ const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,20 +31,12 @@ const ForgotPassword: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.post('/auth/forgot-password', { email });
-      setToken(res.data.token);
+      await api.post('/auth/forgot-password', { email });
+      setOtpSent(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to request reset token. Please verify your email.');
+      setError(err.response?.data?.message || 'Failed to request reset OTP. Please verify your email.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCopy = () => {
-    if (token) {
-      navigator.clipboard.writeText(token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -109,7 +100,7 @@ const ForgotPassword: React.FC = () => {
               Forgot Password
             </Typography>
             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5, textAlign: 'center' }}>
-              {!token
+              {!otpSent
                 ? 'Enter your email address and we will send a password reset OTP'
                 : 'Reset OTP successfully generated and sent!'}
             </Typography>
@@ -121,7 +112,7 @@ const ForgotPassword: React.FC = () => {
             </Alert>
           )}
 
-          {!token ? (
+          {!otpSent ? (
             <form onSubmit={handleSubmit}>
               <TextField
                 label="Email Address"
@@ -158,46 +149,14 @@ const ForgotPassword: React.FC = () => {
             </form>
           ) : (
             <Box>
-              <Alert severity="info" sx={{ mb: 3, bgcolor: 'rgba(59, 130, 246, 0.15)', color: 'var(--color-info)' }}>
-                For sandbox testing / Yopmail access, please copy the OTP below to reset your password.
+              <Alert severity="success" sx={{ mb: 3, bgcolor: 'rgba(16, 185, 129, 0.15)', color: 'var(--color-success)' }}>
+                An OTP has been successfully sent to your email address. Please check your inbox (including spam folder).
               </Alert>
-
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  bgcolor: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-control)',
-                  p: 1.5,
-                  mb: 3,
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: 'monospace',
-                    color: 'var(--color-text-primary)',
-                    wordBreak: 'break-all',
-                    flexGrow: 1,
-                    userSelect: 'all',
-                  }}
-                >
-                  {token}
-                </Typography>
-                <Button
-                  size="small"
-                  onClick={handleCopy}
-                  sx={{ minWidth: 'auto', p: 1, color: copied ? 'var(--color-success)' : 'var(--color-text-secondary)' }}
-                >
-                  {copied ? 'Copied' : <CopyIcon fontSize="small" />}
-                </Button>
-              </Box>
 
               <Button
                 fullWidth
                 variant="contained"
-                onClick={() => navigate(`/reset-password?token=${token}`)}
+                onClick={() => navigate('/reset-password')}
                 sx={{
                   py: 1.3,
                   fontSize: '1rem',

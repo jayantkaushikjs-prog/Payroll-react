@@ -30,6 +30,7 @@ import {
 import {
   History as HistoryIcon,
   Upgrade as RevisionIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -60,6 +61,13 @@ const SalaryStructures: React.FC = () => {
   const [openRevisionDialog, setOpenRevisionDialog] = useState(false);
   const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
+  const [formErrors, setFormErrors] = useState({
+    basic_salary: '',
+    hra: '',
+    special_allowance: '',
+    other_allowance: '',
+    effective_from: '',
+  });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -105,6 +113,38 @@ const SalaryStructures: React.FC = () => {
     }
   );
 
+  const handleMutationError = (err: any, fallbackMessage: string) => {
+    const backendMessage = err.response?.data?.message;
+    const errors = {
+      basic_salary: '',
+      hra: '',
+      special_allowance: '',
+      other_allowance: '',
+      effective_from: '',
+    };
+
+    if (Array.isArray(backendMessage)) {
+      backendMessage.forEach((msg: string) => {
+        const lowerMsg = msg.toLowerCase();
+        if (lowerMsg.includes('basic')) {
+          errors.basic_salary = msg;
+        } else if (lowerMsg.includes('hra')) {
+          errors.hra = msg;
+        } else if (lowerMsg.includes('special')) {
+          errors.special_allowance = msg;
+        } else if (lowerMsg.includes('other')) {
+          errors.other_allowance = msg;
+        } else if (lowerMsg.includes('effective')) {
+          errors.effective_from = msg;
+        }
+      });
+      setFormErrors(errors);
+      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+    } else {
+      setNotification({ open: true, message: backendMessage || fallbackMessage, severity: 'error' });
+    }
+  };
+
   // Create revision mutation
   const revisionMutation = useMutation(
     async (payload: any) => {
@@ -118,7 +158,7 @@ const SalaryStructures: React.FC = () => {
         setOpenRevisionDialog(false);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to revise salary structure', severity: 'error' });
+        handleMutationError(err, 'Failed to revise salary structure');
       },
     }
   );
@@ -126,6 +166,13 @@ const SalaryStructures: React.FC = () => {
   const handleOpenRevision = (emp: Employee) => {
     setSelectedEmp(emp);
     const current = activeSalaries[emp.id];
+    setFormErrors({
+      basic_salary: '',
+      hra: '',
+      special_allowance: '',
+      other_allowance: '',
+      effective_from: '',
+    });
     setFormData({
       basic_salary: current ? Number(current.basic_salary) : 0,
       hra: current ? Number(current.hra) : 0,
@@ -145,6 +192,43 @@ const SalaryStructures: React.FC = () => {
     e.preventDefault();
     if (!selectedEmp) return;
 
+    const nextErrors = {
+      basic_salary: '',
+      hra: '',
+      special_allowance: '',
+      other_allowance: '',
+      effective_from: '',
+    };
+    let isValid = true;
+
+    if (Number(formData.basic_salary) < 0) {
+      nextErrors.basic_salary = 'Basic salary cannot be negative';
+      isValid = false;
+    }
+    if (Number(formData.hra) < 0) {
+      nextErrors.hra = 'HRA cannot be negative';
+      isValid = false;
+    }
+    if (Number(formData.special_allowance) < 0) {
+      nextErrors.special_allowance = 'Special allowance cannot be negative';
+      isValid = false;
+    }
+    if (Number(formData.other_allowance) < 0) {
+      nextErrors.other_allowance = 'Other allowance cannot be negative';
+      isValid = false;
+    }
+    if (!formData.effective_from) {
+      nextErrors.effective_from = 'Effective starting date is required';
+      isValid = false;
+    }
+
+    setFormErrors(nextErrors);
+
+    if (!isValid) {
+      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+      return;
+    }
+
     revisionMutation.mutate({
       employee_id: selectedEmp.id,
       basic_salary: Number(formData.basic_salary),
@@ -155,6 +239,22 @@ const SalaryStructures: React.FC = () => {
     });
   };
 
+  const handleExportCsv = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await api.get('/reports/salary-components/csv', { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `salary-components_${today}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setNotification({ open: true, message: 'Salary components exported successfully!', severity: 'success' });
+    } catch (err: any) {
+      setNotification({ open: true, message: err.response?.data?.message || 'Failed to export CSV', severity: 'error' });
+    }
+  };
+
   const calculatedGross =
     Number(formData.basic_salary) +
     Number(formData.hra) +
@@ -163,13 +263,33 @@ const SalaryStructures: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-          Salary Structures & Revisions
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-          Manage employee salary bands and create historical revisions.
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box>
+          <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+            Salary Structures & Revisions
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+            Manage employee salary bands and create historical revisions.
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportCsv}
+          sx={{
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-secondary)',
+            textTransform: 'none',
+            borderRadius: 'var(--radius-control)',
+            '&:hover': {
+              borderColor: 'var(--color-border-strong)',
+              bgcolor: 'var(--color-surface-subtle)',
+              color: 'var(--color-text-primary)',
+            },
+          }}
+        >
+          Export CSV
+        </Button>
       </Box>
 
       <Paper
@@ -301,6 +421,8 @@ const SalaryStructures: React.FC = () => {
                   required
                   value={formData.basic_salary}
                   onChange={(e) => setFormData({ ...formData, basic_salary: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.basic_salary}
+                  helperText={formErrors.basic_salary}
                   sx={inputStyles}
                 />
               </Grid>
@@ -312,6 +434,8 @@ const SalaryStructures: React.FC = () => {
                   required
                   value={formData.hra}
                   onChange={(e) => setFormData({ ...formData, hra: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.hra}
+                  helperText={formErrors.hra}
                   sx={inputStyles}
                 />
               </Grid>
@@ -323,6 +447,8 @@ const SalaryStructures: React.FC = () => {
                   required
                   value={formData.special_allowance}
                   onChange={(e) => setFormData({ ...formData, special_allowance: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.special_allowance}
+                  helperText={formErrors.special_allowance}
                   sx={inputStyles}
                 />
               </Grid>
@@ -334,6 +460,8 @@ const SalaryStructures: React.FC = () => {
                   required
                   value={formData.other_allowance}
                   onChange={(e) => setFormData({ ...formData, other_allowance: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.other_allowance}
+                  helperText={formErrors.other_allowance}
                   sx={inputStyles}
                 />
               </Grid>
@@ -346,6 +474,8 @@ const SalaryStructures: React.FC = () => {
                   value={formData.effective_from}
                   onChange={(e) => setFormData({ ...formData, effective_from: e.target.value })}
                   InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.effective_from}
+                  helperText={formErrors.effective_from}
                   sx={inputStyles}
                 />
               </Grid>
@@ -470,6 +600,7 @@ const SalaryStructures: React.FC = () => {
         autoHideDuration={6000}
         onClose={() => setNotification(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{ zIndex: 2000 }}
       >
         <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
           {notification?.message}

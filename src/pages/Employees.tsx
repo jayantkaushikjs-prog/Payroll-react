@@ -61,7 +61,18 @@ const Employees: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
-  const [formErrors, setFormErrors] = useState({ department: '', designation: '' });
+  const [formErrors, setFormErrors] = useState({
+    employee_code: '',
+    name: '',
+    email: '',
+    phone: '',
+    department: '',
+    designation: '',
+    joining_date: '',
+    bank_name: '',
+    account_number: '',
+    ifsc: '',
+  });
   
   // Notification State
   const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
@@ -91,6 +102,53 @@ const Employees: React.FC = () => {
     return res.data;
   });
 
+  const handleMutationError = (err: any, fallbackMessage: string) => {
+    const backendMessage = err.response?.data?.message;
+    const errors = {
+      employee_code: '',
+      name: '',
+      email: '',
+      phone: '',
+      department: '',
+      designation: '',
+      joining_date: '',
+      bank_name: '',
+      account_number: '',
+      ifsc: '',
+    };
+
+    if (Array.isArray(backendMessage)) {
+      backendMessage.forEach((msg: string) => {
+        const lowerMsg = msg.toLowerCase();
+        if (lowerMsg.includes('employee code') || lowerMsg.includes('code')) {
+          errors.employee_code = msg;
+        } else if (lowerMsg.includes('name')) {
+          errors.name = msg;
+        } else if (lowerMsg.includes('email')) {
+          errors.email = msg;
+        } else if (lowerMsg.includes('phone')) {
+          errors.phone = msg;
+        } else if (lowerMsg.includes('department')) {
+          errors.department = msg;
+        } else if (lowerMsg.includes('designation')) {
+          errors.designation = msg;
+        } else if (lowerMsg.includes('joining')) {
+          errors.joining_date = msg;
+        } else if (lowerMsg.includes('bank')) {
+          errors.bank_name = msg;
+        } else if (lowerMsg.includes('account')) {
+          errors.account_number = msg;
+        } else if (lowerMsg.includes('ifsc')) {
+          errors.ifsc = msg;
+        }
+      });
+      setFormErrors(errors);
+      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+    } else {
+      setNotification({ open: true, message: backendMessage || fallbackMessage, severity: 'error' });
+    }
+  };
+
   // Create employee mutation
   const createMutation = useMutation(
     async (newEmp: typeof formData) => {
@@ -104,7 +162,7 @@ const Employees: React.FC = () => {
         setOpenDialog(false);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to register employee', severity: 'error' });
+        handleMutationError(err, 'Failed to register employee');
       },
     }
   );
@@ -122,7 +180,7 @@ const Employees: React.FC = () => {
         setOpenDialog(false);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to update employee', severity: 'error' });
+        handleMutationError(err, 'Failed to update employee');
       },
     }
   );
@@ -145,7 +203,18 @@ const Employees: React.FC = () => {
 
   const handleOpenAddDialog = () => {
     setSelectedEmp(null);
-    setFormErrors({ department: '', designation: '' });
+    setFormErrors({
+      employee_code: '',
+      name: '',
+      email: '',
+      phone: '',
+      department: '',
+      designation: '',
+      joining_date: '',
+      bank_name: '',
+      account_number: '',
+      ifsc: '',
+    });
     setFormData({
       employee_code: `EMP${String(employees.length + 1).padStart(3, '0')}`,
       name: '',
@@ -165,7 +234,18 @@ const Employees: React.FC = () => {
 
   const handleOpenEditDialog = (emp: Employee) => {
     setSelectedEmp(emp);
-    setFormErrors({ department: '', designation: '' });
+    setFormErrors({
+      employee_code: '',
+      name: '',
+      email: '',
+      phone: '',
+      department: '',
+      designation: '',
+      joining_date: '',
+      bank_name: '',
+      account_number: '',
+      ifsc: '',
+    });
     setFormData({
       employee_code: emp.employee_code,
       name: emp.name,
@@ -186,13 +266,85 @@ const Employees: React.FC = () => {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors = {
-      department: formData.department ? '' : 'Department is required',
-      designation: formData.designation ? '' : 'Designation is required',
+      employee_code: '',
+      name: '',
+      email: '',
+      phone: '',
+      department: '',
+      designation: '',
+      joining_date: '',
+      bank_name: '',
+      account_number: '',
+      ifsc: '',
     };
+    let isValid = true;
+
+    // Employee Code
+    if (!formData.employee_code || formData.employee_code.trim().length < 3 || formData.employee_code.trim().length > 20) {
+      nextErrors.employee_code = 'Employee code must be between 3 and 20 characters';
+      isValid = false;
+    }
+
+    // Name
+    if (!formData.name || formData.name.trim().length < 2 || formData.name.trim().length > 100) {
+      nextErrors.name = 'Name must be between 2 and 100 characters';
+      isValid = false;
+    }
+
+    // Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email || !emailRegex.test(formData.email.trim())) {
+      nextErrors.email = 'Invalid email address format';
+      isValid = false;
+    }
+
+    // Phone (optional)
+    if (formData.phone && !/^\d{10}$/.test(formData.phone.trim())) {
+      nextErrors.phone = 'Phone number must be numeric and exactly 10 digits';
+      isValid = false;
+    }
+
+    // Department
+    if (!formData.department) {
+      nextErrors.department = 'Department is required';
+      isValid = false;
+    }
+
+    // Designation
+    if (!formData.designation) {
+      nextErrors.designation = 'Designation is required';
+      isValid = false;
+    }
+
+    // Joining Date
+    if (!formData.joining_date) {
+      nextErrors.joining_date = 'Joining date is required';
+      isValid = false;
+    }
+
+    // Bank Name
+    if (!formData.bank_name || formData.bank_name.trim().length < 2 || formData.bank_name.trim().length > 100) {
+      nextErrors.bank_name = 'Bank name must be between 2 and 100 characters';
+      isValid = false;
+    }
+
+    // Account Number
+    if (!formData.account_number || !/^\d{9,18}$/.test(formData.account_number.trim())) {
+      nextErrors.account_number = 'Account number must be numeric and between 9 and 18 digits';
+      isValid = false;
+    }
+
+    // IFSC Code
+    const ifscRegex = /^[A-Za-z]{4}0[A-Za-z0-9]{6}$/;
+    if (!formData.ifsc || !ifscRegex.test(formData.ifsc.trim())) {
+      nextErrors.ifsc = 'Invalid IFSC code format (e.g. CHAS0001234)';
+      isValid = false;
+    }
 
     setFormErrors(nextErrors);
 
-    if (nextErrors.department || nextErrors.designation) {
+    if (!isValid) {
+      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
       return;
     }
 
@@ -222,6 +374,35 @@ const Employees: React.FC = () => {
     } catch (err: any) {
       setNotification({ open: true, message: err.response?.data?.message || 'Failed to export employees', severity: 'error' });
     }
+  };
+
+  const handleDownloadSampleCsv = () => {
+    const headers = [
+      'Employee Code',
+      'Name',
+      'Email',
+      'Phone',
+      'Department',
+      'Designation',
+      'Joining Date',
+      'Bank Name',
+      'Account Number',
+      'IFSC',
+      'Tax Regime',
+      'Active Status',
+    ];
+    const sampleRows = [
+      ['EMP001', 'John Doe', 'john.doe@example.com', '9876543210', 'Engineering', 'Software Engineer', '2026-01-15', 'HDFC Bank', '50100234567891', 'HDFC0000123', 'new', 'Active'],
+      ['EMP002', 'Jane Smith', 'jane.smith@example.com', '9876543211', 'Human Resources', 'HR Manager', '2026-02-01', 'ICICI Bank', '000401234567', 'ICIC0000004', 'old', 'Active']
+    ];
+    const csvContent = [headers.join(','), ...sampleRows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'sample_employee_import.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,17 +467,16 @@ const Employees: React.FC = () => {
             onChange={handleImportCsv}
           />
           {isHRorAdmin && (
-            <label htmlFor="import-csv-file-input">
+            <>
               <Button
-                component="span"
                 variant="outlined"
-                startIcon={<UploadIcon />}
+                startIcon={<DownloadIcon />}
+                onClick={handleDownloadSampleCsv}
                 sx={{
                   borderColor: 'var(--color-border)',
                   color: 'var(--color-text-secondary)',
                   textTransform: 'none',
                   borderRadius: 'var(--radius-control)',
-                  cursor: 'pointer',
                   '&:hover': {
                     borderColor: 'var(--color-border-strong)',
                     bgcolor: 'var(--color-surface-subtle)',
@@ -304,9 +484,30 @@ const Employees: React.FC = () => {
                   },
                 }}
               >
-                Import CSV
+                Sample CSV
               </Button>
-            </label>
+              <label htmlFor="import-csv-file-input">
+                <Button
+                  component="span"
+                  variant="outlined"
+                  startIcon={<UploadIcon />}
+                  sx={{
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-secondary)',
+                    textTransform: 'none',
+                    borderRadius: 'var(--radius-control)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: 'var(--color-border-strong)',
+                      bgcolor: 'var(--color-surface-subtle)',
+                      color: 'var(--color-text-primary)',
+                    },
+                  }}
+                >
+                  Import CSV
+                </Button>
+              </label>
+            </>
           )}
           <Button
             variant="outlined"
@@ -486,6 +687,8 @@ const Employees: React.FC = () => {
                   required
                   value={formData.employee_code}
                   onChange={(e) => setFormData({ ...formData, employee_code: e.target.value })}
+                  error={!!formErrors.employee_code}
+                  helperText={formErrors.employee_code}
                   sx={inputStyles}
                 />
               </Grid>
@@ -496,6 +699,8 @@ const Employees: React.FC = () => {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  error={!!formErrors.name}
+                  helperText={formErrors.name}
                   sx={inputStyles}
                 />
               </Grid>
@@ -507,6 +712,8 @@ const Employees: React.FC = () => {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  error={!!formErrors.email}
+                  helperText={formErrors.email}
                   sx={inputStyles}
                 />
               </Grid>
@@ -516,6 +723,8 @@ const Employees: React.FC = () => {
                   fullWidth
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  error={!!formErrors.phone}
+                  helperText={formErrors.phone}
                   sx={inputStyles}
                 />
               </Grid>
@@ -572,6 +781,8 @@ const Employees: React.FC = () => {
                   value={formData.joining_date}
                   onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
                   InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.joining_date}
+                  helperText={formErrors.joining_date}
                   sx={inputStyles}
                 />
               </Grid>
@@ -627,6 +838,8 @@ const Employees: React.FC = () => {
                   required
                   value={formData.bank_name}
                   onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                  error={!!formErrors.bank_name}
+                  helperText={formErrors.bank_name}
                   sx={inputStyles}
                 />
               </Grid>
@@ -637,6 +850,8 @@ const Employees: React.FC = () => {
                   required
                   value={formData.account_number}
                   onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                  error={!!formErrors.account_number}
+                  helperText={formErrors.account_number}
                   sx={inputStyles}
                 />
               </Grid>
@@ -647,6 +862,8 @@ const Employees: React.FC = () => {
                   required
                   value={formData.ifsc}
                   onChange={(e) => setFormData({ ...formData, ifsc: e.target.value })}
+                  error={!!formErrors.ifsc}
+                  helperText={formErrors.ifsc}
                   sx={inputStyles}
                 />
               </Grid>
@@ -678,6 +895,7 @@ const Employees: React.FC = () => {
         autoHideDuration={6000}
         onClose={() => setNotification(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{ zIndex: 2000 }}
       >
         <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
           {notification?.message}

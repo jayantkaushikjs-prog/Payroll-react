@@ -8,7 +8,6 @@ import { buildTheme } from './theme';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -20,6 +19,7 @@ import TaxSlabs from './pages/TaxSlabs';
 import Advances from './pages/Advances';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
+import Users from './pages/Users';
 
 interface ThemeModeContextType {
   mode: 'light' | 'dark';
@@ -64,11 +64,18 @@ const App: React.FC = () => {
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/" element={<RoleProtectedRoute><Layout /></RoleProtectedRoute>}>
                   <Route index element={<Dashboard />} />
+                  <Route
+                    path="users"
+                    element={
+                      <RoleProtectedRoute requiredPermission={Permission.MANAGE_USERS}>
+                        <Users />
+                      </RoleProtectedRoute>
+                    }
+                  />
                   <Route
                     path="employees"
                     element={

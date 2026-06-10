@@ -33,6 +33,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -146,6 +147,22 @@ const NonPayableDays: React.FC = () => {
     });
   };
 
+  const handleExportCsv = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await api.get('/reports/non-payable-days/csv', { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `non-payable-days_${today}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setNotification({ open: true, message: 'Non-payable days exported successfully!', severity: 'success' });
+    } catch (err: any) {
+      setNotification({ open: true, message: err.response?.data?.message || 'Failed to export CSV', severity: 'error' });
+    }
+  };
+
   const handleDelete = (id: number) => {
     if (window.confirm('Are you sure you want to delete this unpaid day record?')) {
       deleteMutation.mutate(id);
@@ -180,21 +197,41 @@ const NonPayableDays: React.FC = () => {
             Record unpaid leaves to automatically deduct daily rates during payroll run.
           </Typography>
         </Box>
-        {isHRorAdmin && (
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAdd}
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportCsv}
             sx={{
-              background: 'var(--color-primary)',
-              boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-              borderRadius: 'var(--radius-control)',
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-secondary)',
               textTransform: 'none',
+              borderRadius: 'var(--radius-control)',
+              '&:hover': {
+                borderColor: 'var(--color-border-strong)',
+                bgcolor: 'var(--color-surface-subtle)',
+                color: 'var(--color-text-primary)',
+              },
             }}
           >
-            Log Absences
+            Export CSV
           </Button>
-        )}
+          {isHRorAdmin && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenAdd}
+              sx={{
+                background: 'var(--color-primary)',
+                boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+                borderRadius: 'var(--radius-control)',
+                textTransform: 'none',
+              }}
+            >
+              Log Absences
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Filter Header */}
@@ -408,6 +445,7 @@ const NonPayableDays: React.FC = () => {
         autoHideDuration={6000}
         onClose={() => setNotification(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{ zIndex: 2000 }}
       >
         <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
           {notification?.message}

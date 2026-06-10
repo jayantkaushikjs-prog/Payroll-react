@@ -10,8 +10,14 @@ import {
   Alert,
   CircularProgress,
   Link,
+  IconButton,
+  InputAdornment,
 } from '@mui/material';
-import { LockOpenOutlined as ResetIcon } from '@mui/icons-material';
+import {
+  LockOpenOutlined as ResetIcon,
+  Visibility,
+  VisibilityOff,
+} from '@mui/icons-material';
 import api from '../services/api';
 
 const ResetPassword: React.FC = () => {
@@ -19,6 +25,7 @@ const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -142,13 +149,26 @@ const ResetPassword: React.FC = () => {
             />
             <TextField
               label="New Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               fullWidth
               variant="outlined"
               margin="normal"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      sx={{ color: 'var(--color-text-secondary)' }}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
               sx={textFieldStyle}
             />
 

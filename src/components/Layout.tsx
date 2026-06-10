@@ -34,6 +34,7 @@ import {
   Menu as MenuIcon,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
+  ManageAccounts as AdminIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 260;
@@ -66,6 +67,12 @@ const Layout: React.FC = () => {
       path: '/',
       permissions: [Permission.VIEW_HR_REPORTS, Permission.VIEW_PAYROLL_REPORTS, Permission.VIEW_FINANCIAL_DASHBOARDS],
       requireAny: true,
+    },
+    {
+      text: 'User Management',
+      icon: <AdminIcon />,
+      path: '/users',
+      permissions: [Permission.MANAGE_USERS],
     },
     {
       text: 'Employees',
