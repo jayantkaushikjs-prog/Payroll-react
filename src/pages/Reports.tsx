@@ -3,8 +3,9 @@ import { useAuth, Permission } from '../context/AuthContext';
 import api from '../services/api';
 import {
   Box, Button, Typography, Paper, Grid, Select, MenuItem,
-  FormControl, InputLabel, Snackbar, Alert,
+  FormControl, InputLabel,
 } from '@mui/material';
+import { useToast } from '../context/ToastContext';
 import {
   AccountBalance as BankIcon,
   Assessment as SummaryIcon,
@@ -36,10 +37,10 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 
 const Reports: React.FC = () => {
   const { hasPermission } = useAuth();
+  const { showToast } = useToast();
   const now = new Date();
   const [mo, setMo] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
-  const [note, setNote] = useState<{ open: boolean; msg: string; sev: 'success'|'error' } | null>(null);
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const today = now.toISOString().split('T')[0];
   const canViewHrReports = hasPermission(Permission.VIEW_HR_REPORTS);
@@ -56,9 +57,9 @@ const Reports: React.FC = () => {
       link.download = filename;
       link.click();
       URL.revokeObjectURL(link.href);
-      setNote({ open: true, msg: `${filename} downloaded!`, sev: 'success' });
+      showToast(`${filename} downloaded!`, 'success');
     } catch (err: any) {
-      setNote({ open: true, msg: err.response?.data?.message || 'Download failed', sev: 'error' });
+      showToast(err.response?.data?.message || 'Download failed', 'error');
     }
   };
 
@@ -115,9 +116,7 @@ const Reports: React.FC = () => {
         <ReportSection title="Finance Reports" reports={financeReports} onDownload={downloadCsv} />
       )}
 
-      <Snackbar open={note?.open} autoHideDuration={4000} onClose={() => setNote(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
-        <Alert onClose={() => setNote(null)} severity={note?.sev} sx={{ width: '100%' }}>{note?.msg}</Alert>
-      </Snackbar>
+
     </Box>
   );
 };

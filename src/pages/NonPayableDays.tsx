@@ -25,15 +25,16 @@ import {
   InputLabel,
   IconButton,
   Tooltip,
-  Snackbar,
-  Alert,
   CircularProgress,
+  Alert,
 } from '@mui/material';
+import { useToast } from '../context/ToastContext';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
   Download as DownloadIcon,
+  Upload as UploadIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -53,6 +54,7 @@ interface NonPayableDays {
 
 const NonPayableDays: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   
@@ -62,7 +64,6 @@ const NonPayableDays: React.FC = () => {
 
   // Dialog State
   const [openDialog, setOpenDialog] = useState(false);
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
   // Form Fields
   const [formData, setFormData] = useState({
@@ -89,6 +90,15 @@ const NonPayableDays: React.FC = () => {
     }
   );
 
+  // Fetch payroll status to check if disbursed
+  const { data: payrollStatus } = useQuery(['payrollStatus', filterMonth, filterYear], async () => {
+    const res = await api.get(`/payroll?month=${filterMonth}&year=${filterYear}`);
+    return {
+      isDisbursed: res.data.length > 0 && res.data.every((p: any) => p.status === 'disbursed'),
+    };
+  });
+  const isMonthDisbursed = !!payrollStatus?.isDisbursed;
+
   // Upsert (Create/Update) mutation
   const upsertMutation = useMutation(
     async (payload: any) => {
@@ -98,11 +108,11 @@ const NonPayableDays: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['nonPayableDays']);
-        setNotification({ open: true, message: 'Unpaid days logged successfully!', severity: 'success' });
+        showToast('Unpaid days logged successfully!', 'success');
         setOpenDialog(false);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to log unpaid days', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to log unpaid days', 'error');
       },
     }
   );
@@ -115,10 +125,10 @@ const NonPayableDays: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['nonPayableDays']);
-        setNotification({ open: true, message: 'Attendance log deleted.', severity: 'success' });
+        showToast('Attendance log deleted.', 'success');
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to delete attendance log', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to delete attendance log', 'error');
       },
     }
   );
@@ -136,7 +146,7 @@ const NonPayableDays: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.employee_id) {
-      setNotification({ open: true, message: 'Please select an employee', severity: 'error' });
+      showToast('Please select an employee', 'error');
       return;
     }
     upsertMutation.mutate({
@@ -157,10 +167,58 @@ const NonPayableDays: React.FC = () => {
       link.download = `non-payable-days_${today}.csv`;
       link.click();
       URL.revokeObjectURL(link.href);
-      setNotification({ open: true, message: 'Non-payable days exported successfully!', severity: 'success' });
+      showToast('Non-payable days exported successfully!', 'success');
     } catch (err: any) {
-      setNotification({ open: true, message: err.response?.data?.message || 'Failed to export CSV', severity: 'error' });
+      showToast(err.response?.data?.message || 'Failed to export CSV', 'error');
     }
+  };
+
+  const handleDownloadSampleCsv = () => {
+    const headers = [
+      'Employee Code',
+      'Month',
+      'Year',
+      'Days',
+      'Remarks',
+    ];
+    const sampleRows = [
+      ['EMP001', String(filterMonth), String(filterYear), '3.5', 'Sick leave without pay'],
+      ['EMP002', String(filterMonth), String(filterYear), '0', 'No unpaid absences']
+    ];
+    const csvContent = [headers.join(','), ...sampleRows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'sample_non_payable_days.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      try {
+        const res = await api.post('/non-payable-days/import', { csvContent: text });
+        const { imported, errors } = res.data;
+        queryClient.invalidateQueries(['nonPayableDays']);
+        queryClient.invalidateQueries(['payrollStatus']);
+        if (errors && errors.length > 0) {
+          showToast(`Imported ${imported} records. Warnings/errors: ${errors.length} (see console).`, 'error');
+          console.warn('Import CSV warnings/errors:', errors);
+        } else {
+          showToast(`Successfully imported ${imported} attendance logs!`, 'success');
+        }
+      } catch (err: any) {
+        showToast(err.response?.data?.message || 'Failed to import CSV file.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleDelete = (id: number) => {
@@ -197,7 +255,57 @@ const NonPayableDays: React.FC = () => {
             Record unpaid leaves to automatically deduct daily rates during payroll run.
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          {isHRorAdmin && (
+            <>
+              <input
+                type="file"
+                accept=".csv"
+                id="csv-import-input-npd"
+                style={{ display: 'none' }}
+                onChange={handleImportCsv}
+                disabled={isMonthDisbursed}
+              />
+              <Button
+                variant="outlined"
+                component="span"
+                onClick={() => document.getElementById('csv-import-input-npd')?.click()}
+                disabled={isMonthDisbursed}
+                startIcon={<UploadIcon />}
+                sx={{
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text-secondary)',
+                  textTransform: 'none',
+                  borderRadius: 'var(--radius-control)',
+                  '&:hover': {
+                    borderColor: 'var(--color-border-strong)',
+                    bgcolor: 'var(--color-surface-subtle)',
+                    color: 'var(--color-text-primary)',
+                  },
+                }}
+              >
+                Import CSV
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleDownloadSampleCsv}
+                startIcon={<DownloadIcon />}
+                sx={{
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text-secondary)',
+                  textTransform: 'none',
+                  borderRadius: 'var(--radius-control)',
+                  '&:hover': {
+                    borderColor: 'var(--color-border-strong)',
+                    bgcolor: 'var(--color-surface-subtle)',
+                    color: 'var(--color-text-primary)',
+                  },
+                }}
+              >
+                Sample CSV
+              </Button>
+            </>
+          )}
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
@@ -221,6 +329,7 @@ const NonPayableDays: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={handleOpenAdd}
+              disabled={isMonthDisbursed}
               sx={{
                 background: 'var(--color-primary)',
                 boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
@@ -279,6 +388,12 @@ const NonPayableDays: React.FC = () => {
         </Grid>
       </Paper>
 
+      {isMonthDisbursed && (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 'var(--radius-control)', background: 'rgba(251,191,36,0.1)', color: 'var(--color-warning)', border: '1px solid rgba(251,191,36,0.3)' }}>
+          Payroll for {months.find(m => m.value === filterMonth)?.label} {filterYear} has been disbursed. Absence logs cannot be modified for this month.
+        </Alert>
+      )}
+
       {/* Table Paper */}
       <Paper
         sx={{
@@ -323,10 +438,12 @@ const NonPayableDays: React.FC = () => {
                     <TableCell sx={{ color: 'var(--color-error)', fontWeight: 600 }}>{log.days} Days</TableCell>
                     {isHRorAdmin && (
                       <TableCell align="right">
-                        <Tooltip title="Delete Log">
-                          <IconButton onClick={() => handleDelete(log.id)} sx={{ color: 'var(--color-error)' }}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title={isMonthDisbursed ? "Cannot delete: Payroll disbursed" : "Delete Log"}>
+                          <span>
+                            <IconButton onClick={() => handleDelete(log.id)} disabled={isMonthDisbursed} sx={{ color: 'var(--color-error)' }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </TableCell>
                     )}
@@ -439,18 +556,7 @@ const NonPayableDays: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Notifications */}
-      <Snackbar
-        open={notification?.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        sx={{ zIndex: 2000 }}
-      >
-        <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+
     </Box>
   );
 };

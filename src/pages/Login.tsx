@@ -100,7 +100,7 @@ const Login: React.FC = () => {
               Welcome Back
             </Typography>
             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-              Sign in to manage employee payroll
+              Sign in to manage THPS payroll
             </Typography>
           </Box>
 

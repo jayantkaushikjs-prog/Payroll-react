@@ -6,9 +6,11 @@ import { useAuth, Role } from '../context/AuthContext';
 import {
   Box, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Grid, Select, MenuItem, FormControl, InputLabel,
-  Snackbar, Alert, CircularProgress, Chip,
+  CircularProgress, Chip,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
 } from '@mui/material';
-import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon, Payments as DisburseIcon } from '@mui/icons-material';
+import { useToast } from '../context/ToastContext';
 
 const ss = {
   '& .MuiOutlinedInput-root': { color: 'var(--color-text-primary)', borderRadius: 'var(--radius-control)',
@@ -27,11 +29,12 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 
 const Payroll: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const qc = useQueryClient();
   const now = new Date();
   const [mo, setMo] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
-  const [note, setNote] = useState<{ open: boolean; msg: string; sev: 'success'|'error' } | null>(null);
+  const [disburseOpen, setDisburseOpen] = useState(false);
   const canEdit = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const { data: payrolls = [], isLoading } = useQuery(['payroll', mo, yr], async () => {
@@ -40,16 +43,26 @@ const Payroll: React.FC = () => {
   });
 
   const genMut = useMutation(async () => (await api.post('/payroll', { month: mo, year: yr })).data, {
-    onSuccess: () => { qc.invalidateQueries(['payroll']); qc.invalidateQueries(['dashboardData']); setNote({ open: true, msg: 'Payroll generated (DRAFT)!', sev: 'success' }); },
-    onError: (e: any) => setNote({ open: true, msg: e.response?.data?.message || 'Generation failed', sev: 'error' }),
+    onSuccess: () => { qc.invalidateQueries(['payroll']); qc.invalidateQueries(['dashboardData']); showToast('Payroll generated (DRAFT)!', 'success'); },
+    onError: (e: any) => showToast(e.response?.data?.message || 'Generation failed', 'error'),
   });
 
-  const stMut = useMutation(async (s: 'draft'|'completed') => (await api.put(`/payroll/status?month=${mo}&year=${yr}`, { status: s })).data, {
-    onSuccess: (_, s) => { qc.invalidateQueries(['payroll']); qc.invalidateQueries(['dashboardData']); qc.invalidateQueries(['advances']); setNote({ open: true, msg: s === 'completed' ? 'Payroll locked & disbursed!' : 'Payroll unlocked to draft.', sev: 'success' }); },
-    onError: (e: any) => setNote({ open: true, msg: e.response?.data?.message || 'Status update failed', sev: 'error' }),
+  const stMut = useMutation(async (s: 'draft'|'locked'|'disbursed') => (await api.put(`/payroll/status?month=${mo}&year=${yr}`, { status: s })).data, {
+    onSuccess: (_, s) => {
+      qc.invalidateQueries(['payroll']);
+      qc.invalidateQueries(['dashboardData']);
+      qc.invalidateQueries(['advances']);
+      let msg = '';
+      if (s === 'locked') msg = 'Payroll locked successfully!';
+      else if (s === 'disbursed') msg = 'Payroll disbursed successfully!';
+      else msg = 'Payroll unlocked to draft.';
+      showToast(msg, 'success');
+    },
+    onError: (e: any) => showToast(e.response?.data?.message || 'Status update failed', 'error'),
   });
 
-  const allDone = payrolls.length > 0 && payrolls.every((p: any) => p.status === 'completed');
+  const allDisbursed = payrolls.length > 0 && payrolls.every((p: any) => p.status === 'disbursed');
+  const allLocked = payrolls.length > 0 && payrolls.every((p: any) => p.status === 'locked');
   const hasDraft = payrolls.some((p: any) => p.status === 'draft');
   const sum = (key: string) => payrolls.reduce((s: number, p: any) => s + Number(p[key]), 0);
 
@@ -62,9 +75,9 @@ const Payroll: React.FC = () => {
       link.download = filename;
       link.click();
       URL.revokeObjectURL(link.href);
-      setNote({ open: true, msg: `${filename} downloaded successfully!`, sev: 'success' });
+      showToast(`${filename} downloaded successfully!`, 'success');
     } catch (err: any) {
-      setNote({ open: true, msg: err.response?.data?.message || 'Download failed', sev: 'error' });
+      showToast(err.response?.data?.message || 'Download failed', 'error');
     }
   };
 
@@ -76,12 +89,83 @@ const Payroll: React.FC = () => {
           <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>Generate, review, and finalize monthly payroll.</Typography>
         </Box>
         {canEdit && (
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            {allDone && <Button variant="outlined" startIcon={<UnlockIcon />} onClick={() => stMut.mutate('draft')} sx={{ borderColor: 'rgba(251,191,36,0.3)', color: 'var(--color-warning)', textTransform: 'none', borderRadius: 'var(--radius-control)' }}>Unlock</Button>}
-            {hasDraft && <Button variant="outlined" startIcon={<LockIcon />} onClick={() => stMut.mutate('completed')} sx={{ borderColor: 'rgba(16,185,129,0.3)', color: 'var(--color-success)', textTransform: 'none', borderRadius: 'var(--radius-control)' }}>Lock & Disburse</Button>}
-            <Button variant="contained" startIcon={<GenIcon />} onClick={() => genMut.mutate()} disabled={genMut.isLoading} sx={{ background: 'var(--color-primary)', boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)', borderRadius: 'var(--radius-control)', textTransform: 'none' }}>
-              {genMut.isLoading ? 'Generating...' : 'Generate Payroll'}
-            </Button>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+            {!allDisbursed ? (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<UnlockIcon />}
+                  onClick={() => stMut.mutate('draft')}
+                  disabled={!allLocked || stMut.isLoading}
+                  sx={{
+                    borderColor: 'rgba(251,191,36,0.3)',
+                    color: 'var(--color-warning)',
+                    textTransform: 'none',
+                    borderRadius: 'var(--radius-control)',
+                    '&.Mui-disabled': { borderColor: 'rgba(251,191,36,0.1)', color: 'rgba(251,191,36,0.4)' }
+                  }}
+                >
+                  Unlock
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<LockIcon />}
+                  onClick={() => stMut.mutate('locked')}
+                  disabled={!hasDraft || stMut.isLoading}
+                  sx={{
+                    borderColor: 'rgba(16,185,129,0.3)',
+                    color: 'var(--color-success)',
+                    textTransform: 'none',
+                    borderRadius: 'var(--radius-control)',
+                    '&.Mui-disabled': { borderColor: 'rgba(16,185,129,0.1)', color: 'rgba(16,185,129,0.4)' }
+                  }}
+                >
+                  Lock
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<DisburseIcon />}
+                  onClick={() => setDisburseOpen(true)}
+                  disabled={!allLocked || stMut.isLoading}
+                  sx={{
+                    background: 'var(--color-success)',
+                    '&:hover': { background: 'var(--color-success-hover)' },
+                    boxShadow: '0 8px 18px rgba(16, 185, 129, 0.22)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                    '&.Mui-disabled': { background: 'rgba(16,185,129,0.1)', color: 'rgba(255,255,255,0.3)', boxShadow: 'none' }
+                  }}
+                >
+                  Disburse
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<GenIcon />}
+                  onClick={() => genMut.mutate()}
+                  disabled={genMut.isLoading || allLocked}
+                  sx={{
+                    background: 'var(--color-primary)',
+                    boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none'
+                  }}
+                >
+                  {genMut.isLoading ? 'Generating...' : 'Generate Payroll'}
+                </Button>
+              </>
+            ) : (
+              <Chip
+                label="Payroll Disbursed"
+                color="success"
+                variant="filled"
+                sx={{
+                  fontWeight: 'bold',
+                  bgcolor: 'rgba(16,185,129,0.25)',
+                  color: 'var(--color-success)',
+                  border: '1px solid var(--color-success)'
+                }}
+              />
+            )}
           </Box>
         )}
       </Box>
@@ -182,7 +266,18 @@ const Payroll: React.FC = () => {
                   <TableCell align="right" sx={{ color: 'var(--color-warning)' }}>{formatCurrency(pr.tax_deduction)}</TableCell>
                   <TableCell align="right" sx={{ color: pr.advance_recovery > 0 ? '#fb923c' : 'var(--color-text-muted)' }}>{pr.advance_recovery > 0 ? formatCurrency(pr.advance_recovery) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-success)', fontWeight: 700 }}>{formatCurrency(pr.net_salary)}</TableCell>
-                  <TableCell align="center"><Chip label={pr.status === 'completed' ? 'Disbursed' : 'Draft'} size="small" sx={{ fontWeight: 700, fontSize: '0.72rem', bgcolor: pr.status === 'completed' ? 'rgba(16,185,129,0.15)' : 'rgba(251,191,36,0.15)', color: pr.status === 'completed' ? 'var(--color-success)' : 'var(--color-warning)' }} /></TableCell>
+                  <TableCell align="center">
+                    <Chip
+                      label={pr.status === 'disbursed' ? 'Disbursed' : pr.status === 'locked' ? 'Locked' : 'Draft'}
+                      size="small"
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: '0.72rem',
+                        bgcolor: pr.status === 'disbursed' ? 'rgba(16,185,129,0.15)' : pr.status === 'locked' ? 'rgba(99,102,241,0.15)' : 'rgba(251,191,36,0.15)',
+                        color: pr.status === 'disbursed' ? 'var(--color-success)' : pr.status === 'locked' ? 'var(--color-primary)' : 'var(--color-warning)'
+                      }}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -190,9 +285,49 @@ const Payroll: React.FC = () => {
         </TableContainer>
       </Paper>
 
-      <Snackbar open={note?.open} autoHideDuration={6000} onClose={() => setNote(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
-        <Alert onClose={() => setNote(null)} severity={note?.sev} sx={{ width: '100%' }}>{note?.msg}</Alert>
-      </Snackbar>
+
+
+      <Dialog
+        open={disburseOpen}
+        onClose={() => setDisburseOpen(false)}
+        PaperProps={{
+          sx: {
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            color: 'var(--color-text-primary)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 'bold' }}>Disburse Payroll Confirmation</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'var(--color-text-secondary)' }}>
+            Are you sure you want to disburse the payroll for {months.find(m => m.value === mo)?.label} {yr}?
+            <br /><br />
+            <strong>Warning:</strong> This action will finalize all calculations, lock employee records and non-payable days for this month. <strong>This action cannot be undone.</strong>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setDisburseOpen(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setDisburseOpen(false);
+              stMut.mutate('disbursed');
+            }}
+            variant="contained"
+            sx={{
+              background: 'var(--color-success)',
+              '&:hover': { background: 'var(--color-success-hover)' },
+              textTransform: 'none',
+            }}
+            autoFocus
+          >
+            Confirm & Disburse
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

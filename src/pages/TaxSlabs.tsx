@@ -20,13 +20,12 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  Snackbar,
-  Alert,
   CircularProgress,
   IconButton,
   Tooltip,
   MenuItem,
 } from '@mui/material';
+import { useToast } from '../context/ToastContext';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -43,9 +42,9 @@ interface TaxSlabRecord {
 
 const TaxSlabs: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [openDialog, setOpenDialog] = useState(false);
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -73,11 +72,11 @@ const TaxSlabs: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['taxSlabs']);
-        setNotification({ open: true, message: 'Tax slab added successfully!', severity: 'success' });
+        showToast('Tax slab added successfully!', 'success');
         setOpenDialog(false);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to add tax slab', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to add tax slab', 'error');
       },
     }
   );
@@ -90,10 +89,10 @@ const TaxSlabs: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['taxSlabs']);
-        setNotification({ open: true, message: 'Tax slab deleted.', severity: 'success' });
+        showToast('Tax slab deleted.', 'success');
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to delete tax slab', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to delete tax slab', 'error');
       },
     }
   );
@@ -325,18 +324,7 @@ const TaxSlabs: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Notifications */}
-      <Snackbar
-        open={notification?.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        sx={{ zIndex: 2000 }}
-      >
-        <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+
     </Box>
   );
 };

@@ -7,11 +7,13 @@ import { REPORT_PERMISSIONS } from './constants/permissions';
 import { buildTheme } from './theme';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 import Layout from './components/Layout';
+import { ToastProvider } from './context/ToastContext';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
+import FinancialSummary from './pages/FinancialSummary';
 import SalaryStructures from './pages/SalaryStructures';
 import NonPayableDays from './pages/NonPayableDays';
 import PFSettings from './pages/PFSettings';
@@ -20,6 +22,7 @@ import Advances from './pages/Advances';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
+import Expenses from './pages/Expenses';
 
 interface ThemeModeContextType {
   mode: 'light' | 'dark';
@@ -60,8 +63,9 @@ const App: React.FC = () => {
       <ThemeModeContext.Provider value={themeMode}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <AuthProvider>
-            <BrowserRouter>
+          <ToastProvider>
+            <AuthProvider>
+              <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -81,6 +85,14 @@ const App: React.FC = () => {
                     element={
                       <RoleProtectedRoute requiredPermission={Permission.VIEW_EMPLOYEE}>
                         <Employees />
+                      </RoleProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="financial-summary"
+                    element={
+                      <RoleProtectedRoute requiredPermission={Permission.VIEW_EMPLOYEE}>
+                        <FinancialSummary />
                       </RoleProtectedRoute>
                     }
                   />
@@ -125,6 +137,14 @@ const App: React.FC = () => {
                     }
                   />
                   <Route
+                    path="expenses"
+                    element={
+                      <RoleProtectedRoute requiredPermission={Permission.VIEW_EXPENSES}>
+                        <Expenses />
+                      </RoleProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="payroll"
                     element={
                       <RoleProtectedRoute requiredPermission={Permission.VIEW_PAYROLL}>
@@ -144,7 +164,8 @@ const App: React.FC = () => {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </BrowserRouter>
-          </AuthProvider>
+            </AuthProvider>
+          </ToastProvider>
         </ThemeProvider>
       </ThemeModeContext.Provider>
     </QueryClientProvider>

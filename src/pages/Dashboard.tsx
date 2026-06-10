@@ -28,6 +28,7 @@ import {
   ReceiptLong as PayslipIcon,
   Savings as SalaryIcon,
   TrendingUp as TrendIcon,
+  Receipt as ExpensesIcon,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -58,6 +59,8 @@ interface DashboardData {
   charts: {
     departmentDistribution?: { department: string; count: number }[];
     payrollTrends?: { name: string; payrollCost: number; pf: number; tax: number }[];
+    expensesTrend?: { name: string; amount: number }[];
+    expensesCategoryDistribution?: { category: string; amount: number }[];
   };
   activities: { title: string; description: string; date: string }[];
   notices: string[];
@@ -136,6 +139,7 @@ const Dashboard: React.FC = () => {
     ] : []),
     ...(isSuperAdmin || isFinance ? [
       { key: isSuperAdmin ? 'totalPayrollThisMonth' : 'currentMonthPayroll', label: isSuperAdmin ? 'Total Payroll This Month' : 'Current Month Payroll', icon: <PayrollIcon />, color: 'var(--color-success)', format: 'currency' as const },
+      { key: 'totalExpensesThisMonth', label: 'Total Expenses This Month', icon: <ExpensesIcon />, color: 'var(--color-error)', format: 'currency' as const },
       { key: 'pendingPayrollProcessing', label: 'Pending Payroll Processing', icon: <CalendarIcon />, color: 'var(--color-warning)' },
       { key: 'totalAdvancesOutstanding', label: 'Advances Outstanding', icon: <AdvancesIcon />, color: 'var(--color-warning)', format: 'currency' as const },
       { key: 'taxDeductions', label: 'Tax Deductions', icon: <TaxIcon />, color: 'var(--color-warning)', format: 'currency' as const },
@@ -152,6 +156,7 @@ const Dashboard: React.FC = () => {
       { label: 'Tax Slabs', icon: <TaxIcon />, permission: Permission.MANAGE_TAX_SLABS, path: '/tax' },
       { label: 'Payroll', icon: <PayrollIcon />, permission: Permission.VIEW_PAYROLL, path: '/payroll' },
       { label: 'Advances', icon: <AdvancesIcon />, permission: Permission.VIEW_ADVANCES, path: '/advances' },
+      { label: 'Company Expenses', icon: <ExpensesIcon />, permission: Permission.VIEW_EXPENSES, path: '/expenses' },
       { label: 'Reports', icon: <ReportsIcon />, permission: Permission.VIEW_HR_REPORTS, path: '/reports' },
     ] : []),
     ...(isHr ? [
@@ -161,6 +166,7 @@ const Dashboard: React.FC = () => {
     ...(isFinance ? [
       { label: 'Process Payroll', icon: <PayrollIcon />, permission: Permission.GENERATE_PAYROLL, path: '/payroll' },
       { label: 'Manage Advances', icon: <AdvancesIcon />, permission: Permission.MANAGE_ADVANCES, path: '/advances' },
+      { label: 'Manage Expenses', icon: <ExpensesIcon />, permission: Permission.MANAGE_EXPENSES, path: '/expenses' },
       { label: 'Generate Payslips', icon: <PayslipIcon />, permission: Permission.VIEW_PAYROLL, path: '/reports' },
       { label: 'Download Finance Reports', icon: <ReportsIcon />, permission: Permission.VIEW_PAYROLL_REPORTS, path: '/reports' },
     ] : []),
@@ -168,6 +174,8 @@ const Dashboard: React.FC = () => {
 
   const payrollTrends = data.charts.payrollTrends || [];
   const departmentDistribution = data.charts.departmentDistribution || [];
+  const expensesTrends = data.charts.expensesTrend || [];
+  const expensesCategoryDistribution = data.charts.expensesCategoryDistribution || [];
 
   return (
     <Box>
@@ -250,6 +258,48 @@ const Dashboard: React.FC = () => {
                 </ResponsiveContainer>
               </ChartPanel>
             </Grid>
+            <Grid item xs={12} lg={7}>
+              <ChartPanel title="Company Expenses Trend" empty={!expensesTrends.length}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={expensesTrends} margin={{ top: 10, right: 24, left: 8, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="expensesTrend" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--color-error)" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="var(--color-error)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value as number)} />
+                    <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
+                    <Area type="monotone" dataKey="amount" name="Expense Amount" stroke="var(--color-error)" strokeWidth={2.5} fillOpacity={1} fill="url(#expensesTrend)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+            </Grid>
+            <Grid item xs={12} lg={5}>
+              <ChartPanel title="Expenses by Category" empty={!expensesCategoryDistribution.length}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={expensesCategoryDistribution} dataKey="amount" nameKey="category" outerRadius={105} innerRadius={58} paddingAngle={2}>
+                      {expensesCategoryDistribution.map((entry: any, index: number) => {
+                        const colors: Record<string, string> = {
+                          rent: '#10b981',
+                          salary: '#3b82f6',
+                          utilities: '#f59e0b',
+                          marketing: '#8b5cf6',
+                          'one-time': '#ef4444',
+                        };
+                        return <Cell key={index} fill={colors[entry.category] || chartColors[index % chartColors.length]} />;
+                      })}
+                    </Pie>
+                    <ChartTooltip formatter={(value, name) => [formatCurrency(value as number), String(name).charAt(0).toUpperCase() + String(name).slice(1)]} />
+                    <Legend formatter={(value) => String(value).charAt(0).toUpperCase() + String(value).slice(1)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+            </Grid>
+
             <Grid item xs={12} lg={5}>
               <SummaryPanel
                 title="Salary Processing"

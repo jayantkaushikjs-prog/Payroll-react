@@ -23,10 +23,9 @@ import {
   Card,
   CardContent,
   Divider,
-  Snackbar,
-  Alert,
   CircularProgress,
 } from '@mui/material';
+import { useToast } from '../context/ToastContext';
 import {
   History as HistoryIcon,
   Upgrade as RevisionIcon,
@@ -56,11 +55,11 @@ interface SalaryStructure {
 
 const SalaryStructures: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [openRevisionDialog, setOpenRevisionDialog] = useState(false);
   const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
   const [formErrors, setFormErrors] = useState({
     basic_salary: '',
     hra: '',
@@ -139,9 +138,9 @@ const SalaryStructures: React.FC = () => {
         }
       });
       setFormErrors(errors);
-      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+      showToast('Please correct the highlighted validation errors.', 'error');
     } else {
-      setNotification({ open: true, message: backendMessage || fallbackMessage, severity: 'error' });
+      showToast(backendMessage || fallbackMessage, 'error');
     }
   };
 
@@ -154,7 +153,7 @@ const SalaryStructures: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['activeSalaries']);
-        setNotification({ open: true, message: 'Salary structure revised successfully!', severity: 'success' });
+        showToast('Salary structure revised successfully!', 'success');
         setOpenRevisionDialog(false);
       },
       onError: (err: any) => {
@@ -225,7 +224,7 @@ const SalaryStructures: React.FC = () => {
     setFormErrors(nextErrors);
 
     if (!isValid) {
-      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+      showToast('Please correct the highlighted validation errors.', 'error');
       return;
     }
 
@@ -249,9 +248,9 @@ const SalaryStructures: React.FC = () => {
       link.download = `salary-components_${today}.csv`;
       link.click();
       URL.revokeObjectURL(link.href);
-      setNotification({ open: true, message: 'Salary components exported successfully!', severity: 'success' });
+      showToast('Salary components exported successfully!', 'success');
     } catch (err: any) {
-      setNotification({ open: true, message: err.response?.data?.message || 'Failed to export CSV', severity: 'error' });
+      showToast(err.response?.data?.message || 'Failed to export CSV', 'error');
     }
   };
 
@@ -594,18 +593,7 @@ const SalaryStructures: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Notifications */}
-      <Snackbar
-        open={notification?.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        sx={{ zIndex: 2000 }}
-      >
-        <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+
     </Box>
   );
 };

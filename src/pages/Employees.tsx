@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth, Role } from '../context/AuthContext';
+import { formatCurrency } from '../constants/currency';
 import {
   Box,
   Button,
@@ -23,12 +24,30 @@ import {
   Grid,
   FormControlLabel,
   Switch,
-  Alert,
-  Snackbar,
   CircularProgress,
   Divider,
   Autocomplete,
+  Tabs,
+  Tab,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as ChartTooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+} from 'recharts';
+import { useToast } from '../context/ToastContext';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -53,10 +72,13 @@ interface Employee {
   ifsc: string;
   tax_regime: string;
   active_status: boolean;
+  pf_deduction?: boolean;
+  tax_deduction?: boolean;
 }
 
 const Employees: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
@@ -73,9 +95,6 @@ const Employees: React.FC = () => {
     account_number: '',
     ifsc: '',
   });
-  
-  // Notification State
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
   // Form Fields
   const [formData, setFormData] = useState({
@@ -91,6 +110,8 @@ const Employees: React.FC = () => {
     ifsc: '',
     tax_regime: 'new',
     active_status: true,
+    pf_deduction: true,
+    tax_deduction: true,
   });
 
   const isHRorAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.HR);
@@ -101,6 +122,105 @@ const Employees: React.FC = () => {
     const res = await api.get('/employees');
     return res.data;
   });
+
+  // Main Tab State (0 = Employee Directory, 1 = Detailed Profile Viewer)
+  const [mainTab, setMainTab] = useState(0);
+
+  // States for Detailed Employee Profile Tab
+  const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
+  const [profileYear, setProfileYear] = useState<number>(new Date().getFullYear());
+  const [profileFormData, setProfileFormData] = useState({
+    employee_code: '',
+    name: '',
+    email: '',
+    phone: '',
+    department: '',
+    designation: '',
+    joining_date: '',
+    bank_name: '',
+    account_number: '',
+    ifsc: '',
+    tax_regime: 'new',
+    active_status: true,
+    pf_deduction: true,
+    tax_deduction: true,
+  });
+
+  // Query for Detailed Employee Financial Summary
+  const { data: profileSummary, isLoading: isLoadingProfileSummary } = useQuery(
+    ['profileFinancialSummary', profileEmpId, profileYear],
+    async () => {
+      if (!profileEmpId) return null;
+      const res = await api.get(`/employees/${profileEmpId}/financial-summary?year=${profileYear}`);
+      return res.data;
+    },
+    {
+      enabled: mainTab === 1 && !!profileEmpId,
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to fetch financial summary data', 'error');
+      },
+    }
+  );
+
+  // Effect to load employee details when profileEmpId is selected
+  useEffect(() => {
+    if (profileEmpId && employees.length > 0) {
+      const emp = employees.find((e: any) => e.id === profileEmpId);
+      if (emp) {
+        setProfileFormData({
+          employee_code: emp.employee_code || '',
+          name: emp.name || '',
+          email: emp.email || '',
+          phone: emp.phone || '',
+          department: emp.department || '',
+          designation: emp.designation || '',
+          joining_date: emp.joining_date || '',
+          bank_name: emp.bank_name || '',
+          account_number: emp.account_number || '',
+          ifsc: emp.ifsc || '',
+          tax_regime: emp.tax_regime || 'new',
+          active_status: emp.active_status !== false,
+          pf_deduction: emp.pf_deduction !== false,
+          tax_deduction: emp.tax_deduction !== false,
+        });
+      }
+    }
+  }, [profileEmpId, employees]);
+
+  // Effect to auto-select first employee if none selected
+  useEffect(() => {
+    if (employees.length > 0 && !profileEmpId) {
+      setProfileEmpId(employees[0].id);
+    }
+  }, [employees, profileEmpId]);
+
+  // Profile update mutation
+  const updateProfileMutation = useMutation(
+    async ({ id, payload }: { id: number; payload: any }) => {
+      const res = await api.put(`/employees/${id}`, payload);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['employees']);
+        showToast('Employee profile details saved successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update employee details', 'error');
+      },
+    }
+  );
+
+  const handleProfileFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileEmpId) return;
+    updateProfileMutation.mutate({
+      id: Number(profileEmpId),
+      payload: profileFormData,
+    });
+  };
+
+
 
   const handleMutationError = (err: any, fallbackMessage: string) => {
     const backendMessage = err.response?.data?.message;
@@ -143,9 +263,9 @@ const Employees: React.FC = () => {
         }
       });
       setFormErrors(errors);
-      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+      showToast('Please correct the highlighted validation errors.', 'error');
     } else {
-      setNotification({ open: true, message: backendMessage || fallbackMessage, severity: 'error' });
+      showToast(backendMessage || fallbackMessage, 'error');
     }
   };
 
@@ -158,7 +278,7 @@ const Employees: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
-        setNotification({ open: true, message: 'Employee registered successfully!', severity: 'success' });
+        showToast('Employee registered successfully!', 'success');
         setOpenDialog(false);
       },
       onError: (err: any) => {
@@ -176,7 +296,7 @@ const Employees: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
-        setNotification({ open: true, message: 'Employee profile updated!', severity: 'success' });
+        showToast('Employee profile updated!', 'success');
         setOpenDialog(false);
       },
       onError: (err: any) => {
@@ -193,10 +313,10 @@ const Employees: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
-        setNotification({ open: true, message: 'Employee record removed.', severity: 'success' });
+        showToast('Employee record removed.', 'success');
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to delete employee', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to delete employee', 'error');
       },
     }
   );
@@ -228,6 +348,8 @@ const Employees: React.FC = () => {
       ifsc: '',
       tax_regime: 'new',
       active_status: true,
+      pf_deduction: true,
+      tax_deduction: true,
     });
     setOpenDialog(true);
   };
@@ -259,6 +381,8 @@ const Employees: React.FC = () => {
       ifsc: emp.ifsc,
       tax_regime: emp.tax_regime || 'new',
       active_status: emp.active_status,
+      pf_deduction: emp.pf_deduction !== false,
+      tax_deduction: emp.tax_deduction !== false,
     });
     setOpenDialog(true);
   };
@@ -344,7 +468,7 @@ const Employees: React.FC = () => {
     setFormErrors(nextErrors);
 
     if (!isValid) {
-      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+      showToast('Please correct the highlighted validation errors.', 'error');
       return;
     }
 
@@ -372,7 +496,7 @@ const Employees: React.FC = () => {
       link.click();
       URL.revokeObjectURL(link.href);
     } catch (err: any) {
-      setNotification({ open: true, message: err.response?.data?.message || 'Failed to export employees', severity: 'error' });
+      showToast(err.response?.data?.message || 'Failed to export employees', 'error');
     }
   };
 
@@ -418,25 +542,13 @@ const Employees: React.FC = () => {
         queryClient.invalidateQueries(['employees']);
         queryClient.invalidateQueries(['dashboardData']);
         if (errors && errors.length > 0) {
-          setNotification({
-            open: true,
-            message: `Imported ${imported} employees. There were ${errors.length} warnings/errors (see console details).`,
-            severity: 'error',
-          });
+          showToast(`Imported ${imported} employees. There were ${errors.length} warnings/errors (see console details).`, 'error');
           console.warn('Import CSV warnings/errors:', errors);
         } else {
-          setNotification({
-            open: true,
-            message: `Successfully imported ${imported} employees!`,
-            severity: 'success',
-          });
+          showToast(`Successfully imported ${imported} employees!`, 'success');
         }
       } catch (err: any) {
-        setNotification({
-          open: true,
-          message: err.response?.data?.message || 'Failed to import CSV file.',
-          severity: 'error',
-        });
+        showToast(err.response?.data?.message || 'Failed to import CSV file.', 'error');
       }
     };
     reader.readAsText(file);
@@ -454,49 +566,55 @@ const Employees: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-          Employees List
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <input
-            type="file"
-            accept=".csv"
-            id="import-csv-file-input"
-            style={{ display: 'none' }}
-            onChange={handleImportCsv}
-          />
-          {isHRorAdmin && (
-            <>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleDownloadSampleCsv}
-                sx={{
-                  borderColor: 'var(--color-border)',
-                  color: 'var(--color-text-secondary)',
-                  textTransform: 'none',
-                  borderRadius: 'var(--radius-control)',
-                  '&:hover': {
-                    borderColor: 'var(--color-border-strong)',
-                    bgcolor: 'var(--color-surface-subtle)',
-                    color: 'var(--color-text-primary)',
-                  },
-                }}
-              >
-                Sample CSV
-              </Button>
-              <label htmlFor="import-csv-file-input">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box>
+          <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+            Employees
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+            Manage employee directory profiles, bank configuration, and annual financial summaries.
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Tabs Selector */}
+      <Tabs
+        value={mainTab}
+        onChange={(_, val) => setMainTab(val)}
+        sx={{
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          mb: 4,
+          '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontFamily: 'Outfit', color: 'var(--color-text-secondary)' },
+          '& .Mui-selected': { color: 'var(--color-primary-hover) !important' },
+          '& .MuiTabs-indicator': { bgcolor: 'var(--color-primary)' },
+        }}
+      >
+        <Tab label="Employee Directory" />
+        <Tab label="Detailed Employee Profile" />
+      </Tabs>
+
+      {mainTab === 0 ? (
+        // Employee Directory Tab
+        <>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
+            <input
+              type="file"
+              accept=".csv"
+              id="import-csv-file-input"
+              style={{ display: 'none' }}
+              onChange={handleImportCsv}
+            />
+            {isHRorAdmin && (
+              <>
                 <Button
-                  component="span"
                   variant="outlined"
-                  startIcon={<UploadIcon />}
+                  startIcon={<DownloadIcon />}
+                  onClick={handleDownloadSampleCsv}
                   sx={{
                     borderColor: 'var(--color-border)',
                     color: 'var(--color-text-secondary)',
                     textTransform: 'none',
                     borderRadius: 'var(--radius-control)',
-                    cursor: 'pointer',
                     '&:hover': {
                       borderColor: 'var(--color-border-strong)',
                       bgcolor: 'var(--color-surface-subtle)',
@@ -504,161 +622,562 @@ const Employees: React.FC = () => {
                     },
                   }}
                 >
-                  Import CSV
+                  Sample CSV
                 </Button>
-              </label>
-            </>
-          )}
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={handleExportCsv}
-            sx={{
-              borderColor: 'var(--color-border)',
-              color: 'var(--color-text-secondary)',
-              textTransform: 'none',
-              borderRadius: 'var(--radius-control)',
-              '&:hover': {
-                borderColor: 'var(--color-border-strong)',
-                bgcolor: 'var(--color-surface-subtle)',
-                color: 'var(--color-text-primary)',
-              },
-            }}
-          >
-            Export CSV
-          </Button>
-          {isHRorAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenAddDialog}
-              sx={{
-                background: 'var(--color-primary)',
-                boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-                borderRadius: 'var(--radius-control)',
-                textTransform: 'none',
-              }}
-            >
-              Add Employee
-            </Button>
-          )}
-        </Box>
-      </Box>
-
-      {/* Filter and Table */}
-      <Paper
-        sx={{
-          background: 'var(--color-surface)',
-          
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-card)',
-          overflow: 'hidden',
-          p: 3,
-        }}
-      >
-        <TextField
-          placeholder="Search by name, employee code, or department..."
-          fullWidth
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ color: 'var(--color-text-muted)', mr: 1 }} />,
-          }}
-          sx={{
-            mb: 3,
-            '& .MuiOutlinedInput-root': {
-              color: 'var(--color-text-primary)',
-              borderRadius: 'var(--radius-control)',
-              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.1)' },
-              '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-              '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-            },
-          }}
-        />
-
-        <TableContainer>
-          <Table sx={{ minWidth: 650 }}>
-            <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-              <TableRow>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Emp Code</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Joining Date</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Tax Regime</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
-                {isHRorAdmin && <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
-                    <CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} />
-                  </TableCell>
-                </TableRow>
-              ) : filteredEmployees.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
-                    No employees found matching the search filters.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredEmployees.map((emp: Employee) => (
-                  <TableRow
-                    key={emp.id}
+                <label htmlFor="import-csv-file-input">
+                  <Button
+                    component="span"
+                    variant="outlined"
+                    startIcon={<UploadIcon />}
                     sx={{
-                      '&:hover': { bgcolor: 'var(--color-row-hover)' },
-                      borderColor: 'rgba(255, 255, 255, 0.05)',
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'none',
+                      borderRadius: 'var(--radius-control)',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        borderColor: 'var(--color-border-strong)',
+                        bgcolor: 'var(--color-surface-subtle)',
+                        color: 'var(--color-text-primary)',
+                      },
                     }}
                   >
-                    <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{emp.employee_code}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.name}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.joining_date}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{emp.tax_regime || 'new'}</TableCell>
-                    <TableCell>
-                      <Box
-                        sx={{
-                          display: 'inline-block',
-                          px: 1.5,
-                          py: 0.4,
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
-                          color: emp.active_status ? 'var(--color-success)' : '#fda4af',
-                        }}
-                      >
-                        {emp.active_status ? 'Active' : 'Inactive'}
-                      </Box>
-                    </TableCell>
-                    {isHRorAdmin && (
-                      <TableCell align="right">
-                        <Tooltip title="Edit Profile">
-                          <IconButton onClick={() => handleOpenEditDialog(emp)} sx={{ color: 'var(--color-info)', mr: 0.5 }}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {isAdmin && (
-                          <Tooltip title="Remove Record">
-                            <IconButton onClick={() => handleDelete(emp.id)} sx={{ color: 'var(--color-error)' }}>
-                              <DeleteIcon fontSize="small" />
+                    Import CSV
+                  </Button>
+                </label>
+              </>
+            )}
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportCsv}
+              sx={{
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-secondary)',
+                textTransform: 'none',
+                borderRadius: 'var(--radius-control)',
+                '&:hover': {
+                  borderColor: 'var(--color-border-strong)',
+                  bgcolor: 'var(--color-surface-subtle)',
+                  color: 'var(--color-text-primary)',
+                },
+              }}
+            >
+              Export CSV
+            </Button>
+            {isHRorAdmin && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenAddDialog}
+                sx={{
+                  background: 'var(--color-primary)',
+                  boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+                  borderRadius: 'var(--radius-control)',
+                  textTransform: 'none',
+                }}
+              >
+                Add Employee
+              </Button>
+            )}
+          </Box>
+
+          {/* Filter and Table */}
+          <Paper
+            sx={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-card)',
+              overflow: 'hidden',
+              p: 3,
+            }}
+          >
+            <TextField
+              placeholder="Search by name, employee code, or department..."
+              fullWidth
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ color: 'var(--color-text-muted)', mr: 1 }} />,
+              }}
+              sx={{
+                mb: 3,
+                '& .MuiOutlinedInput-root': {
+                  color: 'var(--color-text-primary)',
+                  borderRadius: 'var(--radius-control)',
+                  '& fieldset': { borderColor: 'var(--color-border)' },
+                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+                },
+              }}
+            />
+
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
+              </Box>
+            ) : filteredEmployees.length === 0 ? (
+              <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                No employees found matching the search criteria.
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table sx={{ minWidth: 650 }}>
+                  <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                    <TableRow>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
+                      <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredEmployees.map((emp: Employee) => (
+                      <TableRow key={emp.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              display: 'inline-block',
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                              color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
+                            }}
+                          >
+                            {emp.active_status ? 'Active' : 'Inactive'}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="View/Edit Details">
+                            <IconButton onClick={() => handleOpenEditDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}>
+                              <EditIcon />
                             </IconButton>
                           </Tooltip>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                          {isHRorAdmin && (
+                            <Tooltip title="Delete Employee">
+                              <IconButton onClick={() => handleDelete(emp.id)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}>
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Paper>
+        </>
+      ) : (
+        // Detailed Employee Profile Tab (HR details + Financial summary + Charts in one view!)
+        <Box>
+          <Box sx={{ display: 'flex', gap: 2.5, mb: 3.5, alignItems: 'center' }}>
+            <FormControl sx={{ minWidth: 240 }}>
+              <InputLabel id="profile-emp-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Select Employee</InputLabel>
+              <Select
+                labelId="profile-emp-select-label"
+                value={profileEmpId}
+                label="Select Employee"
+                onChange={(e) => setProfileEmpId(Number(e.target.value))}
+                sx={{
+                  color: 'var(--color-text-primary)',
+                  height: '42px',
+                  borderRadius: 'var(--radius-control)',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+                }}
+              >
+                {employees.map((emp: Employee) => (
+                  <MenuItem key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.employee_code})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-      {/* Add/Edit Dialog */}
+            <FormControl sx={{ minWidth: 120 }}>
+              <InputLabel id="profile-year-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
+              <Select
+                labelId="profile-year-select-label"
+                value={profileYear}
+                label="Year"
+                onChange={(e) => setProfileYear(Number(e.target.value))}
+                sx={{
+                  color: 'var(--color-text-primary)',
+                  height: '42px',
+                  borderRadius: 'var(--radius-control)',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+                }}
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                  <MenuItem key={y} value={y}>{y}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {!profileEmpId ? (
+            <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)' }}>
+              <Typography sx={{ color: 'var(--color-text-secondary)' }}>No employee selected or registered.</Typography>
+            </Paper>
+          ) : (
+            <Grid container spacing={3.5}>
+              {/* Left Column: Editable HR & Bank Details */}
+              <Grid item xs={12} lg={5}>
+                <Paper sx={{ p: 3, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)' }}>
+                  <Typography variant="subtitle1" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
+                    HR & Bank Profile Details
+                  </Typography>
+                  <form onSubmit={handleProfileFormSubmit}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Employee Code"
+                          fullWidth
+                          required
+                          disabled={!isHRorAdmin}
+                          value={profileFormData.employee_code}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, employee_code: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Full Name"
+                          fullWidth
+                          required
+                          disabled={!isHRorAdmin}
+                          value={profileFormData.name}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, name: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Email Address"
+                          fullWidth
+                          required
+                          type="email"
+                          disabled={!isHRorAdmin}
+                          value={profileFormData.email}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Phone Number"
+                          fullWidth
+                          disabled={!isHRorAdmin}
+                          value={profileFormData.phone}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+
+                      <Grid item xs={6}>
+                        <Autocomplete
+                          options={DEPARTMENT_OPTIONS}
+                          value={profileFormData.department}
+                          disabled={!isHRorAdmin}
+                          onChange={(_, newValue) => setProfileFormData({ ...profileFormData, department: newValue || '' })}
+                          renderInput={(params) => (
+                            <TextField {...params} label="Department" required sx={inputStyles} />
+                          )}
+                          ListboxProps={{ sx: dropdownListStyles }}
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Autocomplete
+                          options={DESIGNATION_OPTIONS}
+                          value={profileFormData.designation}
+                          disabled={!isHRorAdmin}
+                          onChange={(_, newValue) => setProfileFormData({ ...profileFormData, designation: newValue || '' })}
+                          renderInput={(params) => (
+                            <TextField {...params} label="Designation" required sx={inputStyles} />
+                          )}
+                          ListboxProps={{ sx: dropdownListStyles }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={6}>
+                        <TextField
+                          label="Joining Date"
+                          type="date"
+                          fullWidth
+                          required
+                          disabled={!isHRorAdmin}
+                          InputLabelProps={{ shrink: true }}
+                          value={profileFormData.joining_date}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, joining_date: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Autocomplete
+                          options={['new', 'old']}
+                          value={profileFormData.tax_regime}
+                          disabled={!isHRorAdmin}
+                          onChange={(_, newValue) => setProfileFormData({ ...profileFormData, tax_regime: newValue || 'new' })}
+                          renderInput={(params) => (
+                            <TextField {...params} label="Tax Regime" required sx={inputStyles} />
+                          )}
+                          ListboxProps={{ sx: dropdownListStyles }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={4}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={profileFormData.active_status}
+                              disabled={!isHRorAdmin}
+                              onChange={(e) => setProfileFormData({ ...profileFormData, active_status: e.target.checked })}
+                              sx={{
+                                '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                              }}
+                            />
+                          }
+                          label="Active Status"
+                          sx={{ color: 'var(--color-text-secondary)' }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={profileFormData.pf_deduction}
+                              disabled={!isHRorAdmin}
+                              onChange={(e) => setProfileFormData({ ...profileFormData, pf_deduction: e.target.checked })}
+                              sx={{
+                                '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                              }}
+                            />
+                          }
+                          label="PF Deduction"
+                          sx={{ color: 'var(--color-text-secondary)' }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={profileFormData.tax_deduction}
+                              disabled={!isHRorAdmin}
+                              onChange={(e) => setProfileFormData({ ...profileFormData, tax_deduction: e.target.checked })}
+                              sx={{
+                                '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                              }}
+                            />
+                          }
+                          label="Tax Deduction"
+                          sx={{ color: 'var(--color-text-secondary)' }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
+                          BANK ACCOUNT DETAILS
+                        </Typography>
+                        <Divider sx={{ borderColor: 'var(--color-border)', mt: 0.5, mb: 1.5 }} />
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Bank Name"
+                          fullWidth
+                          required
+                          disabled={!isHRorAdmin}
+                          value={profileFormData.bank_name}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, bank_name: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Account Number"
+                          fullWidth
+                          required
+                          disabled={!isHRorAdmin}
+                          value={profileFormData.account_number}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, account_number: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="IFSC Code"
+                          fullWidth
+                          required
+                          disabled={!isHRorAdmin}
+                          value={profileFormData.ifsc}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, ifsc: e.target.value })}
+                          sx={inputStyles}
+                        />
+                      </Grid>
+
+                      {isHRorAdmin && (
+                        <Grid item xs={12} sx={{ mt: 1.5 }}>
+                          <Button
+                            type="submit"
+                            variant="contained"
+                            fullWidth
+                            disabled={updateProfileMutation.isLoading}
+                            sx={{
+                              background: 'var(--color-primary)',
+                              borderRadius: 'var(--radius-control)',
+                              py: 1.2,
+                              textTransform: 'none',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {updateProfileMutation.isLoading ? 'Saving...' : 'Save Profile Changes'}
+                          </Button>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </form>
+                </Paper>
+              </Grid>
+
+              {/* Right Column: Financial Summary & Graphical Charts */}
+              <Grid item xs={12} lg={7}>
+                {isLoadingProfileSummary ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                    <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
+                  </Box>
+                ) : !profileSummary ? (
+                  <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)' }}>
+                    <Typography sx={{ color: 'var(--color-text-secondary)' }}>No summary details available for this year.</Typography>
+                  </Paper>
+                ) : (
+                  <Grid container spacing={3}>
+                    {/* Top Stats */}
+                    <Grid item xs={12} sm={6}>
+                      <Paper sx={{ p: 2.5, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>TOTAL AMOUNT PAID (YTD)</Typography>
+                        <Typography variant="h4" sx={{ color: 'var(--color-success)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
+                          {formatCurrency(profileSummary.amountPaid)}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Paper sx={{ p: 2.5, background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-control)' }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>ESTIMATED TO BE PAID (REMAINING)</Typography>
+                        <Typography variant="h4" sx={{ color: 'var(--color-primary-hover)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
+                          {formatCurrency(profileSummary.amountToBePaid)}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+
+                    {/* PF & Tax Summaries */}
+                    <Grid item xs={12} sm={6}>
+                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>PROVIDENT FUND (PF)</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
+                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>PF Deducted (YTD):</Typography>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.pfDeducted)}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Est. PF Remaining:</Typography>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.expectedPFRemaining)}</Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>INCOME TAX (TDS)</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
+                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Tax Deducted (YTD):</Typography>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.taxDeducted)}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Est. Tax Remaining:</Typography>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.expectedTaxRemaining)}</Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    {/* Advances loan summary */}
+                    <Grid item xs={12}>
+                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>SALARY ADVANCES OVERVIEW</Typography>
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                          <Grid item xs={4}>
+                            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Taken</Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>{formatCurrency(profileSummary.totalAdvancesTaken)}</Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Repaid (YTD)</Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-success)', mt: 0.5 }}>{formatCurrency(profileSummary.totalAdvancesRepaid)}</Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Outstanding Loan</Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: profileSummary.remainingAdvanceBalance > 0 ? '#fb923c' : 'var(--color-text-muted)', mt: 0.5 }}>
+                              {formatCurrency(profileSummary.remainingAdvanceBalance)}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+
+                    {/* Chart 1: Bar Chart of Paid vs Remaining */}
+                    <Grid item xs={12}>
+                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', height: 320 }}>
+                        <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
+                          Paid vs Projected Remaining Analysis ({profileYear})
+                        </Typography>
+                        <Box sx={{ height: 240 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={[
+                                { name: 'Net Salary', Paid: profileSummary.amountPaid, Remaining: profileSummary.amountToBePaid },
+                                { name: 'PF', Paid: profileSummary.pfDeducted, Remaining: profileSummary.expectedPFRemaining },
+                                { name: 'Tax', Paid: profileSummary.taxDeducted, Remaining: profileSummary.expectedTaxRemaining },
+                              ]}
+                              margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
+                              <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
+                              <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => formatCurrency(val)} />
+                              <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
+                              <Legend />
+                              <Bar dataKey="Paid" name="YTD Paid/Deducted" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="Remaining" name="Est. Remaining" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                )}
+              </Grid>
+            </Grid>
+          )}
+        </Box>
+      )}
+
+      {/* Edit/Add Dialog */}
       <Dialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
@@ -666,208 +1185,239 @@ const Employees: React.FC = () => {
         fullWidth
         PaperProps={{
           sx: {
-            bgcolor: 'var(--color-surface)',
-            backgroundImage: 'none',
-            color: 'var(--color-text-primary)',
-            borderRadius: 'var(--radius-card)',
+            background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            boxShadow: 'var(--shadow-card)',
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: selectedEmp ? 1 : 2 }}>
           {selectedEmp ? 'Edit Employee Details' : 'Register New Employee'}
         </DialogTitle>
         <form onSubmit={handleFormSubmit}>
           <DialogContent sx={{ py: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Employee Code"
-                  fullWidth
-                  required
-                  value={formData.employee_code}
-                  onChange={(e) => setFormData({ ...formData, employee_code: e.target.value })}
-                  error={!!formErrors.employee_code}
-                  helperText={formErrors.employee_code}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Full Name"
-                  fullWidth
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  error={!!formErrors.name}
-                  helperText={formErrors.name}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Email Address"
-                  type="email"
-                  fullWidth
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  error={!!formErrors.email}
-                  helperText={formErrors.email}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Phone Number"
-                  fullWidth
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  error={!!formErrors.phone}
-                  helperText={formErrors.phone}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Autocomplete
-                  options={departmentOptions}
-                  value={formData.department || null}
-                  onChange={(_, value) => {
-                    setFormData({ ...formData, department: value || '' });
-                    setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Department"
-                      fullWidth
-                      required
-                      error={!!formErrors.department}
-                      helperText={formErrors.department}
-                      sx={inputStyles}
-                    />
-                  )}
-                  ListboxProps={{ sx: dropdownListStyles }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Autocomplete
-                  options={designationOptions}
-                  value={formData.designation || null}
-                  onChange={(_, value) => {
-                    setFormData({ ...formData, designation: value || '' });
-                    setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Designation"
-                      fullWidth
-                      required
-                      error={!!formErrors.designation}
-                      helperText={formErrors.designation}
-                      sx={inputStyles}
-                    />
-                  )}
-                  ListboxProps={{ sx: dropdownListStyles }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="Joining Date"
-                  type="date"
-                  fullWidth
-                  required
-                  value={formData.joining_date}
-                  onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                  error={!!formErrors.joining_date}
-                  helperText={formErrors.joining_date}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Autocomplete
-                  options={['new', 'old']}
-                  getOptionLabel={(option) => option === 'new' ? 'New Tax Regime' : 'Old Tax Regime'}
-                  value={formData.tax_regime || 'new'}
-                  onChange={(_, value) => {
-                    setFormData({ ...formData, tax_regime: value || 'new' });
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tax Regime"
-                      fullWidth
-                      required
-                      sx={inputStyles}
-                    />
-                  )}
-                  ListboxProps={{ sx: dropdownListStyles }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <FormControlLabel
-                  control={
-	                    <Switch
-	                      checked={formData.active_status}
-	                      onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
-	                      sx={{
-	                        '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-	                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                      }}
-                    />
-                  }
-                  label="Active Status"
-                  sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
-                />
-              </Grid>
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Employee Code"
+                    fullWidth
+                    required
+                    value={formData.employee_code}
+                    onChange={(e) => setFormData({ ...formData, employee_code: e.target.value })}
+                    error={!!formErrors.employee_code}
+                    helperText={formErrors.employee_code}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Full Name"
+                    fullWidth
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    error={!!formErrors.name}
+                    helperText={formErrors.name}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Email Address"
+                    fullWidth
+                    required
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    error={!!formErrors.email}
+                    helperText={formErrors.email}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Phone Number"
+                    fullWidth
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    error={!!formErrors.phone}
+                    helperText={formErrors.phone}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Autocomplete
+                    options={departmentOptions}
+                    value={formData.department || null}
+                    onChange={(_, value) => {
+                      setFormData({ ...formData, department: value || '' });
+                      setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Department"
+                        fullWidth
+                        required
+                        error={!!formErrors.department}
+                        helperText={formErrors.department}
+                        sx={inputStyles}
+                      />
+                    )}
+                    ListboxProps={{ sx: dropdownListStyles }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Autocomplete
+                    options={designationOptions}
+                    value={formData.designation || null}
+                    onChange={(_, value) => {
+                      setFormData({ ...formData, designation: value || '' });
+                      setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Designation"
+                        fullWidth
+                        required
+                        error={!!formErrors.designation}
+                        helperText={formErrors.designation}
+                        sx={inputStyles}
+                      />
+                    )}
+                    ListboxProps={{ sx: dropdownListStyles }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="Joining Date"
+                    type="date"
+                    fullWidth
+                    required
+                    value={formData.joining_date}
+                    onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                    error={!!formErrors.joining_date}
+                    helperText={formErrors.joining_date}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Autocomplete
+                    options={['new', 'old']}
+                    getOptionLabel={(option) => option === 'new' ? 'New Tax Regime' : 'Old Tax Regime'}
+                    value={formData.tax_regime || 'new'}
+                    onChange={(_, value) => {
+                      setFormData({ ...formData, tax_regime: value || 'new' });
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tax Regime"
+                        fullWidth
+                        required
+                        sx={inputStyles}
+                      />
+                    )}
+                    ListboxProps={{ sx: dropdownListStyles }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <FormControlLabel
+                    control={
+	                      <Switch
+	                        checked={formData.active_status}
+	                        onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
+	                        sx={{
+	                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+	                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                        }}
+                      />
+                    }
+                    label="Active Status"
+                    sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <FormControlLabel
+                    control={
+	                      <Switch
+	                        checked={formData.pf_deduction}
+	                        onChange={(e) => setFormData({ ...formData, pf_deduction: e.target.checked })}
+	                        sx={{
+	                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+	                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                        }}
+                      />
+                    }
+                    label="PF Deduction"
+                    sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <FormControlLabel
+                    control={
+	                      <Switch
+	                        checked={formData.tax_deduction}
+	                        onChange={(e) => setFormData({ ...formData, tax_deduction: e.target.checked })}
+	                        sx={{
+	                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+	                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                        }}
+                      />
+                    }
+                    label="Tax Deduction"
+                    sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                  />
+                </Grid>
 
-              {/* Bank Details Sub-header */}
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mt: 1 }}>
-                  BANK ACCOUNT INFORMATION
-                </Typography>
-                <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
-              </Grid>
+                {/* Bank Details Sub-header */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mt: 1 }}>
+                    BANK ACCOUNT INFORMATION
+                  </Typography>
+                  <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
+                </Grid>
 
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="Bank Name"
-                  fullWidth
-                  required
-                  value={formData.bank_name}
-                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                  error={!!formErrors.bank_name}
-                  helperText={formErrors.bank_name}
-                  sx={inputStyles}
-                />
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="Bank Name"
+                    fullWidth
+                    required
+                    value={formData.bank_name}
+                    onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                    error={!!formErrors.bank_name}
+                    helperText={formErrors.bank_name}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="Account Number"
+                    fullWidth
+                    required
+                    value={formData.account_number}
+                    onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                    error={!!formErrors.account_number}
+                    helperText={formErrors.account_number}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="IFSC Code"
+                    fullWidth
+                    required
+                    value={formData.ifsc}
+                    onChange={(e) => setFormData({ ...formData, ifsc: e.target.value })}
+                    error={!!formErrors.ifsc}
+                    helperText={formErrors.ifsc}
+                    sx={inputStyles}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="Account Number"
-                  fullWidth
-                  required
-                  value={formData.account_number}
-                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                  error={!!formErrors.account_number}
-                  helperText={formErrors.account_number}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="IFSC Code"
-                  fullWidth
-                  required
-                  value={formData.ifsc}
-                  onChange={(e) => setFormData({ ...formData, ifsc: e.target.value })}
-                  error={!!formErrors.ifsc}
-                  helperText={formErrors.ifsc}
-                  sx={inputStyles}
-                />
-              </Grid>
-            </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <Button onClick={() => setOpenDialog(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
@@ -889,18 +1439,7 @@ const Employees: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Snackbar notification */}
-      <Snackbar
-        open={notification?.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        sx={{ zIndex: 2000 }}
-      >
-        <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+
     </Box>
   );
 };

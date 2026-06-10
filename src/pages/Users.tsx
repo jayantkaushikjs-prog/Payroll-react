@@ -21,15 +21,15 @@ import {
   IconButton,
   Tooltip,
   Grid,
-  Alert,
-  Snackbar,
   CircularProgress,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Chip,
+  Alert,
 } from '@mui/material';
+import { useToast } from '../context/ToastContext';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -46,6 +46,7 @@ interface UserRecord {
 
 const Users: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
@@ -54,9 +55,6 @@ const Users: React.FC = () => {
   const [role, setRole] = useState<Role>(Role.HR);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Notification State
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
   // Fetch users
   const { data: users = [], isLoading } = useQuery(['users'], async () => {
@@ -73,7 +71,7 @@ const Users: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['users']);
-        setNotification({ open: true, message: 'User added successfully!', severity: 'success' });
+        showToast('User added successfully!', 'success');
         setOpenDialog(false);
         // Clear form
         setEmail('');
@@ -81,7 +79,7 @@ const Users: React.FC = () => {
         setRole(Role.HR);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to add user', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to add user', 'error');
       },
     }
   );
@@ -94,10 +92,10 @@ const Users: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['users']);
-        setNotification({ open: true, message: 'User deleted successfully.', severity: 'success' });
+        showToast('User deleted successfully.', 'success');
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to delete user', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to delete user', 'error');
       },
     }
   );
@@ -122,11 +120,11 @@ const Users: React.FC = () => {
 
   const handleDelete = (user: UserRecord) => {
     if (user.role === Role.SUPER_ADMIN) {
-      setNotification({ open: true, message: 'Super Admin cannot be deleted!', severity: 'error' });
+      showToast('Super Admin cannot be deleted!', 'error');
       return;
     }
     if (currentUser && currentUser.id === user.id) {
-      setNotification({ open: true, message: 'You cannot delete your own logged-in account!', severity: 'error' });
+      showToast('You cannot delete your own logged-in account!', 'error');
       return;
     }
     if (window.confirm(`Are you sure you want to delete user: ${user.email}?`)) {
@@ -370,18 +368,7 @@ const Users: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Snackbar notification */}
-      <Snackbar
-        open={notification?.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        sx={{ zIndex: 2000 }}
-      >
-        <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+
     </Box>
   );
 };

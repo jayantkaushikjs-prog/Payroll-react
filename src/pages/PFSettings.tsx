@@ -19,12 +19,11 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  Snackbar,
-  Alert,
   CircularProgress,
   IconButton,
   Tooltip,
 } from '@mui/material';
+import { useToast } from '../context/ToastContext';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -39,9 +38,9 @@ interface PFSettingsRecord {
 
 const PFSettings: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [openDialog, setOpenDialog] = useState(false);
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -67,11 +66,11 @@ const PFSettings: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['pfSettings']);
-        setNotification({ open: true, message: 'PF Settings configuration saved!', severity: 'success' });
+        showToast('PF Settings configuration saved!', 'success');
         setOpenDialog(false);
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to save PF configuration', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to save PF configuration', 'error');
       },
     }
   );
@@ -84,10 +83,10 @@ const PFSettings: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['pfSettings']);
-        setNotification({ open: true, message: 'PF configuration removed.', severity: 'success' });
+        showToast('PF configuration removed.', 'success');
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to delete configuration', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to delete configuration', 'error');
       },
     }
   );
@@ -281,18 +280,7 @@ const PFSettings: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Notifications */}
-      <Snackbar
-        open={notification?.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        sx={{ zIndex: 2000 }}
-      >
-        <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+
     </Box>
   );
 };

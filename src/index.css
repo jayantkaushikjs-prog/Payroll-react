@@ -6,6 +6,7 @@
   color: var(--color-text-primary, var(--color-text-primary));
   margin: 0;
   padding: 0;
+  font-size: 14px;
 }
 
 body {

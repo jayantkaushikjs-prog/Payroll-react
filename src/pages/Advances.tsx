@@ -24,13 +24,12 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Snackbar,
-  Alert,
   CircularProgress,
   IconButton,
   Tooltip,
   Divider,
 } from '@mui/material';
+import { useToast } from '../context/ToastContext';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -65,10 +64,10 @@ interface SalaryStructure {
 
 const Advances: React.FC = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   const [openDialog, setOpenDialog] = useState(false);
-  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' } | null>(null);
   const [formErrors, setFormErrors] = useState({
     employee_id: '',
     amount: '',
@@ -143,9 +142,9 @@ const Advances: React.FC = () => {
         }
       });
       setFormErrors(errors);
-      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+      showToast('Please correct the highlighted validation errors.', 'error');
     } else {
-      setNotification({ open: true, message: backendMessage || fallbackMessage, severity: 'error' });
+      showToast(backendMessage || fallbackMessage, 'error');
     }
   };
 
@@ -158,7 +157,7 @@ const Advances: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['advances']);
-        setNotification({ open: true, message: 'Employee advance issued successfully!', severity: 'success' });
+        showToast('Employee advance issued successfully!', 'success');
         setOpenDialog(false);
       },
       onError: (err: any) => {
@@ -175,10 +174,10 @@ const Advances: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['advances']);
-        setNotification({ open: true, message: 'Advance log deleted.', severity: 'success' });
+        showToast('Advance log deleted.', 'success');
       },
       onError: (err: any) => {
-        setNotification({ open: true, message: err.response?.data?.message || 'Failed to delete advance log', severity: 'error' });
+        showToast(err.response?.data?.message || 'Failed to delete advance log', 'error');
       },
     }
   );
@@ -252,7 +251,7 @@ const Advances: React.FC = () => {
     setFormErrors(nextErrors);
 
     if (!isValid) {
-      setNotification({ open: true, message: 'Please correct the highlighted validation errors.', severity: 'error' });
+      showToast('Please correct the highlighted validation errors.', 'error');
       return;
     }
 
@@ -278,9 +277,9 @@ const Advances: React.FC = () => {
       link.download = `advances-report_${today}.csv`;
       link.click();
       URL.revokeObjectURL(link.href);
-      setNotification({ open: true, message: 'Advances report exported successfully!', severity: 'success' });
+      showToast('Advances report exported successfully!', 'success');
     } catch (err: any) {
-      setNotification({ open: true, message: err.response?.data?.message || 'Failed to export CSV', severity: 'error' });
+      showToast(err.response?.data?.message || 'Failed to export CSV', 'error');
     }
   };
 
@@ -635,18 +634,7 @@ const Advances: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Notifications */}
-      <Snackbar
-        open={notification?.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        sx={{ zIndex: 2000 }}
-      >
-        <Alert onClose={() => setNotification(null)} severity={notification?.severity} sx={{ width: '100%' }}>
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+
     </Box>
   );
 };
