@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
@@ -11,6 +11,8 @@ import {
   Grid,
   Paper,
   Typography,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   AccountBalance as TaxIcon,
@@ -106,8 +108,10 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
 
-  const { data, isLoading, error } = useQuery<DashboardData>(['dashboardData', user?.role], async () => {
-    const res = await api.get('/reports/dashboard');
+  const [excludeSalaries, setExcludeSalaries] = useState(false);
+
+  const { data, isLoading, error } = useQuery<DashboardData>(['dashboardData', user?.role, excludeSalaries], async () => {
+    const res = await api.get(`/reports/dashboard?excludeSalaries=${excludeSalaries}`);
     return res.data;
   }, { enabled: !!user });
 
@@ -179,13 +183,28 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-          {roleTitle(user?.role)}
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-          {user?.role}
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box>
+          <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+            {roleTitle(user?.role)}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+            Welcome back! Here is your business overview.
+          </Typography>
+        </Box>
+        {(isSuperAdmin || isFinance) && (
+          <FormControlLabel
+            control={
+              <Switch
+                checked={!excludeSalaries}
+                onChange={(e) => setExcludeSalaries(!e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Include Salary Expenses"
+            sx={{ color: 'var(--color-text-primary)' }}
+          />
+        )}
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>

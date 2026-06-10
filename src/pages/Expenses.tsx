@@ -31,6 +31,8 @@ import {
   TablePagination,
   Card,
   CardContent,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -56,6 +58,8 @@ interface Expense {
   category: string;
   frequency: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   description?: string;
   created_at: string;
 }
@@ -81,6 +85,7 @@ const Expenses: React.FC = () => {
   const [frequencyFilter, setFrequencyFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [excludeSalaries, setExcludeSalaries] = useState(false);
 
   // Dialog State
   const [openDialog, setOpenDialog] = useState(false);
@@ -93,12 +98,14 @@ const Expenses: React.FC = () => {
     category: 'rent',
     frequency: 'monthly',
     date: new Date().toISOString().split('T')[0],
+    startDate: '',
+    endDate: '',
     description: '',
   });
 
   // Fetch all expenses
-  const { data: expenses = [], isLoading } = useQuery(['expenses'], async () => {
-    const res = await api.get('/expenses');
+  const { data: expenses = [], isLoading } = useQuery(['expenses', excludeSalaries], async () => {
+    const res = await api.get(`/expenses?excludeSalaries=${excludeSalaries}`);
     return res.data;
   });
 
@@ -165,6 +172,8 @@ const Expenses: React.FC = () => {
       category: 'rent',
       frequency: 'monthly',
       date: new Date().toISOString().split('T')[0],
+      startDate: '',
+      endDate: '',
       description: '',
     });
     setOpenDialog(true);
@@ -178,6 +187,8 @@ const Expenses: React.FC = () => {
       category: expense.category,
       frequency: expense.frequency,
       date: expense.date,
+      startDate: expense.startDate || '',
+      endDate: expense.endDate || '',
       description: expense.description || '',
     });
     setOpenDialog(true);
@@ -204,6 +215,8 @@ const Expenses: React.FC = () => {
     const payload = {
       ...formData,
       amount: amt,
+      startDate: formData.startDate ? formData.startDate : null,
+      endDate: formData.endDate ? formData.endDate : null,
     };
 
     if (editingExpense) {
@@ -214,7 +227,7 @@ const Expenses: React.FC = () => {
   };
 
   const handleExportCsv = () => {
-    const headers = ['ID', 'Title', 'Amount', 'Category', 'Frequency', 'Date', 'Description'];
+    const headers = ['ID', 'Title', 'Amount', 'Category', 'Frequency', 'Date', 'Start Date', 'End Date', 'Description'];
     const rows = filteredExpenses.map((exp: Expense) => [
       exp.id,
       `"${exp.title.replace(/"/g, '""')}"`,
@@ -222,6 +235,8 @@ const Expenses: React.FC = () => {
       exp.category,
       exp.frequency,
       exp.date,
+      exp.startDate || '-',
+      exp.endDate || 'Not Confirmed',
       `"${(exp.description || '').replace(/"/g, '""')}"`,
     ]);
 
@@ -357,9 +372,9 @@ const Expenses: React.FC = () => {
         </Box>
       </Box>
 
-      {/* KPI Cards Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
+      {/* Grid of 6 KPI Cards */}
+      <Grid container spacing={2} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={4} md={2}>
           <MiniKpiCard
             label="Total Month Expenses"
             value={formatCurrency(totalCMExpenses)}
@@ -367,7 +382,7 @@ const Expenses: React.FC = () => {
             color="var(--color-primary)"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={4} md={2}>
           <MiniKpiCard
             label="Office Rent"
             value={formatCurrency(getCMExpensesByCategory('rent'))}
@@ -375,7 +390,7 @@ const Expenses: React.FC = () => {
             color="#10b981"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={4} md={2}>
           <MiniKpiCard
             label="Employee Salaries"
             value={formatCurrency(getCMExpensesByCategory('salary'))}
@@ -383,7 +398,7 @@ const Expenses: React.FC = () => {
             color="#3b82f6"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={4} md={2}>
           <MiniKpiCard
             label="Utilities & Cloud"
             value={formatCurrency(getCMExpensesByCategory('utilities'))}
@@ -391,7 +406,7 @@ const Expenses: React.FC = () => {
             color="#f59e0b"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={4} md={2}>
           <MiniKpiCard
             label="One-Time Payments"
             value={formatCurrency(getCMExpensesByFrequency('one-time'))}
@@ -399,12 +414,20 @@ const Expenses: React.FC = () => {
             color="#ef4444"
           />
         </Grid>
+        <Grid item xs={12} sm={4} md={2}>
+          <MiniKpiCard
+            label="Other Expenses"
+            value={formatCurrency(getCMExpensesByCategory('other') + getCMExpensesByCategory('marketing'))}
+            icon={<OtherIcon />}
+            color="#8b5cf6"
+          />
+        </Grid>
       </Grid>
 
       {/* Filter panel */}
       <Paper sx={{ ...cardSx, p: 3, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <TextField
               fullWidth
               placeholder="Search expenses by title or description..."
@@ -416,7 +439,7 @@ const Expenses: React.FC = () => {
               sx={inputStyles}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="category-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Category</InputLabel>
               <Select
@@ -435,7 +458,7 @@ const Expenses: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="frequency-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Frequency</InputLabel>
               <Select
@@ -450,6 +473,22 @@ const Expenses: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
+          <Grid item xs={12} sm={12} md={3}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={!excludeSalaries}
+                  onChange={(e) => {
+                    setExcludeSalaries(!e.target.checked);
+                    setPage(0);
+                  }}
+                  color="primary"
+                />
+              }
+              label="Include Salary Expenses"
+              sx={{ color: 'var(--color-text-primary)' }}
+            />
+          </Grid>
         </Grid>
       </Paper>
 
@@ -463,6 +502,8 @@ const Expenses: React.FC = () => {
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Category</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Frequency</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Date</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Start Date</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>End Date</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Amount</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Description</TableCell>
                 {isFinanceOrAdmin && (
@@ -473,13 +514,13 @@ const Expenses: React.FC = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                     <CircularProgress size={32} sx={{ color: 'var(--color-primary)' }} />
                   </TableCell>
                 </TableRow>
               ) : filteredExpenses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'var(--color-text-muted)' }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'var(--color-text-muted)' }}>
                     No expenses matching criteria.
                   </TableCell>
                 </TableRow>
@@ -516,6 +557,10 @@ const Expenses: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{exp.date}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{exp.startDate || '-'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>
+                        {exp.endDate ? exp.endDate : <span style={{ fontStyle: 'italic', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Not Confirmed</span>}
+                      </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
                         {formatCurrency(exp.amount)}
                       </TableCell>
@@ -653,6 +698,28 @@ const Expenses: React.FC = () => {
                     <MenuItem value="one-time">One-Time Only</MenuItem>
                   </Select>
                 </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Start Date"
+                  type="date"
+                  fullWidth
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  sx={inputStyles}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="End Date (Optional / Not Confirmed)"
+                  type="date"
+                  fullWidth
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  sx={inputStyles}
+                  InputLabelProps={{ shrink: true }}
+                />
               </Grid>
               <Grid item xs={12}>
                 <TextField

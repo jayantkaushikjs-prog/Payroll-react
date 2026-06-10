@@ -283,18 +283,7 @@ const Layout: React.FC = () => {
             <MenuIcon />
           </IconButton>
 
-          <Typography
-            variant="h6"
-            noWrap
-            sx={{
-              fontFamily: 'Outfit',
-              fontWeight: 600,
-              color: 'var(--color-text-primary)',
-              fontSize: '1.2rem',
-            }}
-          >
-            {menuItems.find((item) => item.path === location.pathname)?.text || 'THPS Payroll'}
-          </Typography>
+          <Box sx={{ flexGrow: 1 }} />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
