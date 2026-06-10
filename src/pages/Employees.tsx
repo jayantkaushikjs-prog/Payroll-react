@@ -55,6 +55,7 @@ import {
   Download as DownloadIcon,
   Search as SearchIcon,
   Upload as UploadIcon,
+  Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { DEPARTMENT_OPTIONS, DESIGNATION_OPTIONS } from '../constants/employeeOptions';
 
@@ -123,8 +124,8 @@ const Employees: React.FC = () => {
     return res.data;
   });
 
-  // Main Tab State (0 = Employee Directory, 1 = Detailed Profile Viewer)
-  const [mainTab, setMainTab] = useState(0);
+  // Profile Details Dialog State
+  const [openProfileDialog, setOpenProfileDialog] = useState(false);
 
   // States for Detailed Employee Profile Tab
   const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
@@ -155,7 +156,7 @@ const Employees: React.FC = () => {
       return res.data;
     },
     {
-      enabled: mainTab === 1 && !!profileEmpId,
+      enabled: openProfileDialog && !!profileEmpId,
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to fetch financial summary data', 'error');
       },
@@ -186,13 +187,6 @@ const Employees: React.FC = () => {
       }
     }
   }, [profileEmpId, employees]);
-
-  // Effect to auto-select first employee if none selected
-  useEffect(() => {
-    if (employees.length > 0 && !profileEmpId) {
-      setProfileEmpId(employees[0].id);
-    }
-  }, [employees, profileEmpId]);
 
   // Profile update mutation
   const updateProfileMutation = useMutation(
@@ -387,6 +381,27 @@ const Employees: React.FC = () => {
     setOpenDialog(true);
   };
 
+  const handleOpenProfileDialog = (emp: Employee) => {
+    setProfileEmpId(emp.id);
+    setProfileFormData({
+      employee_code: emp.employee_code || '',
+      name: emp.name || '',
+      email: emp.email || '',
+      phone: emp.phone || '',
+      department: emp.department || '',
+      designation: emp.designation || '',
+      joining_date: emp.joining_date || '',
+      bank_name: emp.bank_name || '',
+      account_number: emp.account_number || '',
+      ifsc: emp.ifsc || '',
+      tax_regime: emp.tax_regime || 'new',
+      active_status: emp.active_status !== false,
+      pf_deduction: emp.pf_deduction !== false,
+      tax_deduction: emp.tax_deduction !== false,
+    });
+    setOpenProfileDialog(true);
+  };
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors = {
@@ -577,80 +592,21 @@ const Employees: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Tabs Selector */}
-      <Tabs
-        value={mainTab}
-        onChange={(_, val) => setMainTab(val)}
-        sx={{
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          mb: 4,
-          '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontFamily: 'Outfit', color: 'var(--color-text-secondary)' },
-          '& .Mui-selected': { color: 'var(--color-primary-hover) !important' },
-          '& .MuiTabs-indicator': { bgcolor: 'var(--color-primary)' },
-        }}
-      >
-        <Tab label="Employee Directory" />
-        <Tab label="Detailed Employee Profile" />
-      </Tabs>
-
-      {mainTab === 0 ? (
-        // Employee Directory Tab
-        <>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
-            <input
-              type="file"
-              accept=".csv"
-              id="import-csv-file-input"
-              style={{ display: 'none' }}
-              onChange={handleImportCsv}
-            />
-            {isHRorAdmin && (
-              <>
-                <Button
-                  variant="outlined"
-                  startIcon={<DownloadIcon />}
-                  onClick={handleDownloadSampleCsv}
-                  sx={{
-                    borderColor: 'var(--color-border)',
-                    color: 'var(--color-text-secondary)',
-                    textTransform: 'none',
-                    borderRadius: 'var(--radius-control)',
-                    '&:hover': {
-                      borderColor: 'var(--color-border-strong)',
-                      bgcolor: 'var(--color-surface-subtle)',
-                      color: 'var(--color-text-primary)',
-                    },
-                  }}
-                >
-                  Sample CSV
-                </Button>
-                <label htmlFor="import-csv-file-input">
-                  <Button
-                    component="span"
-                    variant="outlined"
-                    startIcon={<UploadIcon />}
-                    sx={{
-                      borderColor: 'var(--color-border)',
-                      color: 'var(--color-text-secondary)',
-                      textTransform: 'none',
-                      borderRadius: 'var(--radius-control)',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        borderColor: 'var(--color-border-strong)',
-                        bgcolor: 'var(--color-surface-subtle)',
-                        color: 'var(--color-text-primary)',
-                      },
-                    }}
-                  >
-                    Import CSV
-                  </Button>
-                </label>
-              </>
-            )}
+      {/* Employee Directory View */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
+        <input
+          type="file"
+          accept=".csv"
+          id="import-csv-file-input"
+          style={{ display: 'none' }}
+          onChange={handleImportCsv}
+        />
+        {isHRorAdmin && (
+          <>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
-              onClick={handleExportCsv}
+              onClick={handleDownloadSampleCsv}
               sx={{
                 borderColor: 'var(--color-border)',
                 color: 'var(--color-text-secondary)',
@@ -663,183 +619,221 @@ const Employees: React.FC = () => {
                 },
               }}
             >
-              Export CSV
+              Sample CSV
             </Button>
-            {isHRorAdmin && (
+            <label htmlFor="import-csv-file-input">
               <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleOpenAddDialog}
+                component="span"
+                variant="outlined"
+                startIcon={<UploadIcon />}
                 sx={{
-                  background: 'var(--color-primary)',
-                  boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-                  borderRadius: 'var(--radius-control)',
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text-secondary)',
                   textTransform: 'none',
+                  borderRadius: 'var(--radius-control)',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    borderColor: 'var(--color-border-strong)',
+                    bgcolor: 'var(--color-surface-subtle)',
+                    color: 'var(--color-text-primary)',
+                  },
                 }}
               >
-                Add Employee
+                Import CSV
               </Button>
-            )}
-          </Box>
-
-          {/* Filter and Table */}
-          <Paper
+            </label>
+          </>
+        )}
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportCsv}
+          sx={{
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-secondary)',
+            textTransform: 'none',
+            borderRadius: 'var(--radius-control)',
+            '&:hover': {
+              borderColor: 'var(--color-border-strong)',
+              bgcolor: 'var(--color-surface-subtle)',
+              color: 'var(--color-text-primary)',
+            },
+          }}
+        >
+          Export CSV
+        </Button>
+        {isHRorAdmin && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddDialog}
             sx={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-card)',
-              overflow: 'hidden',
-              p: 3,
+              background: 'var(--color-primary)',
+              boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+              borderRadius: 'var(--radius-control)',
+              textTransform: 'none',
             }}
           >
-            <TextField
-              placeholder="Search by name, employee code, or department..."
-              fullWidth
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ color: 'var(--color-text-muted)', mr: 1 }} />,
-              }}
-              sx={{
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                  color: 'var(--color-text-primary)',
-                  borderRadius: 'var(--radius-control)',
-                  '& fieldset': { borderColor: 'var(--color-border)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                  '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-                },
-              }}
-            />
+            Add Employee
+          </Button>
+        )}
+      </Box>
 
-            {isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
-              </Box>
-            ) : filteredEmployees.length === 0 ? (
-              <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                No employees found matching the search criteria.
-              </Box>
-            ) : (
-              <TableContainer>
-                <Table sx={{ minWidth: 650 }}>
-                  <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-                    <TableRow>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
-                      <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredEmployees.map((emp: Employee) => (
-                      <TableRow key={emp.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
-                        <TableCell>
-                          <Box
-                            sx={{
-                              display: 'inline-block',
-                              px: 1.5,
-                              py: 0.5,
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                              color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
-                            }}
-                          >
-                            {emp.active_status ? 'Active' : 'Inactive'}
-                          </Box>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Tooltip title="View/Edit Details">
-                            <IconButton onClick={() => handleOpenEditDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}>
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                          {isHRorAdmin && (
-                            <Tooltip title="Delete Employee">
-                              <IconButton onClick={() => handleDelete(emp.id)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}>
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Paper>
-        </>
-      ) : (
-        // Detailed Employee Profile Tab (HR details + Financial summary + Charts in one view!)
-        <Box>
-          <Box sx={{ display: 'flex', gap: 2.5, mb: 3.5, alignItems: 'center' }}>
-            <FormControl sx={{ minWidth: 240 }}>
-              <InputLabel id="profile-emp-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Select Employee</InputLabel>
-              <Select
-                labelId="profile-emp-select-label"
-                value={profileEmpId}
-                label="Select Employee"
-                onChange={(e) => setProfileEmpId(Number(e.target.value))}
-                sx={{
-                  color: 'var(--color-text-primary)',
-                  height: '42px',
-                  borderRadius: 'var(--radius-control)',
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
-                }}
-              >
-                {employees.map((emp: Employee) => (
-                  <MenuItem key={emp.id} value={emp.id}>
-                    {emp.name} ({emp.employee_code})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+      {/* Filter and Table */}
+      <Paper
+        sx={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-card)',
+          overflow: 'hidden',
+          p: 3,
+        }}
+      >
+        <TextField
+          placeholder="Search by name, employee code, or department..."
+          fullWidth
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: <SearchIcon sx={{ color: 'var(--color-text-muted)', mr: 1 }} />,
+          }}
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              color: 'var(--color-text-primary)',
+              borderRadius: 'var(--radius-control)',
+              '& fieldset': { borderColor: 'var(--color-border)' },
+              '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+              '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+            },
+          }}
+        />
 
-            <FormControl sx={{ minWidth: 120 }}>
-              <InputLabel id="profile-year-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
-              <Select
-                labelId="profile-year-select-label"
-                value={profileYear}
-                label="Year"
-                onChange={(e) => setProfileYear(Number(e.target.value))}
-                sx={{
-                  color: 'var(--color-text-primary)',
-                  height: '42px',
-                  borderRadius: 'var(--radius-control)',
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
-                }}
-              >
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                  <MenuItem key={y} value={y}>{y}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
           </Box>
+        ) : filteredEmployees.length === 0 ? (
+          <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            No employees found matching the search criteria.
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table sx={{ minWidth: 650 }}>
+              <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                <TableRow>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredEmployees.map((emp: Employee) => (
+                  <TableRow key={emp.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                    <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
+                    <TableCell>
+                      <Box
+                        sx={{
+                          display: 'inline-block',
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                          color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
+                        }}
+                      >
+                        {emp.active_status ? 'Active' : 'Inactive'}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="View Profile & Financials">
+                        <IconButton onClick={() => handleOpenProfileDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 0.5 }}>
+                          <ViewIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit Details">
+                        <IconButton onClick={() => handleOpenEditDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      {isHRorAdmin && (
+                        <Tooltip title="Delete Employee">
+                          <IconButton onClick={() => handleDelete(emp.id)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
 
+      {/* Detailed Employee Profile Dialog */}
+      <Dialog
+        open={openProfileDialog}
+        onClose={() => setOpenProfileDialog(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            boxShadow: 'var(--shadow-card)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+            Employee Profile & Financial Summary
+          </Typography>
+          <FormControl sx={{ minWidth: 120 }}>
+            <InputLabel id="dialog-profile-year-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
+            <Select
+              labelId="dialog-profile-year-select-label"
+              value={profileYear}
+              label="Year"
+              size="small"
+              onChange={(e) => setProfileYear(Number(e.target.value))}
+              sx={{
+                color: 'var(--color-text-primary)',
+                height: '38px',
+                borderRadius: 'var(--radius-control)',
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+              }}
+            >
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                <MenuItem key={y} value={y}>{y}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
           {!profileEmpId ? (
-            <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)' }}>
-              <Typography sx={{ color: 'var(--color-text-secondary)' }}>No employee selected or registered.</Typography>
-            </Paper>
+            <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+              No employee selected.
+            </Box>
           ) : (
             <Grid container spacing={3.5}>
               {/* Left Column: Editable HR & Bank Details */}
               <Grid item xs={12} lg={5}>
-                <Paper sx={{ p: 3, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)' }}>
+                <Paper sx={{ p: 3, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface-subtle)' }}>
                   <Typography variant="subtitle1" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
                     HR & Bank Profile Details
                   </Typography>
@@ -1174,8 +1168,13 @@ const Employees: React.FC = () => {
               </Grid>
             </Grid>
           )}
-        </Box>
-      )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <Button onClick={() => setOpenProfileDialog(false)} variant="outlined" sx={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)', textTransform: 'none' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit/Add Dialog */}
       <Dialog
