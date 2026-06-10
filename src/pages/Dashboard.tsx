@@ -182,7 +182,7 @@ const Dashboard: React.FC = () => {
   const expensesCategoryDistribution = data.charts.expensesCategoryDistribution || [];
 
   return (
-    <Box>
+    <Box sx={{ pb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box>
           <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
@@ -202,12 +202,13 @@ const Dashboard: React.FC = () => {
               />
             }
             label="Include Salary Expenses"
-            sx={{ color: 'var(--color-text-primary)' }}
+            sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}
           />
         )}
       </Box>
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      {/* KPI Grid */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         {kpis.map((kpi) => (
           <Grid item xs={12} sm={6} md={isSuperAdmin ? 3 : 4} key={kpi.key}>
             <KpiCard
@@ -220,87 +221,132 @@ const Dashboard: React.FC = () => {
         ))}
       </Grid>
 
-      <Grid container spacing={3}>
+      {/* Charts and Summaries Grid */}
+      <Grid container spacing={3.5}>
+        {/* Row 1: Department Distribution + Payroll Cost Trend */}
         {(isSuperAdmin || isHr) && (
-          <>
-            <Grid item xs={12} lg={12}>
-              <ChartPanel title="Department Distribution" empty={!departmentDistribution.length}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={departmentDistribution} dataKey="count" nameKey="department" outerRadius={105} innerRadius={58} paddingAngle={2}>
-                      {departmentDistribution.map((_, index) => (
-                        <Cell key={index} fill={chartColors[index % chartColors.length]} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip formatter={(value) => formatNumber(value as number)} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </ChartPanel>
-            </Grid>
-          </>
+          <Grid item xs={12} lg={isSuperAdmin ? 4 : 12}>
+            <ChartPanel title="Department Distribution" empty={!departmentDistribution.length}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={departmentDistribution} dataKey="count" nameKey="department" outerRadius={95} innerRadius={60} paddingAngle={3}>
+                    {departmentDistribution.map((_, index) => (
+                      <Cell key={index} fill={chartColors[index % chartColors.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      fontFamily: 'Outfit',
+                      backdropFilter: 'blur(8px)'
+                    }}
+                    formatter={(value) => [formatNumber(value as number), 'Employees']}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartPanel>
+          </Grid>
         )}
 
         {(isSuperAdmin || isFinance) && (
           <>
-            <Grid item xs={12} lg={7}>
+            <Grid item xs={12} lg={isSuperAdmin ? 8 : 12}>
               <ChartPanel title="Payroll Cost Trend" empty={!payrollTrends.length}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={payrollTrends} margin={{ top: 10, right: 24, left: 8, bottom: 0 }}>
+                  <AreaChart data={payrollTrends} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="payrollTrend" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.4} />
+                        <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.35} />
                         <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
+                    <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
                     <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
                     <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value as number)} />
-                    <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
-                    <Area type="monotone" dataKey="payrollCost" name="Payroll Cost" stroke="var(--color-primary)" strokeWidth={2.5} fillOpacity={1} fill="url(#payrollTrend)" />
+                    <ChartTooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        color: '#ffffff',
+                        fontFamily: 'Outfit',
+                        backdropFilter: 'blur(8px)'
+                      }}
+                      formatter={(value) => formatCurrency(value as number)}
+                    />
+                    <Area type="monotone" dataKey="payrollCost" name="Payroll Cost" stroke="var(--color-primary)" strokeWidth={3} fillOpacity={1} fill="url(#payrollTrend)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </ChartPanel>
             </Grid>
-            <Grid item xs={12} lg={5}>
+
+            {/* Row 2: Tax/PF/ESI Summary + Company Expenses Trend */}
+            <Grid item xs={12} lg={isSuperAdmin ? 4 : 5}>
               <ChartPanel title="Tax/PF/ESI Summary" empty={!payrollTrends.length}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={payrollTrends} margin={{ top: 10, right: 24, left: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
+                  <LineChart data={payrollTrends} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
                     <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
                     <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value as number)} />
-                    <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
-                    <Legend />
-                    <Line type="monotone" dataKey="pf" name="PF" stroke="var(--color-accent)" strokeWidth={2.5} dot={{ strokeWidth: 2 }} />
-                    <Line type="monotone" dataKey="tax" name="Tax" stroke="var(--color-warning)" strokeWidth={2.5} dot={{ strokeWidth: 2 }} />
+                    <ChartTooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        color: '#ffffff',
+                        fontFamily: 'Outfit',
+                        backdropFilter: 'blur(8px)'
+                      }}
+                      formatter={(value) => formatCurrency(value as number)}
+                    />
+                    <Legend iconType="circle" />
+                    <Line type="monotone" dataKey="pf" name="PF" stroke="var(--color-accent)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="tax" name="Tax" stroke="var(--color-warning)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartPanel>
             </Grid>
-            <Grid item xs={12} lg={7}>
+
+            <Grid item xs={12} lg={isSuperAdmin ? 8 : 7}>
               <ChartPanel title="Company Expenses Trend" empty={!expensesTrends.length}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={expensesTrends} margin={{ top: 10, right: 24, left: 8, bottom: 0 }}>
+                  <AreaChart data={expensesTrends} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="expensesTrend" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--color-error)" stopOpacity={0.4} />
+                        <stop offset="5%" stopColor="var(--color-error)" stopOpacity={0.35} />
                         <stop offset="95%" stopColor="var(--color-error)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
+                    <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
                     <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
                     <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value as number)} />
-                    <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
-                    <Area type="monotone" dataKey="amount" name="Expense Amount" stroke="var(--color-error)" strokeWidth={2.5} fillOpacity={1} fill="url(#expensesTrend)" />
+                    <ChartTooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        color: '#ffffff',
+                        fontFamily: 'Outfit',
+                        backdropFilter: 'blur(8px)'
+                      }}
+                      formatter={(value) => formatCurrency(value as number)}
+                    />
+                    <Area type="monotone" dataKey="amount" name="Expense Amount" stroke="var(--color-error)" strokeWidth={3} fillOpacity={1} fill="url(#expensesTrend)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </ChartPanel>
             </Grid>
-            <Grid item xs={12} lg={5}>
+
+            {/* Row 3: Expenses by Category + Salary Processing */}
+            <Grid item xs={12} lg={isSuperAdmin ? 4 : 5}>
               <ChartPanel title="Expenses by Category" empty={!expensesCategoryDistribution.length}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={expensesCategoryDistribution} dataKey="amount" nameKey="category" outerRadius={105} innerRadius={58} paddingAngle={2}>
+                    <Pie data={expensesCategoryDistribution} dataKey="amount" nameKey="category" outerRadius={95} innerRadius={60} paddingAngle={3}>
                       {expensesCategoryDistribution.map((entry: any, index: number) => {
                         const colors: Record<string, string> = {
                           rent: '#10b981',
@@ -312,34 +358,45 @@ const Dashboard: React.FC = () => {
                         return <Cell key={index} fill={colors[entry.category] || chartColors[index % chartColors.length]} />;
                       })}
                     </Pie>
-                    <ChartTooltip formatter={(value, name) => [formatCurrency(value as number), String(name).charAt(0).toUpperCase() + String(name).slice(1)]} />
-                    <Legend formatter={(value) => String(value).charAt(0).toUpperCase() + String(value).slice(1)} />
+                    <ChartTooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        color: '#ffffff',
+                        fontFamily: 'Outfit',
+                        backdropFilter: 'blur(8px)'
+                      }}
+                      formatter={(value, name) => [formatCurrency(value as number), String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
+                    />
+                    <Legend formatter={(value) => String(value).charAt(0).toUpperCase() + String(value).slice(1)} iconType="circle" />
                   </PieChart>
                 </ResponsiveContainer>
               </ChartPanel>
             </Grid>
 
-            <Grid item xs={12} lg={5}>
+            <Grid item xs={12} lg={isSuperAdmin ? 8 : 7}>
               <SummaryPanel
-                title="Salary Processing"
+                title="Salary Processing & Deductions Summary"
                 rows={[
-                  ['Next Date', data.summaries.salaryProcessing?.nextProcessingDate || '-'],
+                  ['Next Processing Date', data.summaries.salaryProcessing?.nextProcessingDate || '-'],
                   ['Processed Records', formatNumber(data.summaries.salaryProcessing?.processedCount)],
                   ['Pending Records', formatNumber(data.summaries.salaryProcessing?.pendingCount)],
-                  ['Tax', formatCurrency(data.summaries.taxPfEsi?.tax || 0)],
-                  ['PF', formatCurrency(data.summaries.taxPfEsi?.pf || 0)],
-                  ['ESI', formatCurrency(data.summaries.taxPfEsi?.esi || 0)],
+                  ['Income Tax Deducted', formatCurrency(data.summaries.taxPfEsi?.tax || 0)],
+                  ['Total PF Deductions', formatCurrency(data.summaries.taxPfEsi?.pf || 0)],
+                  ['Total ESI Deductions', formatCurrency(data.summaries.taxPfEsi?.esi || 0)],
                 ]}
               />
             </Grid>
           </>
         )}
 
-        <Grid item xs={12} lg={isSuperAdmin ? 7 : 6}>
+        {/* Row 4: Recent Activities + Quick Actions */}
+        <Grid item xs={12} lg={8}>
           <ActivityPanel activities={data.activities} />
         </Grid>
 
-        <Grid item xs={12} lg={isSuperAdmin ? 5 : 6}>
+        <Grid item xs={12} lg={4}>
           <QuickActions actions={actions} onNavigate={navigate} />
         </Grid>
       </Grid>
@@ -351,49 +408,120 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
   <Paper
     sx={{
       ...cardSx,
-      p: 2.5,
+      p: 3,
       height: '100%',
       position: 'relative',
       overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
       cursor: 'default',
+      backgroundColor: 'var(--color-surface)',
+      border: '1px solid var(--color-border)',
+      borderRadius: '16px',
+      transition: 'border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease',
       '&:hover': {
-        borderColor: 'rgba(148, 163, 184, 0.32)',
-        boxShadow: 'var(--shadow-card)',
-        transform: 'translateY(-2px)',
+        borderColor: color,
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
+        transform: 'translateY(-3px)',
+        '& .icon-wrapper': {
+          transform: 'scale(1.1) rotate(5deg)',
+          backgroundColor: color,
+          color: '#ffffff',
+        }
       },
     }}
   >
-    <Box sx={{ position: 'absolute', left: 0, top: 0, width: 4, height: '100%', bgcolor: color }} />
-    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
-      <Box>
-        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700 }}>{label}</Typography>
-        <Typography variant="h5" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mt: 1, fontFamily: 'Outfit' }}>{value}</Typography>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+      <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.88rem' }}>
+        {label}
+      </Typography>
+      <Box
+        className="icon-wrapper"
+        sx={{
+          color: color,
+          backgroundColor: `${color}15`,
+          p: 1.2,
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'transform 200ms ease, background-color 200ms ease, color 200ms ease',
+          '& svg': { fontSize: '1.4rem' }
+        }}
+      >
+        {icon}
       </Box>
-      <Box sx={{ color, display: 'flex', '& svg': { fontSize: '1.8rem' } }}>{icon}</Box>
+    </Box>
+    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+      <Typography variant="h4" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, fontFamily: 'Outfit', letterSpacing: '-0.5px' }}>
+        {value}
+      </Typography>
     </Box>
   </Paper>
 );
 
 const ChartPanel: React.FC<{ title: string; empty: boolean; children: React.ReactNode }> = ({ title, empty, children }) => (
-  <Paper sx={{ ...cardSx, p: 3, height: 390 }}>
-    <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 3 }}>{title}</Typography>
+  <Paper sx={{ ...cardSx, p: 3.5, height: 400, borderRadius: '16px' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+        {title}
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box
+          sx={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            bgcolor: 'var(--color-success)',
+            animation: 'pulse 2s infinite',
+            '@keyframes pulse': {
+              '0%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.4)' },
+              '70%': { boxShadow: '0 0 0 6px rgba(16, 185, 129, 0)' },
+              '100%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0)' }
+            }
+          }}
+        />
+        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>Live Data</Typography>
+      </Box>
+    </Box>
     <Box sx={{ height: 310 }}>
       {empty ? (
-        <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>No records found</Box>
+        <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+          No records found
+        </Box>
       ) : children}
     </Box>
   </Paper>
 );
 
 const SummaryPanel: React.FC<{ title: string; rows: [string, string][] }> = ({ title, rows }) => (
-  <Paper sx={{ ...cardSx, p: 3, height: '100%' }}>
-    <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>{title}</Typography>
-    <Grid container spacing={1.5}>
+  <Paper sx={{ ...cardSx, p: 3.5, height: '100%', borderRadius: '16px' }}>
+    <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 3 }}>
+      {title}
+    </Typography>
+    <Grid container spacing={2}>
       {rows.map(([label, value]) => (
         <Grid item xs={12} sm={6} key={label}>
-          <Box sx={{ p: 2, borderRadius: 'var(--radius-control)', bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)' }}>
-            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700 }}>{label}</Typography>
-            <Typography variant="body1" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mt: 0.5 }}>{value}</Typography>
+          <Box
+            sx={{
+              p: 2.2,
+              borderRadius: '12px',
+              bgcolor: 'var(--color-surface-subtle)',
+              border: '1px solid var(--color-border)',
+              transition: 'border-color 160ms ease, background-color 160ms ease',
+              '&:hover': {
+                borderColor: 'var(--color-border-strong)',
+                bgcolor: 'var(--color-row-hover)',
+              }
+            }}
+          >
+            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {label}
+            </Typography>
+            <Typography variant="h6" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mt: 0.5, fontFamily: 'Outfit' }}>
+              {value}
+            </Typography>
           </Box>
         </Grid>
       ))}
@@ -402,23 +530,56 @@ const SummaryPanel: React.FC<{ title: string; rows: [string, string][] }> = ({ t
 );
 
 const ActivityPanel: React.FC<{ activities: DashboardData['activities'] }> = ({ activities }) => (
-  <Paper sx={{ ...cardSx, p: 3, height: '100%' }}>
-    <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>Recent Activities</Typography>
+  <Paper sx={{ ...cardSx, p: 3.5, height: '100%', borderRadius: '16px' }}>
+    <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 3 }}>
+      Recent Activities
+    </Typography>
     {activities.length === 0 ? (
-      <Typography sx={{ color: 'var(--color-text-muted)' }}>No records found</Typography>
-    ) : activities.map((activity, index) => (
-      <Box key={`${activity.title}-${index}`} sx={{ py: 1.5, borderBottom: index === activities.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
-        <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{activity.title}</Typography>
-        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>{activity.description}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
+        No recent activities
       </Box>
-    ))}
+    ) : (
+      <Box sx={{ position: 'relative', pl: 3, '&::before': { content: '""', position: 'absolute', left: 7, top: 8, bottom: 8, width: '2px', bgcolor: 'var(--color-border)' } }}>
+        {activities.map((activity, index) => (
+          <Box key={`${activity.title}-${index}`} sx={{ position: 'relative', mb: index === activities.length - 1 ? 0 : 3 }}>
+            {/* Timeline bullet */}
+            <Box
+              sx={{
+                position: 'absolute',
+                left: -29,
+                top: 4,
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                bgcolor: 'var(--color-surface)',
+                border: '3px solid var(--color-primary)',
+                zIndex: 2,
+              }}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+              <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
+                {activity.title}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                {activity.date}
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5, fontSize: '0.85rem' }}>
+              {activity.description}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    )}
   </Paper>
 );
 
 const QuickActions: React.FC<{ actions: ActionConfig[]; onNavigate: (path: string) => void }> = ({ actions, onNavigate }) => (
-  <Paper sx={{ ...cardSx, p: 3, height: '100%' }}>
-    <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>Quick Actions</Typography>
-    <Grid container spacing={1.5}>
+  <Paper sx={{ ...cardSx, p: 3.5, height: '100%', borderRadius: '16px' }}>
+    <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 3 }}>
+      Quick Actions
+    </Typography>
+    <Grid container spacing={2}>
       {actions.map((action) => (
         <Grid item xs={12} sm={6} key={action.label}>
           <Button
@@ -431,10 +592,20 @@ const QuickActions: React.FC<{ actions: ActionConfig[]; onNavigate: (path: strin
               justifyContent: 'flex-start',
               borderColor: 'var(--color-border)',
               color: 'var(--color-text-secondary)',
-              borderRadius: 'var(--radius-control)',
-              py: 1.2,
-              transition: 'background-color 160ms ease, border-color 160ms ease, color 160ms ease',
-              '&:hover': { borderColor: 'var(--color-primary)', bgcolor: 'rgba(99,102,241,0.08)', color: 'var(--color-text-primary)' },
+              borderRadius: '12px',
+              py: 1.5,
+              px: 2.5,
+              textTransform: 'none',
+              fontFamily: 'Outfit',
+              fontWeight: 600,
+              fontSize: '0.92rem',
+              transition: 'all 200ms ease',
+              '&:hover': {
+                borderColor: 'var(--color-primary)',
+                bgcolor: 'rgba(99, 102, 241, 0.06)',
+                color: 'var(--color-primary-hover)',
+                transform: 'translateX(3px)',
+              },
             }}
           >
             {action.label}

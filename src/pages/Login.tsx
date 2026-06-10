@@ -16,6 +16,14 @@ import {
 } from '@mui/material';
 import { LockOutlined as LockIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 
+const THPMSLogo: React.FC<{ size?: number }> = ({ size = 48 }) => (
+  <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="30" width="50" height="140" fill="var(--color-text-primary)" rx="4" />
+    <rect x="110" y="30" width="50" height="140" fill="var(--color-text-primary)" rx="4" />
+    <rect x="85" y="85" width="30" height="30" fill="#0ea5e9" transform="rotate(45 100 100)" />
+  </svg>
+);
+
 const Login: React.FC = () => {
   const { login, user } = useAuth();
   const navigate = useNavigate();
@@ -75,21 +83,8 @@ const Login: React.FC = () => {
       >
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: '12px',
-                bgcolor: 'rgba(99, 102, 241, 0.15)',
-                color: 'var(--color-primary-hover)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-                border: '1px solid rgba(99, 102, 241, 0.3)',
-              }}
-            >
-              <LockIcon />
+            <Box sx={{ mb: 2 }}>
+              <THPMSLogo size={56} />
             </Box>
             <Typography
               variant="h5"
@@ -100,7 +95,7 @@ const Login: React.FC = () => {
               Welcome Back
             </Typography>
             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-              Sign in to manage THPS payroll
+              Sign in to manage TH-PMS payroll
             </Typography>
           </Box>
 

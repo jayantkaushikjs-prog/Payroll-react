@@ -39,14 +39,14 @@ import {
   Receipt as ExpensesIcon,
 } from '@mui/icons-material';
 
-const THPSLogo: React.FC<{ size?: number; color?: string }> = ({ size = 32, color = 'var(--color-text-primary)' }) => (
+const THPMSLogo: React.FC<{ size?: number; color?: string }> = ({ size = 32, color = 'var(--color-text-primary)' }) => (
   <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
     {/* Left vertical block */}
-    <rect x="40" y="30" width="50" height="140" fill={color} />
+    <rect x="40" y="30" width="50" height="140" fill={color} rx="4" />
     {/* Right vertical block */}
-    <rect x="110" y="30" width="50" height="140" fill={color} />
+    <rect x="110" y="30" width="50" height="140" fill={color} rx="4" />
     {/* Center blue diamond rotated by 45 degrees */}
-    <rect x="85" y="85" width="30" height="30" fill="#1b85b2" transform="rotate(45 100 100)" />
+    <rect x="85" y="85" width="30" height="30" fill="#0ea5e9" transform="rotate(45 100 100)" />
   </svg>
 );
 
@@ -172,9 +172,9 @@ const Layout: React.FC = () => {
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-sidebar)' }}>
       <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <THPSLogo size={36} color="var(--color-text-primary)" />
+        <THPMSLogo size={36} color="var(--color-text-primary)" />
         <Typography variant="h6" sx={{ fontFamily: 'Outfit', fontWeight: 700, color: 'var(--color-text-primary)', letterSpacing: '1px' }}>
-          THPS
+          TH-PMS
         </Typography>
       </Box>
       <Divider sx={{ borderColor: 'var(--color-border)' }} />
