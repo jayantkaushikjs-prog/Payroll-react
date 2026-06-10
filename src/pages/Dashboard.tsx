@@ -21,16 +21,18 @@ import {
   CalendarMonth as CalendarIcon,
   EventBusy as LeaveIcon,
   EventNote as NonPayableIcon,
-  Groups as PeopleIcon,
+  Groups as TotalEmployeesIcon,
+  People as ActiveEmployeesIcon,
   LocalAtm as AdvancesIcon,
   Paid as PayrollIcon,
-  Percent as PfIcon,
+  Shield as PfIcon,
   PersonAdd as NewJoinerIcon,
   PlaylistAddCheck as ApprovalIcon,
   ReceiptLong as PayslipIcon,
   Savings as SalaryIcon,
   TrendingUp as TrendIcon,
   Receipt as ExpensesIcon,
+  PendingActions as PendingPayrollIcon,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -137,14 +139,14 @@ const Dashboard: React.FC = () => {
 
   const kpis: KpiConfig[] = [
     ...(isSuperAdmin || isHr ? [
-      { key: 'totalEmployees', label: 'Total Employees', icon: <PeopleIcon />, color: 'var(--color-info)' },
-      { key: 'activeEmployees', label: 'Active Employees', icon: <PeopleIcon />, color: 'var(--color-success)' },
+      { key: 'totalEmployees', label: 'Total Employees', icon: <TotalEmployeesIcon />, color: 'var(--color-info)' },
+      { key: 'activeEmployees', label: 'Active Employees', icon: <ActiveEmployeesIcon />, color: 'var(--color-success)' },
       { key: 'newJoineesThisMonth', label: isSuperAdmin ? 'New Joinees This Month' : 'New Joinees', icon: <NewJoinerIcon />, color: 'var(--color-accent)' },
     ] : []),
     ...(isSuperAdmin || isFinance ? [
       { key: isSuperAdmin ? 'totalPayrollThisMonth' : 'currentMonthPayroll', label: isSuperAdmin ? 'Total Payroll This Month' : 'Current Month Payroll', icon: <PayrollIcon />, color: 'var(--color-success)', format: 'currency' as const },
       { key: 'totalExpensesThisMonth', label: 'Total Expenses This Month', icon: <ExpensesIcon />, color: 'var(--color-error)', format: 'currency' as const },
-      { key: 'pendingPayrollProcessing', label: 'Pending Payroll Processing', icon: <CalendarIcon />, color: 'var(--color-warning)' },
+      { key: 'pendingPayrollProcessing', label: 'Pending Payroll Processing', icon: <PendingPayrollIcon />, color: 'var(--color-warning)' },
       { key: 'totalAdvancesOutstanding', label: 'Advances Outstanding', icon: <AdvancesIcon />, color: 'var(--color-warning)', format: 'currency' as const },
       { key: 'taxDeductions', label: 'Tax Deductions', icon: <TaxIcon />, color: 'var(--color-warning)', format: 'currency' as const },
       { key: 'pfContributions', label: 'PF/ESI Contributions', icon: <PfIcon />, color: 'var(--color-accent)', format: 'currency' as const },
@@ -153,7 +155,7 @@ const Dashboard: React.FC = () => {
 
   const actions: ActionConfig[] = [
     ...(isSuperAdmin ? [
-      { label: 'Employees', icon: <PeopleIcon />, permission: Permission.VIEW_EMPLOYEE, path: '/employees' },
+      { label: 'Employees', icon: <ActiveEmployeesIcon />, permission: Permission.VIEW_EMPLOYEE, path: '/employees' },
       { label: 'Salary Structures', icon: <SalaryIcon />, permission: Permission.MANAGE_SALARY_STRUCTURES, path: '/salaries' },
       { label: 'Non-Payable Days', icon: <NonPayableIcon />, permission: Permission.MANAGE_NON_PAYABLE_DAYS, path: '/non-payable-days' },
       { label: 'PF Settings', icon: <PfIcon />, permission: Permission.MANAGE_PF_SETTINGS, path: '/pf' },
@@ -208,18 +210,77 @@ const Dashboard: React.FC = () => {
       </Box>
 
       {/* KPI Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {kpis.map((kpi) => (
-          <Grid item xs={12} sm={6} md={isSuperAdmin ? 3 : 4} key={kpi.key}>
+      {isSuperAdmin ? (
+        <>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                md: 'repeat(5, 1fr)',
+              },
+              gap: 3,
+              mb: 3,
+            }}
+          >
+            {[kpis[0], kpis[1], kpis[2], kpis[5], kpis[6]].map((kpi) => (
+              <KpiCard
+                key={kpi.key}
+                label={kpi.label}
+                value={formatValue(data.stats[kpi.key], kpi.format)}
+                icon={kpi.icon}
+                color={kpi.color}
+              />
+            ))}
+          </Box>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                md: 'repeat(4, 1fr)',
+              },
+              gap: 3,
+              mb: 4,
+            }}
+          >
+            {[kpis[3], kpis[4], kpis[7], kpis[8]].map((kpi) => (
+              <KpiCard
+                key={kpi.key}
+                label={kpi.label}
+                value={formatValue(data.stats[kpi.key], kpi.format)}
+                icon={kpi.icon}
+                color={kpi.color}
+              />
+            ))}
+          </Box>
+        </>
+      ) : (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)',
+            },
+            gap: 3,
+            mb: 4,
+          }}
+        >
+          {kpis.map((kpi) => (
             <KpiCard
+              key={kpi.key}
               label={kpi.label}
               value={formatValue(data.stats[kpi.key], kpi.format)}
               icon={kpi.icon}
               color={kpi.color}
             />
-          </Grid>
-        ))}
-      </Grid>
+          ))}
+        </Box>
+      )}
 
       {/* Charts and Summaries Grid */}
       <Grid container spacing={3.5}>
@@ -236,7 +297,7 @@ const Dashboard: React.FC = () => {
                   </Pie>
                   <ChartTooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      // backgroundColor: 'rgba(15, 23, 42, 0.95)',
                       border: '1px solid var(--color-border)',
                       borderRadius: '12px',
                       color: '#ffffff',
@@ -360,7 +421,7 @@ const Dashboard: React.FC = () => {
                     </Pie>
                     <ChartTooltip
                       contentStyle={{
-                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        // backgroundColor: 'rgba(15, 23, 42, 0.95)',
                         border: '1px solid var(--color-border)',
                         borderRadius: '12px',
                         color: '#ffffff',
