@@ -47,14 +47,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     fetchCurrentUser();
+
+    const handleAuthExpired = () => {
+      localStorage.removeItem('payroll_token');
+      localStorage.removeItem('payroll_refresh_token');
+      setUser(null);
+    };
+
+    window.addEventListener('auth-expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('auth-expired', handleAuthExpired);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { access_token, user: loggedUser } = response.data;
+      const { access_token, refresh_token, user: loggedUser } = response.data;
       localStorage.setItem('payroll_token', access_token);
+      localStorage.setItem('payroll_refresh_token', refresh_token);
       setUser(loggedUser);
     } catch (error) {
       setUser(null);
@@ -64,9 +76,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('payroll_token');
-    setUser(null);
+  const logout = async () => {
+    const rToken = localStorage.getItem('payroll_refresh_token');
+    try {
+      await api.post('/auth/logout', { refresh_token: rToken });
+    } catch (error) {
+      console.error('Failed to revoke session on logout:', error);
+    } finally {
+      localStorage.removeItem('payroll_token');
+      localStorage.removeItem('payroll_refresh_token');
+      setUser(null);
+    }
   };
 
   const hasRole = (allowedRoles: Role[]): boolean => {
