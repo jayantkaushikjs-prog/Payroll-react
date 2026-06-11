@@ -24,6 +24,8 @@ import {
   CardContent,
   Divider,
   CircularProgress,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -31,6 +33,7 @@ import {
   Upgrade as RevisionIcon,
   Download as DownloadIcon,
   Upload as UploadIcon,
+  HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -484,13 +487,31 @@ const SalaryStructures: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 700 }}>{emp.employee_code}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.name}</TableCell>
                       <TableCell sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, fontFamily: 'Outfit' }}>
-                        {current ? formatCurrency(current.ctc) : '—'}
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          {current ? formatCurrency(current.ctc) : '—'}
+                          {current && (
+                            <Tooltip title={`Breakdown: Gross Salary (${formatCurrency(current.gross_salary)}) + Employer PF (${formatCurrency(current.ctc - current.gross_salary)})`} arrow>
+                              <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}>
+                                <HelpOutlineIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.basic_salary) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.hra) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.other_allowance) : '—'}</TableCell>
                       <TableCell sx={{ color: current ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 700, fontFamily: 'Outfit' }}>
-                        {current ? formatCurrency(current.gross_salary) : '—'}
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          {current ? formatCurrency(current.gross_salary) : '—'}
+                          {current && (
+                            <Tooltip title={`Breakdown: Basic Salary (${formatCurrency(current.basic_salary)}) + HRA (${formatCurrency(current.hra)}) + Other Allowance (${formatCurrency(current.other_allowance)})`} arrow>
+                              <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}>
+                                <HelpOutlineIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell align="right">
                         {current ? (

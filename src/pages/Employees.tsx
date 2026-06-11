@@ -57,6 +57,7 @@ import {
   Upload as UploadIcon,
   Visibility as ViewIcon,
   People as PeopleIcon,
+  HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 import { DEPARTMENT_OPTIONS, DESIGNATION_OPTIONS } from '../constants/employeeOptions';
 
@@ -1664,7 +1665,14 @@ const Employees: React.FC = () => {
                     {/* Top Stats */}
                     <Grid item xs={12} sm={6}>
                       <Paper sx={{ p: 2.5, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
-                        <Typography variant="caption" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>TOTAL AMOUNT PAID (YTD)</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>TOTAL AMOUNT PAID (YTD)</Typography>
+                          <Tooltip title={`Breakdown: Net Salary Paid YTD (${formatCurrency(profileSummary.amountPaid)}) with parallel deductions of PF (${formatCurrency(profileSummary.pfDeducted)}) and Tax (${formatCurrency(profileSummary.taxDeducted)})`} arrow>
+                            <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-success)' }}>
+                              <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                         <Typography variant="h4" sx={{ color: 'var(--color-success)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
                           {formatCurrency(profileSummary.amountPaid)}
                         </Typography>
@@ -1673,7 +1681,14 @@ const Employees: React.FC = () => {
 
                     <Grid item xs={12} sm={6}>
                       <Paper sx={{ p: 2.5, background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-control)' }}>
-                        <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>ESTIMATED TO BE PAID (REMAINING)</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>ESTIMATED TO BE PAID (REMAINING)</Typography>
+                          <Tooltip title={`Breakdown: Estimated remaining Net Salary (${formatCurrency(profileSummary.amountToBePaid)}) with projected remaining deductions of PF (${formatCurrency(profileSummary.expectedPFRemaining)}) and Tax (${formatCurrency(profileSummary.expectedTaxRemaining)})`} arrow>
+                            <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-primary-hover)' }}>
+                              <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                         <Typography variant="h4" sx={{ color: 'var(--color-primary-hover)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
                           {formatCurrency(profileSummary.amountToBePaid)}
                         </Typography>

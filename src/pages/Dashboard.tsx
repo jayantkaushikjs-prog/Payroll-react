@@ -13,6 +13,8 @@ import {
   Typography,
   FormControlLabel,
   Switch,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
 import {
   AccountBalance as TaxIcon,
@@ -33,6 +35,7 @@ import {
   TrendingUp as TrendIcon,
   Receipt as ExpensesIcon,
   PendingActions as PendingPayrollIcon,
+  HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -76,6 +79,7 @@ interface KpiConfig {
   icon: React.ReactNode;
   color: string;
   format?: 'currency' | 'number';
+  tooltip?: (data: DashboardData) => string;
 }
 
 interface ActionConfig {
@@ -144,12 +148,51 @@ const Dashboard: React.FC = () => {
       { key: 'newJoineesThisMonth', label: isSuperAdmin ? 'New Joinees This Month' : 'New Joinees', icon: <NewJoinerIcon />, color: 'var(--color-accent)' },
     ] : []),
     ...(isSuperAdmin || isFinance ? [
-      { key: isSuperAdmin ? 'totalPayrollThisMonth' : 'currentMonthPayroll', label: isSuperAdmin ? 'Total Payroll This Month' : 'Current Month Payroll', icon: <PayrollIcon />, color: 'var(--color-success)', format: 'currency' as const },
-      { key: 'totalExpensesThisMonth', label: 'Total Expenses This Month', icon: <ExpensesIcon />, color: 'var(--color-error)', format: 'currency' as const },
+      { 
+        key: isSuperAdmin ? 'totalPayrollThisMonth' : 'currentMonthPayroll', 
+        label: isSuperAdmin ? 'Total Payroll This Month' : 'Current Month Payroll', 
+        icon: <PayrollIcon />, 
+        color: 'var(--color-success)', 
+        format: 'currency' as const,
+        tooltip: (d: DashboardData) => `Breakdown: Net Salary Disbursed (${formatCurrency(d.stats.currentMonthPayroll || 0)}) + Tax Deducted (${formatCurrency(d.stats.taxDeductions || 0)}) + PF Deducted (${formatCurrency(d.stats.pfContributions || 0)})`
+      },
+      { 
+        key: 'totalExpensesThisMonth', 
+        label: 'Total Expenses This Month', 
+        icon: <ExpensesIcon />, 
+        color: 'var(--color-error)', 
+        format: 'currency' as const,
+        tooltip: (d: DashboardData) => {
+          const breakdown = d.charts.expensesCategoryDistribution || [];
+          if (breakdown.length === 0) return 'Total company expenses recorded this month.';
+          return 'Breakdown: ' + breakdown.map((b: any) => `${b.category.toUpperCase()}: ${formatCurrency(b.amount)}`).join(' | ');
+        }
+      },
       { key: 'pendingPayrollProcessing', label: 'Pending Payroll Processing', icon: <PendingPayrollIcon />, color: 'var(--color-warning)' },
-      { key: 'totalAdvancesOutstanding', label: 'Advances Outstanding', icon: <AdvancesIcon />, color: 'var(--color-warning)', format: 'currency' as const },
-      { key: 'taxDeductions', label: 'Tax Deductions', icon: <TaxIcon />, color: 'var(--color-warning)', format: 'currency' as const },
-      { key: 'pfContributions', label: 'PF/ESI Contributions', icon: <PfIcon />, color: 'var(--color-accent)', format: 'currency' as const },
+      { 
+        key: 'totalAdvancesOutstanding', 
+        label: 'Advances Outstanding', 
+        icon: <AdvancesIcon />, 
+        color: 'var(--color-warning)', 
+        format: 'currency' as const,
+        tooltip: () => 'Outstanding principal amount to be recovered from all active employee advances.'
+      },
+      { 
+        key: 'taxDeductions', 
+        label: 'Tax Deductions', 
+        icon: <TaxIcon />, 
+        color: 'var(--color-warning)', 
+        format: 'currency' as const,
+        tooltip: (d: DashboardData) => `Total professional/income tax deducted from payrolls this month (${formatCurrency(d.stats.taxDeductions || 0)}).`
+      },
+      { 
+        key: 'pfContributions', 
+        label: 'PF/ESI Contributions', 
+        icon: <PfIcon />, 
+        color: 'var(--color-accent)', 
+        format: 'currency' as const,
+        tooltip: (d: DashboardData) => `Total provident fund (PF) contribution deducted from employee salaries (${formatCurrency(d.stats.pfContributions || 0)}).`
+      },
     ] : []),
   ];
 
@@ -224,13 +267,14 @@ const Dashboard: React.FC = () => {
               mb: 3,
             }}
           >
-            {[kpis[0], kpis[1], kpis[2], kpis[5], kpis[6]].map((kpi) => (
+            {[kpis[0], kpis[1], kpis[2], kpis[5], kpis[6]].filter(Boolean).map((kpi) => (
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}
                 value={formatValue(data.stats[kpi.key], kpi.format)}
                 icon={kpi.icon}
                 color={kpi.color}
+                tooltip={kpi.tooltip?.(data)}
               />
             ))}
           </Box>
@@ -246,13 +290,14 @@ const Dashboard: React.FC = () => {
               mb: 4,
             }}
           >
-            {[kpis[3], kpis[4], kpis[7], kpis[8]].map((kpi) => (
+            {[kpis[3], kpis[4], kpis[7], kpis[8]].filter(Boolean).map((kpi) => (
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}
                 value={formatValue(data.stats[kpi.key], kpi.format)}
                 icon={kpi.icon}
                 color={kpi.color}
+                tooltip={kpi.tooltip?.(data)}
               />
             ))}
           </Box>
@@ -270,13 +315,14 @@ const Dashboard: React.FC = () => {
             mb: 4,
           }}
         >
-          {kpis.map((kpi) => (
+          {kpis.filter(Boolean).map((kpi) => (
             <KpiCard
               key={kpi.key}
               label={kpi.label}
               value={formatValue(data.stats[kpi.key], kpi.format)}
               icon={kpi.icon}
               color={kpi.color}
+              tooltip={kpi.tooltip?.(data)}
             />
           ))}
         </Box>
@@ -465,7 +511,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
-const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string }> = ({ label, value, icon, color }) => (
+const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string; tooltip?: string }> = ({ label, value, icon, color, tooltip }) => (
   <Paper
     sx={{
       ...cardSx,
@@ -494,9 +540,18 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
     }}
   >
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-      <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.88rem' }}>
-        {label}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.88rem' }}>
+          {label}
+        </Typography>
+        {tooltip && (
+          <Tooltip title={tooltip} arrow>
+            <IconButton size="small" sx={{ p: 0.1, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.875rem' } }}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
       <Box
         className="icon-wrapper"
         sx={{

@@ -8,8 +8,9 @@ import {
   TableHead, TableRow, Grid, Select, MenuItem, FormControl, InputLabel,
   CircularProgress, Chip,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
+  Tooltip, IconButton,
 } from '@mui/material';
-import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon, Payments as DisburseIcon } from '@mui/icons-material';
+import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon, Payments as DisburseIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
 import { useToast } from '../context/ToastContext';
 
 const ss = {
@@ -235,7 +236,23 @@ const Payroll: React.FC = () => {
             <Grid item xs={6} md={3} key={d.l}>
               <Paper sx={{ p: 2.5, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', textAlign: 'center' }}>
                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{d.l}</Typography>
-                <Typography variant="h5" sx={{ color: d.c, fontWeight: 700, mt: 0.5, fontFamily: 'Outfit' }}>{formatCurrency(d.v)}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 0.5 }}>
+                  <Typography variant="h5" sx={{ color: d.c, fontWeight: 700, fontFamily: 'Outfit' }}>{formatCurrency(d.v)}</Typography>
+                  {d.l === 'Net Payable' && (
+                    <Tooltip title={`Breakdown: Total Gross (${formatCurrency(sum('gross_salary'))}) - PF (${formatCurrency(sum('pf_deduction'))}) - Tax (${formatCurrency(sum('tax_deduction'))}) - Absence (${formatCurrency(sum('non_payable_deduction'))}) - Advance Rec. (${formatCurrency(sum('advance_recovery'))})`} arrow>
+                      <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.9rem' } }}>
+                        <HelpOutlineIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {d.l === 'Total Gross' && (
+                    <Tooltip title="Total Gross Salary = Sum of gross salaries for all employees in the month" arrow>
+                      <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.9rem' } }}>
+                        <HelpOutlineIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
               </Paper>
             </Grid>
           ))}
@@ -260,12 +277,30 @@ const Payroll: React.FC = () => {
                   <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{pr.employee?.employee_code}</TableCell>
                   <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{pr.employee?.name}</TableCell>
                   <TableCell sx={{ color: 'var(--color-text-primary)' }}>{pr.employee?.department}</TableCell>
-                  <TableCell align="right" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(pr.gross_salary)}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-text-primary)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {formatCurrency(pr.gross_salary)}
+                      <Tooltip title="Gross Salary = Basic Salary + HRA + Special Allowance + Other Allowance" arrow>
+                        <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}>
+                          <HelpOutlineIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
                   <TableCell align="right" sx={{ color: pr.non_payable_deduction > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{pr.non_payable_deduction > 0 ? `-${formatCurrency(pr.non_payable_deduction)}` : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{formatCurrency(pr.pf_deduction)}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-warning)' }}>{formatCurrency(pr.tax_deduction)}</TableCell>
                   <TableCell align="right" sx={{ color: pr.advance_recovery > 0 ? '#fb923c' : 'var(--color-text-muted)' }}>{pr.advance_recovery > 0 ? formatCurrency(pr.advance_recovery) : '—'}</TableCell>
-                  <TableCell align="right" sx={{ color: 'var(--color-success)', fontWeight: 700 }}>{formatCurrency(pr.net_salary)}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-success)', fontWeight: 700 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {formatCurrency(pr.net_salary)}
+                      <Tooltip title={`Breakdown: Gross (${formatCurrency(pr.gross_salary)}) - PF (${formatCurrency(pr.pf_deduction)}) - Tax (${formatCurrency(pr.tax_deduction)}) - Absence Ded. (${formatCurrency(pr.non_payable_deduction)}) - Advance Rec. (${formatCurrency(pr.advance_recovery)})`} arrow>
+                        <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}>
+                          <HelpOutlineIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
                   <TableCell align="center">
                     <Chip
                       label={pr.status === 'disbursed' ? 'Disbursed' : pr.status === 'locked' ? 'Locked' : 'Draft'}
