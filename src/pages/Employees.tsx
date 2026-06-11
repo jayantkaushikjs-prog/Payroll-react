@@ -508,8 +508,10 @@ const Employees: React.FC = () => {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `employee-master_${today}.csv`;
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(link.href), 100);
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Failed to export employees', 'error');
     }
@@ -542,6 +544,7 @@ const Employees: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
   };
 
   const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {

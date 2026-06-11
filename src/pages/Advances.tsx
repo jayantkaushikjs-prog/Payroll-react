@@ -34,6 +34,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -68,6 +69,7 @@ const Advances: React.FC = () => {
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   const [openDialog, setOpenDialog] = useState(false);
+  const [selectedAdvance, setSelectedAdvance] = useState<EmployeeAdvance | null>(null);
   const [formErrors, setFormErrors] = useState({
     employee_id: '',
     amount: '',
@@ -166,6 +168,24 @@ const Advances: React.FC = () => {
     }
   );
 
+  // Update mutation
+  const updateMutation = useMutation(
+    async ({ id, payload }: { id: number; payload: any }) => {
+      const res = await api.put(`/advances/${id}`, payload);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['advances']);
+        showToast('Employee advance updated successfully!', 'success');
+        setOpenDialog(false);
+      },
+      onError: (err: any) => {
+        handleMutationError(err, 'Failed to update advance');
+      },
+    }
+  );
+
   // Delete mutation
   const deleteMutation = useMutation(
     async (id: number) => {
@@ -183,6 +203,7 @@ const Advances: React.FC = () => {
   );
 
   const handleOpenAdd = () => {
+    setSelectedAdvance(null);
     setFormErrors({
       employee_id: '',
       amount: '',
@@ -202,6 +223,31 @@ const Advances: React.FC = () => {
       installment_amount: '',
       start_month: new Date().getMonth() + 1,
       start_year: currentYear,
+    });
+    setOpenDialog(true);
+  };
+
+  const handleOpenEdit = (adv: EmployeeAdvance) => {
+    setSelectedAdvance(adv);
+    setFormErrors({
+      employee_id: '',
+      amount: '',
+      date: '',
+      reason: '',
+      recovery_type: '',
+      installment_amount: '',
+      start_month: '',
+      start_year: '',
+    });
+    setFormData({
+      employee_id: String(adv.employee_id),
+      amount: Number(adv.amount),
+      date: adv.date,
+      reason: adv.reason || '',
+      recovery_type: adv.recovery_type,
+      installment_amount: adv.installment_amount ? String(adv.installment_amount) : '',
+      start_month: adv.start_month,
+      start_year: adv.start_year,
     });
     setOpenDialog(true);
   };
@@ -255,7 +301,7 @@ const Advances: React.FC = () => {
       return;
     }
 
-    createMutation.mutate({
+    const payload = {
       employee_id: Number(formData.employee_id),
       amount: Number(formData.amount),
       date: formData.date,
@@ -264,7 +310,13 @@ const Advances: React.FC = () => {
       installment_amount: formData.recovery_type === 'installment' ? Number(formData.installment_amount) : null,
       start_month: Number(formData.start_month),
       start_year: Number(formData.start_year),
-    });
+    };
+
+    if (selectedAdvance) {
+      updateMutation.mutate({ id: selectedAdvance.id, payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
 
   const handleExportCsv = async () => {
@@ -304,7 +356,7 @@ const Advances: React.FC = () => {
     { value: 12, label: 'December' },
   ];
 
-  const years = Array.from({ length: 5 }, (_, i) => currentYear + i);
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
   return (
     <Box>
@@ -358,7 +410,6 @@ const Advances: React.FC = () => {
       <Paper
         sx={{
           background: 'var(--color-surface)',
-          
           border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius-card)',
           overflow: 'hidden',
@@ -431,6 +482,11 @@ const Advances: React.FC = () => {
                     </TableCell>
                     {isFinanceOrAdmin && (
                       <TableCell align="right">
+                        <Tooltip title="Edit Advance Record">
+                          <IconButton onClick={() => handleOpenEdit(adv)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Delete Advance Record">
                           <IconButton onClick={() => handleDelete(adv.id)} sx={{ color: 'var(--color-error)' }}>
                             <DeleteIcon fontSize="small" />
@@ -446,7 +502,7 @@ const Advances: React.FC = () => {
         </TableContainer>
       </Paper>
 
-      {/* Issue advance dialog */}
+      {/* Issue/Edit advance dialog */}
       <Dialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
@@ -463,7 +519,7 @@ const Advances: React.FC = () => {
         }}
       >
         <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
-          Issue Salary Advance
+          {selectedAdvance ? 'Edit Salary Advance' : 'Issue Salary Advance'}
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent sx={{ py: 3 }}>
@@ -475,11 +531,18 @@ const Advances: React.FC = () => {
                     labelId="employee-select-label"
                     value={formData.employee_id}
                     label="Select Employee"
+                    disabled={!!selectedAdvance}
                     onChange={(e) => setFormData({ ...formData, employee_id: e.target.value as string })}
                   >
-                    {employees.map((e: any) => (
-                      <MenuItem key={e.id} value={e.id}>{e.employee_code} - {e.name}</MenuItem>
-                    ))}
+                    {selectedAdvance ? (
+                      <MenuItem value={selectedAdvance.employee_id}>
+                        {selectedAdvance.employee?.employee_code} - {selectedAdvance.employee?.name}
+                      </MenuItem>
+                    ) : (
+                      employees.map((e: any) => (
+                        <MenuItem key={e.id} value={e.id}>{e.employee_code} - {e.name}</MenuItem>
+                      ))
+                    )}
                   </Select>
                   {formErrors.employee_id && (
                     <Typography variant="caption" color="var(--color-error)" sx={{ mt: 0.5, ml: 1.5 }}>
@@ -628,13 +691,11 @@ const Advances: React.FC = () => {
                 textTransform: 'none',
               }}
             >
-              Issue loan
+              {selectedAdvance ? 'Save Changes' : 'Issue loan'}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
-
-
     </Box>
   );
 };

@@ -30,6 +30,7 @@ import {
   History as HistoryIcon,
   Upgrade as RevisionIcon,
   Download as DownloadIcon,
+  Upload as UploadIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -38,6 +39,7 @@ interface Employee {
   name: string;
   department: string;
   designation: string;
+  pf_deduction?: boolean;
 }
 
 interface SalaryStructure {
@@ -49,6 +51,7 @@ interface SalaryStructure {
   special_allowance: number;
   other_allowance: number;
   gross_salary: number;
+  ctc: number;
   is_active: boolean;
   effective_from: string;
 }
@@ -61,19 +64,17 @@ const SalaryStructures: React.FC = () => {
   const [openRevisionDialog, setOpenRevisionDialog] = useState(false);
   const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
   const [formErrors, setFormErrors] = useState({
-    basic_salary: '',
-    hra: '',
-    special_allowance: '',
-    other_allowance: '',
+    ctc: '',
+    basic_percent: '',
+    hra_percent: '',
     effective_from: '',
   });
 
   // Form State
   const [formData, setFormData] = useState({
-    basic_salary: 0,
-    hra: 0,
-    special_allowance: 0,
-    other_allowance: 0,
+    ctc: 0,
+    basic_percent: 50,
+    hra_percent: 40,
     effective_from: '',
   });
 
@@ -88,6 +89,12 @@ const SalaryStructures: React.FC = () => {
   // Fetch all employees
   const { data: employees = [], isLoading: loadingEmployees } = useQuery(['employees'], async () => {
     const res = await api.get('/employees');
+    return res.data;
+  });
+
+  // Fetch PF settings
+  const { data: pfList = [] } = useQuery(['pfSettings'], async () => {
+    const res = await api.get('/pf');
     return res.data;
   });
 
@@ -115,24 +122,21 @@ const SalaryStructures: React.FC = () => {
   const handleMutationError = (err: any, fallbackMessage: string) => {
     const backendMessage = err.response?.data?.message;
     const errors = {
-      basic_salary: '',
-      hra: '',
-      special_allowance: '',
-      other_allowance: '',
+      ctc: '',
+      basic_percent: '',
+      hra_percent: '',
       effective_from: '',
     };
 
     if (Array.isArray(backendMessage)) {
       backendMessage.forEach((msg: string) => {
         const lowerMsg = msg.toLowerCase();
-        if (lowerMsg.includes('basic')) {
-          errors.basic_salary = msg;
+        if (lowerMsg.includes('ctc')) {
+          errors.ctc = msg;
+        } else if (lowerMsg.includes('basic')) {
+          errors.basic_percent = msg;
         } else if (lowerMsg.includes('hra')) {
-          errors.hra = msg;
-        } else if (lowerMsg.includes('special')) {
-          errors.special_allowance = msg;
-        } else if (lowerMsg.includes('other')) {
-          errors.other_allowance = msg;
+          errors.hra_percent = msg;
         } else if (lowerMsg.includes('effective')) {
           errors.effective_from = msg;
         }
@@ -166,17 +170,25 @@ const SalaryStructures: React.FC = () => {
     setSelectedEmp(emp);
     const current = activeSalaries[emp.id];
     setFormErrors({
-      basic_salary: '',
-      hra: '',
-      special_allowance: '',
-      other_allowance: '',
+      ctc: '',
+      basic_percent: '',
+      hra_percent: '',
       effective_from: '',
     });
+
+    let basic_percent = 50;
+    let hra_percent = 40;
+    if (current && Number(current.gross_salary) > 0) {
+      basic_percent = Math.round((Number(current.basic_salary) / Number(current.gross_salary)) * 100);
+      if (Number(current.basic_salary) > 0) {
+        hra_percent = Math.round((Number(current.hra) / Number(current.basic_salary)) * 100);
+      }
+    }
+
     setFormData({
-      basic_salary: current ? Number(current.basic_salary) : 0,
-      hra: current ? Number(current.hra) : 0,
-      special_allowance: current ? Number(current.special_allowance) : 0,
-      other_allowance: current ? Number(current.other_allowance) : 0,
+      ctc: current ? Number(current.ctc) : 0,
+      basic_percent,
+      hra_percent,
       effective_from: new Date().toISOString().split('T')[0],
     });
     setOpenRevisionDialog(true);
@@ -192,28 +204,23 @@ const SalaryStructures: React.FC = () => {
     if (!selectedEmp) return;
 
     const nextErrors = {
-      basic_salary: '',
-      hra: '',
-      special_allowance: '',
-      other_allowance: '',
+      ctc: '',
+      basic_percent: '',
+      hra_percent: '',
       effective_from: '',
     };
     let isValid = true;
 
-    if (Number(formData.basic_salary) < 0) {
-      nextErrors.basic_salary = 'Basic salary cannot be negative';
+    if (Number(formData.ctc) <= 0) {
+      nextErrors.ctc = 'CTC must be greater than 0';
       isValid = false;
     }
-    if (Number(formData.hra) < 0) {
-      nextErrors.hra = 'HRA cannot be negative';
+    if (Number(formData.basic_percent) <= 0 || Number(formData.basic_percent) > 100) {
+      nextErrors.basic_percent = 'Basic % must be between 1 and 100';
       isValid = false;
     }
-    if (Number(formData.special_allowance) < 0) {
-      nextErrors.special_allowance = 'Special allowance cannot be negative';
-      isValid = false;
-    }
-    if (Number(formData.other_allowance) < 0) {
-      nextErrors.other_allowance = 'Other allowance cannot be negative';
+    if (Number(formData.hra_percent) <= 0 || Number(formData.hra_percent) > 100) {
+      nextErrors.hra_percent = 'HRA % must be between 1 and 100';
       isValid = false;
     }
     if (!formData.effective_from) {
@@ -230,10 +237,9 @@ const SalaryStructures: React.FC = () => {
 
     revisionMutation.mutate({
       employee_id: selectedEmp.id,
-      basic_salary: Number(formData.basic_salary),
-      hra: Number(formData.hra),
-      special_allowance: Number(formData.special_allowance),
-      other_allowance: Number(formData.other_allowance),
+      ctc: Number(formData.ctc),
+      basic_percent: Number(formData.basic_percent),
+      hra_percent: Number(formData.hra_percent),
       effective_from: formData.effective_from,
     });
   };
@@ -246,19 +252,103 @@ const SalaryStructures: React.FC = () => {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `salary-components_${today}.csv`;
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(link.href), 100);
       showToast('Salary components exported successfully!', 'success');
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Failed to export CSV', 'error');
     }
   };
 
-  const calculatedGross =
-    Number(formData.basic_salary) +
-    Number(formData.hra) +
-    Number(formData.special_allowance) +
-    Number(formData.other_allowance);
+  const handleDownloadSampleCsv = () => {
+    const headers = [
+      'Employee Code',
+      'CTC',
+      'Effective From',
+      'Basic Percent',
+      'HRA Percent',
+    ];
+    const sampleRows = [
+      ['EMP001', '60000', '2026-06-01', '50', '40'],
+      ['EMP002', '45000', '2026-06-01', '50', '40']
+    ];
+    const csvContent = [headers.join(','), ...sampleRows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'sample_salary_structures.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+  };
+
+  const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      try {
+        const res = await api.post('/salary-structures/import', { csvContent: text });
+        const { imported, errors } = res.data;
+        queryClient.invalidateQueries(['activeSalaries']);
+        if (errors && errors.length > 0) {
+          showToast(`Imported ${imported} structures. There were ${errors.length} warnings/errors (see console details).`, 'error');
+          console.warn('Import CSV warnings/errors:', errors);
+        } else {
+          showToast(`Successfully imported ${imported} salary structures!`, 'success');
+        }
+      } catch (err: any) {
+        showToast(err.response?.data?.message || 'Failed to import CSV file.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Dynamic calculations for preview
+  const calculations = useMemo(() => {
+    const ctc = Number(formData.ctc) || 0;
+    const basicRatio = (Number(formData.basic_percent) || 50) / 100;
+    const hraRatio = (Number(formData.hra_percent) || 40) / 100;
+
+    let gross_salary = ctc;
+    let employer_pf = 0;
+
+    if (selectedEmp && selectedEmp.pf_deduction !== false) {
+      const activeSetting = [...pfList]
+        .sort((a, b) => b.effective_date.localeCompare(a.effective_date))
+        .find(s => !formData.effective_from || s.effective_date <= formData.effective_from);
+
+      const rate = activeSetting ? Number(activeSetting.employer_contribution_rate) / 100 : 0.12;
+      const gross_salary_uncapped = ctc / (1 + basicRatio * rate);
+      if (basicRatio * gross_salary_uncapped * rate > 1800) {
+        gross_salary = ctc - 1800;
+        employer_pf = 1800;
+      } else {
+        gross_salary = gross_salary_uncapped;
+        employer_pf = basicRatio * gross_salary * rate;
+      }
+    }
+
+    const basic_salary = basicRatio * gross_salary;
+    const hra = hraRatio * basic_salary;
+    const special_allowance = 0;
+    const other_allowance = Math.max(0, gross_salary - basic_salary - hra);
+
+    return {
+      gross_salary,
+      basic_salary,
+      hra,
+      special_allowance,
+      other_allowance,
+      employer_pf,
+    };
+  }, [formData.ctc, formData.basic_percent, formData.hra_percent, formData.effective_from, selectedEmp, pfList]);
 
   return (
     <Box>
@@ -268,33 +358,84 @@ const SalaryStructures: React.FC = () => {
             Salary Structures & Revisions
           </Typography>
           <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-            Manage employee salary bands and create historical revisions.
+            Manage employee CTC, salary components, and create historical revisions.
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={handleExportCsv}
-          sx={{
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-secondary)',
-            textTransform: 'none',
-            borderRadius: 'var(--radius-control)',
-            '&:hover': {
-              borderColor: 'var(--color-border-strong)',
-              bgcolor: 'var(--color-surface-subtle)',
-              color: 'var(--color-text-primary)',
-            },
-          }}
-        >
-          Export CSV
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <input
+            type="file"
+            accept=".csv"
+            id="import-csv-file-input"
+            style={{ display: 'none' }}
+            onChange={handleImportCsv}
+          />
+          {isFinanceOrAdmin && (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownloadSampleCsv}
+                sx={{
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text-secondary)',
+                  textTransform: 'none',
+                  borderRadius: 'var(--radius-control)',
+                  '&:hover': {
+                    borderColor: 'var(--color-border-strong)',
+                    bgcolor: 'var(--color-surface-subtle)',
+                    color: 'var(--color-text-primary)',
+                  },
+                }}
+              >
+                Sample CSV
+              </Button>
+              <label htmlFor="import-csv-file-input">
+                <Button
+                  component="span"
+                  variant="outlined"
+                  startIcon={<UploadIcon />}
+                  sx={{
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-secondary)',
+                    textTransform: 'none',
+                    borderRadius: 'var(--radius-control)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: 'var(--color-border-strong)',
+                      bgcolor: 'var(--color-surface-subtle)',
+                      color: 'var(--color-text-primary)',
+                    },
+                  }}
+                >
+                  Import CSV
+                </Button>
+              </label>
+            </>
+          )}
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportCsv}
+            sx={{
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-secondary)',
+              textTransform: 'none',
+              borderRadius: 'var(--radius-control)',
+              '&:hover': {
+                borderColor: 'var(--color-border-strong)',
+                bgcolor: 'var(--color-surface-subtle)',
+                color: 'var(--color-text-primary)',
+              },
+            }}
+          >
+            Export CSV
+          </Button>
+        </Box>
       </Box>
 
       <Paper
         sx={{
           background: 'var(--color-surface)',
-          
           border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius-card)',
           overflow: 'hidden',
@@ -307,9 +448,9 @@ const SalaryStructures: React.FC = () => {
               <TableRow>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Emp Code</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Monthly CTC</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Basic Salary</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>HRA</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Special Allowance</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Other Allowance</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Gross Salary</TableCell>
                 <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
@@ -341,9 +482,11 @@ const SalaryStructures: React.FC = () => {
                     >
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{emp.employee_code}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.name}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
+                        {current ? formatCurrency(current.ctc) : '—'}
+                      </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{current ? formatCurrency(current.basic_salary) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{current ? formatCurrency(current.hra) : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{current ? formatCurrency(current.special_allowance) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{current ? formatCurrency(current.other_allowance) : '—'}</TableCell>
                       <TableCell sx={{ color: current ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 600 }}>
                         {current ? formatCurrency(current.gross_salary) : '—'}
@@ -407,60 +550,21 @@ const SalaryStructures: React.FC = () => {
         }}
       >
         <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
-          Revise Salary - {selectedEmp?.name}
+          Configure Salary Structure - {selectedEmp?.name}
         </DialogTitle>
         <form onSubmit={handleRevisionSubmit}>
           <DialogContent sx={{ py: 3 }}>
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Basic Salary"
+                  label="Monthly CTC (Cost to Company)"
                   type="number"
                   fullWidth
                   required
-                  value={formData.basic_salary}
-                  onChange={(e) => setFormData({ ...formData, basic_salary: parseFloat(e.target.value) || 0 })}
-                  error={!!formErrors.basic_salary}
-                  helperText={formErrors.basic_salary}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="HRA"
-                  type="number"
-                  fullWidth
-                  required
-                  value={formData.hra}
-                  onChange={(e) => setFormData({ ...formData, hra: parseFloat(e.target.value) || 0 })}
-                  error={!!formErrors.hra}
-                  helperText={formErrors.hra}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Special Allowance"
-                  type="number"
-                  fullWidth
-                  required
-                  value={formData.special_allowance}
-                  onChange={(e) => setFormData({ ...formData, special_allowance: parseFloat(e.target.value) || 0 })}
-                  error={!!formErrors.special_allowance}
-                  helperText={formErrors.special_allowance}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Other Allowance"
-                  type="number"
-                  fullWidth
-                  required
-                  value={formData.other_allowance}
-                  onChange={(e) => setFormData({ ...formData, other_allowance: parseFloat(e.target.value) || 0 })}
-                  error={!!formErrors.other_allowance}
-                  helperText={formErrors.other_allowance}
+                  value={formData.ctc || ''}
+                  onChange={(e) => setFormData({ ...formData, ctc: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.ctc}
+                  helperText={formErrors.ctc}
                   sx={inputStyles}
                 />
               </Grid>
@@ -479,16 +583,101 @@ const SalaryStructures: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: 'var(--radius-control)' }}>
-                  <CardContent sx={{ py: '12px !important', px: 2 }}>
-                    <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                      Calculated Gross
-                    </Typography>
-                    <Typography variant="h5" sx={{ color: 'var(--color-success)', fontWeight: 700, mt: 0.5, fontFamily: 'Outfit' }}>
-                      {formatCurrency(calculatedGross)}
-                    </Typography>
-                  </CardContent>
-                </Card>
+                <TextField
+                  label="Basic Salary % of Gross"
+                  type="number"
+                  fullWidth
+                  required
+                  inputProps={{ min: 1, max: 100 }}
+                  value={formData.basic_percent || ''}
+                  onChange={(e) => setFormData({ ...formData, basic_percent: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.basic_percent}
+                  helperText={formErrors.basic_percent}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="HRA % of Basic"
+                  type="number"
+                  fullWidth
+                  required
+                  inputProps={{ min: 1, max: 100 }}
+                  value={formData.hra_percent || ''}
+                  onChange={(e) => setFormData({ ...formData, hra_percent: parseFloat(e.target.value) || 0 })}
+                  error={!!formErrors.hra_percent}
+                  helperText={formErrors.hra_percent}
+                  sx={inputStyles}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1, borderColor: 'var(--color-border)' }} />
+                <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  Dynamic Component Breakdown Preview
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                      <CardContent sx={{ py: '10px !important', px: 2 }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                          Basic Salary ({formData.basic_percent}% of Gross)
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: 'var(--color-text-primary)', fontWeight: 600, mt: 0.5 }}>
+                          {formatCurrency(calculations.basic_salary)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                      <CardContent sx={{ py: '10px !important', px: 2 }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                          HRA ({formData.hra_percent}% of Basic)
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: 'var(--color-text-primary)', fontWeight: 600, mt: 0.5 }}>
+                          {formatCurrency(calculations.hra)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                      <CardContent sx={{ py: '10px !important', px: 2 }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                          Other Allowances (Remaining)
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: 'var(--color-text-primary)', fontWeight: 600, mt: 0.5 }}>
+                          {formatCurrency(calculations.other_allowance)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                      <CardContent sx={{ py: '10px !important', px: 2 }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                          Employer PF Share
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, mt: 0.5 }}>
+                          {formatCurrency(calculations.employer_pf)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Card sx={{ bgcolor: 'rgba(16, 185, 129, 0.04)', border: '1px dashed rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
+                      <CardContent sx={{ py: '12px !important', px: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>
+                          Calculated Gross Salary
+                        </Typography>
+                        <Typography variant="h5" sx={{ color: 'var(--color-success)', fontWeight: 700, fontFamily: 'Outfit' }}>
+                          {formatCurrency(calculations.gross_salary)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
               </Grid>
             </Grid>
           </DialogContent>
@@ -506,7 +695,7 @@ const SalaryStructures: React.FC = () => {
                 textTransform: 'none',
               }}
             >
-              Submit Revision
+              Submit Structure
             </Button>
           </DialogActions>
         </form>
@@ -546,9 +735,9 @@ const SalaryStructures: React.FC = () => {
                 <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
                   <TableRow>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Effective Date</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>CTC</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Basic</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>HRA</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Special</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Other</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Gross</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
@@ -558,9 +747,9 @@ const SalaryStructures: React.FC = () => {
                   {salaryHistory.map((hist: SalaryStructure) => (
                     <TableRow key={hist.id} sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }}>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{hist.effective_from}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>{formatCurrency(hist.ctc)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.basic_salary)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.hra)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.special_allowance)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.other_allowance)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-success)', fontWeight: 600 }}>{formatCurrency(hist.gross_salary)}</TableCell>
                       <TableCell>
@@ -592,8 +781,6 @@ const SalaryStructures: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-
     </Box>
   );
 };
