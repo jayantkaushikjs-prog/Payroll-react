@@ -56,6 +56,7 @@ import {
   Search as SearchIcon,
   Upload as UploadIcon,
   Visibility as ViewIcon,
+  People as PeopleIcon,
 } from '@mui/icons-material';
 import { DEPARTMENT_OPTIONS, DESIGNATION_OPTIONS } from '../constants/employeeOptions';
 
@@ -75,6 +76,15 @@ interface Employee {
   active_status: boolean;
   pf_deduction?: boolean;
   tax_deduction?: boolean;
+  relieving_date?: string | null;
+  other_inputs?: string | null;
+  no_of_days_present?: number;
+  deduction_absent?: number;
+  appraisal?: number;
+  leave_encashment?: number;
+  late_arrival_deduction?: number;
+  damages_recovery?: number;
+  remarks?: string | null;
 }
 
 const Employees: React.FC = () => {
@@ -115,6 +125,25 @@ const Employees: React.FC = () => {
     tax_deduction: true,
   });
 
+  // HR Console States
+  const [currentMainTab, setCurrentMainTab] = useState(0);
+  const [currentSubTab, setCurrentSubTab] = useState(0);
+  const [selectedConsoleEmp, setSelectedConsoleEmp] = useState<Employee | null>(null);
+  const [consoleFormData, setConsoleFormData] = useState({
+    employee_code: '',
+    name: '',
+    no_of_days_present: 30,
+    deduction_absent: 0,
+    appraisal: 0,
+    leave_encashment: 0,
+    late_arrival_deduction: 0,
+    damages_recovery: 0,
+    remarks: '',
+    joining_date: '',
+    relieving_date: '',
+    other_inputs: '',
+  });
+
   const isHRorAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.HR);
   const isAdmin = user && user.role === Role.SUPER_ADMIN;
 
@@ -126,6 +155,7 @@ const Employees: React.FC = () => {
 
   // Profile Details Dialog State
   const [openProfileDialog, setOpenProfileDialog] = useState(false);
+  const [profileDialogTab, setProfileDialogTab] = useState(0);
 
   // States for Detailed Employee Profile Tab
   const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
@@ -145,6 +175,15 @@ const Employees: React.FC = () => {
     active_status: true,
     pf_deduction: true,
     tax_deduction: true,
+    relieving_date: '',
+    other_inputs: '',
+    no_of_days_present: 30,
+    deduction_absent: 0,
+    appraisal: 0,
+    leave_encashment: 0,
+    late_arrival_deduction: 0,
+    damages_recovery: 0,
+    remarks: '',
   });
 
   // Query for Detailed Employee Financial Summary
@@ -159,6 +198,54 @@ const Employees: React.FC = () => {
       enabled: openProfileDialog && !!profileEmpId,
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to fetch financial summary data', 'error');
+      },
+    }
+  );
+
+  // Synchronize console form data when the selected employee changes
+  useEffect(() => {
+    if (selectedConsoleEmp) {
+      setConsoleFormData({
+        employee_code: selectedConsoleEmp.employee_code || '',
+        name: selectedConsoleEmp.name || '',
+        no_of_days_present: selectedConsoleEmp.no_of_days_present !== undefined ? selectedConsoleEmp.no_of_days_present : 30,
+        deduction_absent: selectedConsoleEmp.deduction_absent !== undefined ? Number(selectedConsoleEmp.deduction_absent) : 0,
+        appraisal: selectedConsoleEmp.appraisal !== undefined ? Number(selectedConsoleEmp.appraisal) : 0,
+        leave_encashment: selectedConsoleEmp.leave_encashment !== undefined ? Number(selectedConsoleEmp.leave_encashment) : 0,
+        late_arrival_deduction: selectedConsoleEmp.late_arrival_deduction !== undefined ? Number(selectedConsoleEmp.late_arrival_deduction) : 0,
+        damages_recovery: selectedConsoleEmp.damages_recovery !== undefined ? Number(selectedConsoleEmp.damages_recovery) : 0,
+        remarks: selectedConsoleEmp.remarks || '',
+        joining_date: selectedConsoleEmp.joining_date || '',
+        relieving_date: selectedConsoleEmp.relieving_date || '',
+        other_inputs: selectedConsoleEmp.other_inputs || '',
+      });
+    }
+  }, [selectedConsoleEmp]);
+
+  // Keep selected console employee reference in sync with updated list
+  useEffect(() => {
+    if (selectedConsoleEmp && employees.length > 0) {
+      const latest = employees.find((e: Employee) => e.id === selectedConsoleEmp.id);
+      if (latest && JSON.stringify(latest) !== JSON.stringify(selectedConsoleEmp)) {
+        setSelectedConsoleEmp(latest);
+      }
+    }
+  }, [employees, selectedConsoleEmp]);
+
+  // HR Console update mutation
+  const saveConsoleMutation = useMutation(
+    async ({ id, data }: { id: number; data: any }) => {
+      const res = await api.put(`/employees/${id}`, data);
+      return res.data;
+    },
+    {
+      onSuccess: (updatedEmp) => {
+        queryClient.invalidateQueries(['employees']);
+        showToast('HR global inputs saved successfully!', 'success');
+        setSelectedConsoleEmp(updatedEmp);
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update HR inputs', 'error');
       },
     }
   );
@@ -183,6 +270,15 @@ const Employees: React.FC = () => {
           active_status: emp.active_status !== false,
           pf_deduction: emp.pf_deduction !== false,
           tax_deduction: emp.tax_deduction !== false,
+          relieving_date: emp.relieving_date || '',
+          other_inputs: emp.other_inputs || '',
+          no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
+          deduction_absent: emp.deduction_absent !== undefined ? Number(emp.deduction_absent) : 0,
+          appraisal: emp.appraisal !== undefined ? Number(emp.appraisal) : 0,
+          leave_encashment: emp.leave_encashment !== undefined ? Number(emp.leave_encashment) : 0,
+          late_arrival_deduction: emp.late_arrival_deduction !== undefined ? Number(emp.late_arrival_deduction) : 0,
+          damages_recovery: emp.damages_recovery !== undefined ? Number(emp.damages_recovery) : 0,
+          remarks: emp.remarks || '',
         });
       }
     }
@@ -208,9 +304,45 @@ const Employees: React.FC = () => {
   const handleProfileFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileEmpId) return;
+    
+    const payload = {
+      ...profileFormData,
+      relieving_date: profileFormData.relieving_date || null,
+      other_inputs: profileFormData.other_inputs || null,
+      remarks: profileFormData.remarks || null,
+    };
+
     updateProfileMutation.mutate({
       id: Number(profileEmpId),
-      payload: profileFormData,
+      payload,
+    });
+  };
+
+  const handleSaveConsoleData = () => {
+    if (!selectedConsoleEmp) return;
+
+    const daysPresent = Number(consoleFormData.no_of_days_present);
+    if (isNaN(daysPresent) || daysPresent < 0 || daysPresent > 31) {
+      showToast('Days present must be a valid number between 0 and 31', 'error');
+      return;
+    }
+
+    const payload = {
+      joining_date: consoleFormData.joining_date,
+      relieving_date: consoleFormData.relieving_date || null,
+      other_inputs: consoleFormData.other_inputs || null,
+      no_of_days_present: daysPresent,
+      deduction_absent: Number(consoleFormData.deduction_absent) || 0,
+      appraisal: Number(consoleFormData.appraisal) || 0,
+      leave_encashment: Number(consoleFormData.leave_encashment) || 0,
+      late_arrival_deduction: Number(consoleFormData.late_arrival_deduction) || 0,
+      damages_recovery: Number(consoleFormData.damages_recovery) || 0,
+      remarks: consoleFormData.remarks || null,
+    };
+
+    saveConsoleMutation.mutate({
+      id: selectedConsoleEmp.id,
+      data: payload,
     });
   };
 
@@ -398,6 +530,15 @@ const Employees: React.FC = () => {
       active_status: emp.active_status !== false,
       pf_deduction: emp.pf_deduction !== false,
       tax_deduction: emp.tax_deduction !== false,
+      relieving_date: emp.relieving_date || '',
+      other_inputs: emp.other_inputs || '',
+      no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
+      deduction_absent: emp.deduction_absent !== undefined ? Number(emp.deduction_absent) : 0,
+      appraisal: emp.appraisal !== undefined ? Number(emp.appraisal) : 0,
+      leave_encashment: emp.leave_encashment !== undefined ? Number(emp.leave_encashment) : 0,
+      late_arrival_deduction: emp.late_arrival_deduction !== undefined ? Number(emp.late_arrival_deduction) : 0,
+      damages_recovery: emp.damages_recovery !== undefined ? Number(emp.damages_recovery) : 0,
+      remarks: emp.remarks || '',
     });
     setOpenProfileDialog(true);
   };
@@ -595,21 +736,91 @@ const Employees: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Employee Directory View */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
-        <input
-          type="file"
-          accept=".csv"
-          id="import-csv-file-input"
-          style={{ display: 'none' }}
-          onChange={handleImportCsv}
-        />
-        {isHRorAdmin && (
-          <>
+      {isHRorAdmin && (
+        <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 3 }}>
+          <Tabs
+            value={currentMainTab}
+            onChange={(_, newValue) => setCurrentMainTab(newValue)}
+            sx={{
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 600,
+                fontFamily: 'Outfit',
+                fontSize: '0.95rem',
+                color: 'var(--color-text-secondary)',
+                '&.Mui-selected': {
+                  color: 'var(--color-primary-hover)',
+                },
+              },
+              '& .MuiTabs-indicator': {
+                backgroundColor: 'var(--color-primary)',
+              },
+            }}
+          >
+            <Tab label="Employee Directory" />
+            <Tab label="HR Global Console" />
+          </Tabs>
+        </Box>
+      )}
+
+      {(!isHRorAdmin || currentMainTab === 0) ? (
+        <>
+          {/* Employee Directory View */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
+            <input
+              type="file"
+              accept=".csv"
+              id="import-csv-file-input"
+              style={{ display: 'none' }}
+              onChange={handleImportCsv}
+            />
+            {isHRorAdmin && (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleDownloadSampleCsv}
+                  sx={{
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-secondary)',
+                    textTransform: 'none',
+                    borderRadius: 'var(--radius-control)',
+                    '&:hover': {
+                      borderColor: 'var(--color-border-strong)',
+                      bgcolor: 'var(--color-surface-subtle)',
+                      color: 'var(--color-text-primary)',
+                    },
+                  }}
+                >
+                  Sample CSV
+                </Button>
+                <label htmlFor="import-csv-file-input">
+                  <Button
+                    component="span"
+                    variant="outlined"
+                    startIcon={<UploadIcon />}
+                    sx={{
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text-secondary)',
+                      textTransform: 'none',
+                      borderRadius: 'var(--radius-control)',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        borderColor: 'var(--color-border-strong)',
+                        bgcolor: 'var(--color-surface-subtle)',
+                        color: 'var(--color-text-primary)',
+                      },
+                    }}
+                  >
+                    Import CSV
+                  </Button>
+                </label>
+              </>
+            )}
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
-              onClick={handleDownloadSampleCsv}
+              onClick={handleExportCsv}
               sx={{
                 borderColor: 'var(--color-border)',
                 color: 'var(--color-text-secondary)',
@@ -622,168 +833,405 @@ const Employees: React.FC = () => {
                 },
               }}
             >
-              Sample CSV
+              Export CSV
             </Button>
-            <label htmlFor="import-csv-file-input">
+            {isHRorAdmin && (
               <Button
-                component="span"
-                variant="outlined"
-                startIcon={<UploadIcon />}
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenAddDialog}
                 sx={{
-                  borderColor: 'var(--color-border)',
-                  color: 'var(--color-text-secondary)',
-                  textTransform: 'none',
+                  background: 'var(--color-primary)',
+                  boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
                   borderRadius: 'var(--radius-control)',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    borderColor: 'var(--color-border-strong)',
-                    bgcolor: 'var(--color-surface-subtle)',
-                    color: 'var(--color-text-primary)',
-                  },
+                  textTransform: 'none',
                 }}
               >
-                Import CSV
+                Add Employee
               </Button>
-            </label>
-          </>
-        )}
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={handleExportCsv}
-          sx={{
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-secondary)',
-            textTransform: 'none',
-            borderRadius: 'var(--radius-control)',
-            '&:hover': {
-              borderColor: 'var(--color-border-strong)',
-              bgcolor: 'var(--color-surface-subtle)',
-              color: 'var(--color-text-primary)',
-            },
-          }}
-        >
-          Export CSV
-        </Button>
-        {isHRorAdmin && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAddDialog}
+            )}
+          </Box>
+
+          {/* Filter and Table */}
+          <Paper
             sx={{
-              background: 'var(--color-primary)',
-              boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-              borderRadius: 'var(--radius-control)',
-              textTransform: 'none',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-card)',
+              overflow: 'hidden',
+              p: 3,
             }}
           >
-            Add Employee
-          </Button>
-        )}
-      </Box>
+            <TextField
+              placeholder="Search by name, employee code, or department..."
+              fullWidth
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ color: 'var(--color-text-muted)', mr: 1 }} />,
+              }}
+              sx={{
+                mb: 3,
+                '& .MuiOutlinedInput-root': {
+                  color: 'var(--color-text-primary)',
+                  borderRadius: 'var(--radius-control)',
+                  '& fieldset': { borderColor: 'var(--color-border)' },
+                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+                },
+              }}
+            />
 
-      {/* Filter and Table */}
-      <Paper
-        sx={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-card)',
-          overflow: 'hidden',
-          p: 3,
-        }}
-      >
-        <TextField
-          placeholder="Search by name, employee code, or department..."
-          fullWidth
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: <SearchIcon sx={{ color: 'var(--color-text-muted)', mr: 1 }} />,
-          }}
-          sx={{
-            mb: 3,
-            '& .MuiOutlinedInput-root': {
-              color: 'var(--color-text-primary)',
-              borderRadius: 'var(--radius-control)',
-              '& fieldset': { borderColor: 'var(--color-border)' },
-              '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-              '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-            },
-          }}
-        />
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
+              </Box>
+            ) : filteredEmployees.length === 0 ? (
+              <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                No employees found matching the search criteria.
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table sx={{ minWidth: 650 }}>
+                  <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                    <TableRow>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
+                      <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredEmployees.map((emp: Employee) => (
+                      <TableRow key={emp.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              display: 'inline-block',
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                              color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
+                            }}
+                          >
+                            {emp.active_status ? 'Active' : 'Inactive'}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="View Profile & Financials">
+                            <IconButton onClick={() => handleOpenProfileDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 0.5 }}>
+                              <ViewIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit Details">
+                            <IconButton onClick={() => handleOpenEditDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}>
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          {isHRorAdmin && (
+                            <Tooltip title="Delete Employee">
+                              <IconButton onClick={() => handleDelete(emp.id)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}>
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Paper>
+        </>
+      ) : (
+        /* HR Global Console View */
+        <Box className="animate-fade-in">
+          <Paper
+            sx={{
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-card)',
+              p: 4,
+              mb: 4,
+            }}
+          >
+            <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+              Employee Search & Selector
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+              Select an employee to modify their operational, salary, lifecycle, and leave adjustments globally.
+            </Typography>
+            <Autocomplete
+              options={employees}
+              getOptionLabel={(emp) => `${emp.employee_code} - ${emp.name}`}
+              value={selectedConsoleEmp}
+              onChange={(_, newValue) => setSelectedConsoleEmp(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Employee"
+                  placeholder="Search by code or name..."
+                  sx={inputStyles}
+                />
+              )}
+              ListboxProps={{ sx: dropdownListStyles }}
+            />
+          </Paper>
 
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
-          </Box>
-        ) : filteredEmployees.length === 0 ? (
-          <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            No employees found matching the search criteria.
-          </Box>
-        ) : (
-          <TableContainer>
-            <Table sx={{ minWidth: 650 }}>
-              <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-                <TableRow>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
-                  <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredEmployees.map((emp: Employee) => (
-                  <TableRow key={emp.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
-                    <TableCell>
-                      <Box
-                        sx={{
-                          display: 'inline-block',
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                          color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
-                        }}
-                      >
-                        {emp.active_status ? 'Active' : 'Inactive'}
-                      </Box>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="View Profile & Financials">
-                        <IconButton onClick={() => handleOpenProfileDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 0.5 }}>
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Details">
-                        <IconButton onClick={() => handleOpenEditDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      {isHRorAdmin && (
-                        <Tooltip title="Delete Employee">
-                          <IconButton onClick={() => handleDelete(emp.id)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
+          {!selectedConsoleEmp ? (
+            <Paper
+              sx={{
+                p: 6,
+                textAlign: 'center',
+                border: '1px dashed var(--color-border)',
+                background: 'var(--color-surface)',
+                borderRadius: 'var(--radius-card)',
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              <PeopleIcon sx={{ fontSize: 56, color: 'var(--color-text-muted)', mb: 2 }} />
+              <Typography variant="h6" fontFamily="Outfit" fontWeight={600} gutterBottom sx={{ color: 'var(--color-text-primary)' }}>
+                No Employee Selected
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', maxW: '400px', mx: 'auto' }}>
+                Search for an employee using the selector above to manage their global inputs, including attendance, deductions, appraisals, relieving dates, and exceptions.
+              </Typography>
+            </Paper>
+          ) : (
+            <Paper
+              sx={{
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-card)',
+                p: 4,
+              }}
+            >
+              <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 4 }}>
+                <Tabs
+                  value={currentSubTab}
+                  onChange={(_, newValue) => setCurrentSubTab(newValue)}
+                  sx={{
+                    '& .MuiTab-root': {
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      fontFamily: 'Outfit',
+                      fontSize: '1rem',
+                      color: 'var(--color-text-secondary)',
+                      pb: 1.5,
+                      '&.Mui-selected': {
+                        color: 'var(--color-primary-hover)',
+                      },
+                    },
+                    '& .MuiTabs-indicator': {
+                      backgroundColor: 'var(--color-primary)',
+                      height: 3,
+                      borderRadius: '3px 3px 0 0',
+                    },
+                  }}
+                >
+                  <Tab label="1st Tab: Attendance & Monthly Operations" />
+                  <Tab label="2nd Tab: Lifecycle & Joinings/Relieving" />
+                </Tabs>
+              </Box>
+
+              {currentSubTab === 0 ? (
+                /* Sub Tab 1: Operational Adjustments */
+                <Box className="animate-fade-in">
+                  <Grid container spacing={3.5}>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Employee Code"
+                        fullWidth
+                        disabled
+                        value={consoleFormData.employee_code}
+                        sx={inputStyles}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Employee Name"
+                        fullWidth
+                        disabled
+                        value={consoleFormData.name}
+                        sx={inputStyles}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="No Of day Present"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.no_of_days_present}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, no_of_days_present: Number(e.target.value) })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0, max: 31 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Deduction (Absent)"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.deduction_absent}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, deduction_absent: Number(e.target.value) })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Appraisal"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.appraisal}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, appraisal: Number(e.target.value) })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Leave Encashment"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.leave_encashment}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, leave_encashment: Number(e.target.value) })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Late Arrival Deduction (depends on days, not on numbers)"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.late_arrival_deduction}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, late_arrival_deduction: Number(e.target.value) })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Damages Recovery"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.damages_recovery}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, damages_recovery: Number(e.target.value) })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Remarks"
+                        fullWidth
+                        multiline
+                        rows={2}
+                        value={consoleFormData.remarks}
+                        onChange={(e) => setConsoleFormData({ ...consoleFormData, remarks: e.target.value })}
+                        sx={inputStyles}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+              ) : (
+                /* Sub Tab 2: Lifecycle Adjustments */
+                <Box className="animate-fade-in">
+                  <Grid container spacing={3.5}>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Joinings (Joining Date)"
+                        type="date"
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        value={consoleFormData.joining_date}
+                        onChange={(e) => setConsoleFormData({ ...consoleFormData, joining_date: e.target.value })}
+                        sx={inputStyles}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Relieving (Relieving Date)"
+                        type="date"
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        value={consoleFormData.relieving_date || ''}
+                        onChange={(e) => setConsoleFormData({ ...consoleFormData, relieving_date: e.target.value })}
+                        sx={inputStyles}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Other Inputs (Maternity, Career Break, Extra Info, etc.)"
+                        fullWidth
+                        multiline
+                        rows={5}
+                        placeholder="Enter extra information, exceptions, career breaks, etc."
+                        value={consoleFormData.other_inputs}
+                        onChange={(e) => setConsoleFormData({ ...consoleFormData, other_inputs: e.target.value })}
+                        sx={inputStyles}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 5 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleSaveConsoleData}
+                  disabled={saveConsoleMutation.isLoading}
+                  sx={{
+                    background: 'var(--color-primary)',
+                    boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+                    borderRadius: 'var(--radius-control)',
+                    px: 5,
+                    py: 1.4,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    transition: 'all 160ms ease',
+                    '&:hover': {
+                      background: 'var(--color-primary-hover)',
+                      boxShadow: '0 12px 24px rgba(99, 102, 241, 0.28)',
+                      transform: 'translateY(-1px)',
+                    },
+                    '&:active': {
+                      transform: 'translateY(1px)',
+                    },
+                  }}
+                >
+                  {saveConsoleMutation.isLoading ? 'Saving...' : 'Save Inputs Globally'}
+                </Button>
+              </Box>
+            </Paper>
+          )}
+        </Box>
+      )}
 
       {/* Detailed Employee Profile Dialog */}
       <Dialog
@@ -837,220 +1285,366 @@ const Employees: React.FC = () => {
               {/* Left Column: Editable HR & Bank Details */}
               <Grid item xs={12} lg={5}>
                 <Paper sx={{ p: 3, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface-subtle)' }}>
-                  <Typography variant="subtitle1" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
-                    HR & Bank Profile Details
+                  <Typography variant="subtitle1" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+                    HR Profile Details
                   </Typography>
+                  
+                  <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 2.5 }}>
+                    <Tabs
+                      value={profileDialogTab}
+                      onChange={(_, newValue) => setProfileDialogTab(newValue)}
+                      sx={{
+                        '& .MuiTab-root': {
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          fontFamily: 'Outfit',
+                          fontSize: '0.875rem',
+                          color: 'var(--color-text-secondary)',
+                          minWidth: 'auto',
+                          px: 2,
+                          pb: 1,
+                          '&.Mui-selected': {
+                            color: 'var(--color-primary-hover)',
+                          },
+                        },
+                        '& .MuiTabs-indicator': {
+                          backgroundColor: 'var(--color-primary)',
+                        },
+                      }}
+                    >
+                      <Tab label="Profile & Financials" />
+                      <Tab label="Additional Details" />
+                    </Tabs>
+                  </Box>
+
                   <form onSubmit={handleProfileFormSubmit}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Employee Code"
-                          fullWidth
-                          required
-                          disabled={!isHRorAdmin}
-                          value={profileFormData.employee_code}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, employee_code: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Full Name"
-                          fullWidth
-                          required
-                          disabled={!isHRorAdmin}
-                          value={profileFormData.name}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, name: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Email Address"
-                          fullWidth
-                          required
-                          type="email"
-                          disabled={!isHRorAdmin}
-                          value={profileFormData.email}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Phone Number"
-                          fullWidth
-                          disabled={!isHRorAdmin}
-                          value={profileFormData.phone}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-
-                      <Grid item xs={6}>
-                        <Autocomplete
-                          options={DEPARTMENT_OPTIONS}
-                          value={profileFormData.department}
-                          disabled={!isHRorAdmin}
-                          onChange={(_, newValue) => setProfileFormData({ ...profileFormData, department: newValue || '' })}
-                          renderInput={(params) => (
-                            <TextField {...params} label="Department" required sx={inputStyles} />
-                          )}
-                          ListboxProps={{ sx: dropdownListStyles }}
-                        />
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Autocomplete
-                          options={DESIGNATION_OPTIONS}
-                          value={profileFormData.designation}
-                          disabled={!isHRorAdmin}
-                          onChange={(_, newValue) => setProfileFormData({ ...profileFormData, designation: newValue || '' })}
-                          renderInput={(params) => (
-                            <TextField {...params} label="Designation" required sx={inputStyles} />
-                          )}
-                          ListboxProps={{ sx: dropdownListStyles }}
-                        />
-                      </Grid>
-
-                      <Grid item xs={6}>
-                        <TextField
-                          label="Joining Date"
-                          type="date"
-                          fullWidth
-                          required
-                          disabled={!isHRorAdmin}
-                          InputLabelProps={{ shrink: true }}
-                          value={profileFormData.joining_date}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, joining_date: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Autocomplete
-                          options={['new', 'old']}
-                          value={profileFormData.tax_regime}
-                          disabled={!isHRorAdmin}
-                          onChange={(_, newValue) => setProfileFormData({ ...profileFormData, tax_regime: newValue || 'new' })}
-                          renderInput={(params) => (
-                            <TextField {...params} label="Tax Regime" required sx={inputStyles} />
-                          )}
-                          ListboxProps={{ sx: dropdownListStyles }}
-                        />
-                      </Grid>
-
-                      <Grid item xs={12} sm={4}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={profileFormData.active_status}
-                              disabled={!isHRorAdmin}
-                              onChange={(e) => setProfileFormData({ ...profileFormData, active_status: e.target.checked })}
-                              sx={{
-                                '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                              }}
-                            />
-                          }
-                          label="Active Status"
-                          sx={{ color: 'var(--color-text-secondary)' }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={profileFormData.pf_deduction}
-                              disabled={!isHRorAdmin}
-                              onChange={(e) => setProfileFormData({ ...profileFormData, pf_deduction: e.target.checked })}
-                              sx={{
-                                '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                              }}
-                            />
-                          }
-                          label="PF Deduction"
-                          sx={{ color: 'var(--color-text-secondary)' }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={profileFormData.tax_deduction}
-                              disabled={!isHRorAdmin}
-                              onChange={(e) => setProfileFormData({ ...profileFormData, tax_deduction: e.target.checked })}
-                              sx={{
-                                '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                              }}
-                            />
-                          }
-                          label="Tax Deduction"
-                          sx={{ color: 'var(--color-text-secondary)' }}
-                        />
-                      </Grid>
-
-                      <Grid item xs={12}>
-                        <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
-                          BANK ACCOUNT DETAILS
-                        </Typography>
-                        <Divider sx={{ borderColor: 'var(--color-border)', mt: 0.5, mb: 1.5 }} />
-                      </Grid>
-
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Bank Name"
-                          fullWidth
-                          required
-                          disabled={!isHRorAdmin}
-                          value={profileFormData.bank_name}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, bank_name: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Account Number"
-                          fullWidth
-                          required
-                          disabled={!isHRorAdmin}
-                          value={profileFormData.account_number}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, account_number: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="IFSC Code"
-                          fullWidth
-                          required
-                          disabled={!isHRorAdmin}
-                          value={profileFormData.ifsc}
-                          onChange={(e) => setProfileFormData({ ...profileFormData, ifsc: e.target.value })}
-                          sx={inputStyles}
-                        />
-                      </Grid>
-
-                      {isHRorAdmin && (
-                        <Grid item xs={12} sx={{ mt: 1.5 }}>
-                          <Button
-                            type="submit"
-                            variant="contained"
+                    {profileDialogTab === 0 ? (
+                      /* Tab 1: Profile & Financials */
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Employee Code"
                             fullWidth
-                            disabled={updateProfileMutation.isLoading}
-                            sx={{
-                              background: 'var(--color-primary)',
-                              borderRadius: 'var(--radius-control)',
-                              py: 1.2,
-                              textTransform: 'none',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {updateProfileMutation.isLoading ? 'Saving...' : 'Save Profile Changes'}
-                          </Button>
+                            required
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.employee_code}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, employee_code: e.target.value })}
+                            sx={inputStyles}
+                          />
                         </Grid>
-                      )}
-                    </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Full Name"
+                            fullWidth
+                            required
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.name}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, name: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Email Address"
+                            fullWidth
+                            required
+                            type="email"
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.email}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Phone Number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.phone}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Autocomplete
+                            options={DEPARTMENT_OPTIONS}
+                            value={profileFormData.department}
+                            disabled={!isHRorAdmin}
+                            onChange={(_, newValue) => setProfileFormData({ ...profileFormData, department: newValue || '' })}
+                            renderInput={(params) => (
+                              <TextField {...params} label="Department" required sx={inputStyles} />
+                            )}
+                            ListboxProps={{ sx: dropdownListStyles }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Autocomplete
+                            options={DESIGNATION_OPTIONS}
+                            value={profileFormData.designation}
+                            disabled={!isHRorAdmin}
+                            onChange={(_, newValue) => setProfileFormData({ ...profileFormData, designation: newValue || '' })}
+                            renderInput={(params) => (
+                              <TextField {...params} label="Designation" required sx={inputStyles} />
+                            )}
+                            ListboxProps={{ sx: dropdownListStyles }}
+                          />
+                        </Grid>
+                        
+                        {/* Tracker Fields */}
+                        <Grid item xs={6}>
+                          <TextField
+                            label="No Of day Present"
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.no_of_days_present}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, no_of_days_present: Number(e.target.value) })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0, max: 31 }}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            label="Deduction (Absent)"
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.deduction_absent}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, deduction_absent: Number(e.target.value) })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0 }}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            label="Appraisal"
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.appraisal}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, appraisal: Number(e.target.value) })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0 }}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            label="Leave Encashment"
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.leave_encashment}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, leave_encashment: Number(e.target.value) })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0 }}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            label="Late Arrival Ded."
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.late_arrival_deduction}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, late_arrival_deduction: Number(e.target.value) })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0 }}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            label="Damages Recovery"
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.damages_recovery}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, damages_recovery: Number(e.target.value) })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0 }}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            label="Remarks"
+                            fullWidth
+                            multiline
+                            rows={1.5}
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.remarks}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, remarks: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} sm={4}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={profileFormData.active_status}
+                                disabled={!isHRorAdmin}
+                                onChange={(e) => setProfileFormData({ ...profileFormData, active_status: e.target.checked })}
+                                sx={{
+                                  '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                                }}
+                              />
+                            }
+                            label="Active"
+                            sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={profileFormData.pf_deduction}
+                                disabled={!isHRorAdmin}
+                                onChange={(e) => setProfileFormData({ ...profileFormData, pf_deduction: e.target.checked })}
+                                sx={{
+                                  '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                                }}
+                              />
+                            }
+                            label="PF"
+                            sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={profileFormData.tax_deduction}
+                                disabled={!isHRorAdmin}
+                                onChange={(e) => setProfileFormData({ ...profileFormData, tax_deduction: e.target.checked })}
+                                sx={{
+                                  '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                                }}
+                              />
+                            }
+                            label="Tax"
+                            sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
+                          />
+                        </Grid>
+                      </Grid>
+                    ) : (
+                      /* Tab 2: Additional Details */
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Joining Date"
+                            type="date"
+                            fullWidth
+                            required
+                            disabled={!isHRorAdmin}
+                            InputLabelProps={{ shrink: true }}
+                            value={profileFormData.joining_date}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, joining_date: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Relieving Date"
+                            type="date"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            InputLabelProps={{ shrink: true }}
+                            value={profileFormData.relieving_date}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, relieving_date: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Autocomplete
+                            options={['new', 'old']}
+                            value={profileFormData.tax_regime}
+                            disabled={!isHRorAdmin}
+                            onChange={(_, newValue) => setProfileFormData({ ...profileFormData, tax_regime: newValue || 'new' })}
+                            renderInput={(params) => (
+                              <TextField {...params} label="Tax Regime" required sx={inputStyles} />
+                            )}
+                            ListboxProps={{ sx: dropdownListStyles }}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} sx={{ mt: 1 }}>
+                          <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
+                            BANK ACCOUNT DETAILS
+                          </Typography>
+                          <Divider sx={{ borderColor: 'var(--color-border)', mt: 0.5, mb: 1.5 }} />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                          <TextField
+                            label="Bank Name"
+                            fullWidth
+                            required
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.bank_name}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, bank_name: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            label="Account Number"
+                            fullWidth
+                            required
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.account_number}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, account_number: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            label="IFSC Code"
+                            fullWidth
+                            required
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.ifsc}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, ifsc: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                          <TextField
+                            label="Other Inputs (Maternity, Career Break, Extra Info, etc.)"
+                            fullWidth
+                            multiline
+                            rows={3}
+                            disabled={!isHRorAdmin}
+                            placeholder="Enter extra lifecycle details, maternity leave dates, career break periods..."
+                            value={profileFormData.other_inputs}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, other_inputs: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                      </Grid>
+                    )}
+
+                    {isHRorAdmin && (
+                      <Box sx={{ mt: 3 }}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          fullWidth
+                          disabled={updateProfileMutation.isLoading}
+                          sx={{
+                            background: 'var(--color-primary)',
+                            borderRadius: 'var(--radius-control)',
+                            py: 1.2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {updateProfileMutation.isLoading ? 'Saving...' : 'Save Profile Changes'}
+                        </Button>
+                      </Box>
+                    )}
                   </form>
                 </Paper>
               </Grid>

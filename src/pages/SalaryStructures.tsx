@@ -478,17 +478,18 @@ const SalaryStructures: React.FC = () => {
                       sx={{
                         '&:hover': { bgcolor: 'var(--color-row-hover)' },
                         borderColor: 'rgba(255, 255, 255, 0.05)',
+                        transition: 'background-color 140ms ease',
                       }}
                     >
-                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{emp.employee_code}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 700 }}>{emp.employee_code}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.name}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
+                      <TableCell sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, fontFamily: 'Outfit' }}>
                         {current ? formatCurrency(current.ctc) : '—'}
                       </TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{current ? formatCurrency(current.basic_salary) : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{current ? formatCurrency(current.hra) : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{current ? formatCurrency(current.other_allowance) : '—'}</TableCell>
-                      <TableCell sx={{ color: current ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 600 }}>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.basic_salary) : '—'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.hra) : '—'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.other_allowance) : '—'}</TableCell>
+                      <TableCell sx={{ color: current ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 700, fontFamily: 'Outfit' }}>
                         {current ? formatCurrency(current.gross_salary) : '—'}
                       </TableCell>
                       <TableCell align="right">
@@ -497,7 +498,17 @@ const SalaryStructures: React.FC = () => {
                             size="small"
                             startIcon={<HistoryIcon />}
                             onClick={() => handleOpenHistory(emp)}
-                            sx={{ color: 'var(--color-text-secondary)', mr: 1, textTransform: 'none' }}
+                            sx={{ 
+                              color: 'var(--color-text-secondary)', 
+                              mr: 1, 
+                              textTransform: 'none',
+                              borderRadius: '8px',
+                              px: 1.5,
+                              '&:hover': {
+                                bgcolor: 'var(--color-surface-subtle)',
+                                color: 'var(--color-text-primary)'
+                              }
+                            }}
                           >
                             History
                           </Button>
@@ -509,15 +520,24 @@ const SalaryStructures: React.FC = () => {
                             startIcon={<RevisionIcon />}
                             onClick={() => handleOpenRevision(emp)}
                             sx={{
-                              bgcolor: current ? 'rgba(99, 102, 241, 0.15)' : 'var(--color-primary)',
+                              bgcolor: current ? 'rgba(99, 102, 241, 0.08)' : 'var(--color-primary)',
                               color: current ? 'var(--color-primary-hover)' : '#ffffff',
-                              border: current ? '1px solid rgba(99, 102, 241, 0.3)' : 'none',
-                              borderRadius: 'var(--radius-control)',
+                              border: current ? '1px solid rgba(99, 102, 241, 0.25)' : 'none',
+                              borderRadius: '8px',
+                              px: 2,
+                              fontWeight: 700,
                               textTransform: 'none',
+                              boxShadow: current ? 'none' : '0 8px 18px rgba(99, 102, 241, 0.22)',
+                              transition: 'all 160ms ease',
                               '&:hover': {
-                                bgcolor: 'var(--color-primary)',
+                                bgcolor: current ? 'var(--color-primary)' : 'var(--color-primary-hover)',
                                 color: '#ffffff',
+                                boxShadow: '0 12px 24px rgba(99, 102, 241, 0.28)',
+                                transform: 'translateY(-1px)',
                               },
+                              '&:active': {
+                                transform: 'translateY(1px)',
+                              }
                             }}
                           >
                             {current ? 'Revise' : 'Create'}
@@ -756,13 +776,14 @@ const SalaryStructures: React.FC = () => {
                         <Box
                           sx={{
                             display: 'inline-block',
-                            px: 1.2,
-                            py: 0.2,
-                            borderRadius: '4px',
-                            fontSize: '0.7rem',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
                             fontWeight: 700,
-                            bgcolor: hist.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                            bgcolor: hist.is_active ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)',
                             color: hist.is_active ? 'var(--color-success)' : 'var(--color-text-muted)',
+                            border: hist.is_active ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid var(--color-border)',
                           }}
                         >
                           {hist.is_active ? 'Active' : 'Archived'}

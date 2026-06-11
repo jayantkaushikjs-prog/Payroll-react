@@ -49,6 +49,7 @@ import {
   Dns as UtilitiesIcon,
   Public as MarketingIcon,
   HelpOutline as OtherIcon,
+  Shield as PfIcon,
 } from '@mui/icons-material';
 
 interface Expense {
@@ -294,6 +295,7 @@ const Expenses: React.FC = () => {
     switch (cat) {
       case 'rent': return 'Rent';
       case 'salary': return 'Salary';
+      case 'pf': return 'Employer PF';
       case 'utilities': return 'Utilities';
       case 'marketing': return 'Marketing';
       case 'one-time': return 'One-Time';
@@ -303,12 +305,13 @@ const Expenses: React.FC = () => {
 
   const getCategoryChipColor = (cat: string) => {
     switch (cat) {
-      case 'rent': return { color: '#10b981', label: 'Rent' }; // Emerald
-      case 'salary': return { color: '#3b82f6', label: 'Salary' }; // Blue
-      case 'utilities': return { color: '#f59e0b', label: 'Utilities' }; // Amber
-      case 'marketing': return { color: '#8b5cf6', label: 'Marketing' }; // Purple
-      case 'one-time': return { color: '#ef4444', label: 'One-Time' }; // Red
-      default: return { color: '#6b7280', label: 'Other' }; // Grey
+      case 'rent': return { color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)', label: 'Rent' }; // Emerald
+      case 'salary': return { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.25)', label: 'Salary' }; // Blue
+      case 'pf': return { color: '#6366f1', bg: 'rgba(99, 102, 241, 0.08)', border: 'rgba(99, 102, 241, 0.25)', label: 'Employer PF' }; // Indigo
+      case 'utilities': return { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.25)', label: 'Utilities' }; // Amber
+      case 'marketing': return { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.08)', border: 'rgba(139, 92, 246, 0.25)', label: 'Marketing' }; // Purple
+      case 'one-time': return { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.25)', label: 'One-Time' }; // Red
+      default: return { color: '#6b7280', bg: 'rgba(107, 114, 128, 0.08)', border: 'rgba(107, 114, 128, 0.25)', label: 'Other' }; // Grey
     }
   };
 
@@ -316,6 +319,7 @@ const Expenses: React.FC = () => {
     switch (cat) {
       case 'rent': return <RentIcon />;
       case 'salary': return <SalaryIcon />;
+      case 'pf': return <PfIcon />;
       case 'utilities': return <UtilitiesIcon />;
       case 'marketing': return <MarketingIcon />;
       case 'one-time': return <OneTimeIcon />;
@@ -372,9 +376,9 @@ const Expenses: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Grid of 6 KPI Cards */}
+      {/* Grid of KPI Cards */}
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={4} md={2}>
+        <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
             label="Total Month Expenses"
             value={formatCurrency(totalCMExpenses)}
@@ -382,15 +386,7 @@ const Expenses: React.FC = () => {
             color="var(--color-primary)"
           />
         </Grid>
-        <Grid item xs={12} sm={4} md={2}>
-          <MiniKpiCard
-            label="Office Rent"
-            value={formatCurrency(getCMExpensesByCategory('rent'))}
-            icon={<RentIcon />}
-            color="#10b981"
-          />
-        </Grid>
-        <Grid item xs={12} sm={4} md={2}>
+        <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
             label="Employee Salaries"
             value={formatCurrency(getCMExpensesByCategory('salary'))}
@@ -398,7 +394,23 @@ const Expenses: React.FC = () => {
             color="#3b82f6"
           />
         </Grid>
-        <Grid item xs={12} sm={4} md={2}>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Employer PF"
+            value={formatCurrency(getCMExpensesByCategory('pf'))}
+            icon={<PfIcon />}
+            color="#6366f1"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Office Rent"
+            value={formatCurrency(getCMExpensesByCategory('rent'))}
+            icon={<RentIcon />}
+            color="#10b981"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
             label="Utilities & Cloud"
             value={formatCurrency(getCMExpensesByCategory('utilities'))}
@@ -406,7 +418,7 @@ const Expenses: React.FC = () => {
             color="#f59e0b"
           />
         </Grid>
-        <Grid item xs={12} sm={4} md={2}>
+        <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
             label="One-Time Payments"
             value={formatCurrency(getCMExpensesByFrequency('one-time'))}
@@ -414,7 +426,7 @@ const Expenses: React.FC = () => {
             color="#ef4444"
           />
         </Grid>
-        <Grid item xs={12} sm={4} md={2}>
+        <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
             label="Other Expenses"
             value={formatCurrency(getCMExpensesByCategory('other') + getCMExpensesByCategory('marketing'))}
@@ -451,6 +463,7 @@ const Expenses: React.FC = () => {
                 <MenuItem value="all">All Categories</MenuItem>
                 <MenuItem value="rent">Rent</MenuItem>
                 <MenuItem value="salary">Salary</MenuItem>
+                <MenuItem value="pf">Employer PF</MenuItem>
                 <MenuItem value="utilities">Utilities & Cloud</MenuItem>
                 <MenuItem value="marketing">Marketing & Subscriptions</MenuItem>
                 <MenuItem value="one-time">One-Time Equipment</MenuItem>
@@ -532,15 +545,17 @@ const Expenses: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{exp.title}</TableCell>
                       <TableCell>
                         <Chip
-                          icon={React.cloneElement(getCategoryIcon(exp.category), { style: { color: 'white', fontSize: 15 } })}
+                          icon={React.cloneElement(getCategoryIcon(exp.category), { style: { color: chipDetails.color, fontSize: 14 } })}
                           label={chipDetails.label}
                           size="small"
                           sx={{
-                            bgcolor: chipDetails.color,
-                            color: 'white',
+                            bgcolor: chipDetails.bg,
+                            color: chipDetails.color,
+                            border: `1px solid ${chipDetails.border}`,
                             fontWeight: 600,
-                            borderRadius: '6px',
-                            '& .MuiChip-icon': { color: 'white' }
+                            borderRadius: '8px',
+                            px: 0.5,
+                            '& .MuiChip-icon': { color: chipDetails.color }
                           }}
                         />
                       </TableCell>
@@ -548,11 +563,12 @@ const Expenses: React.FC = () => {
                         <Chip
                           label={exp.frequency === 'monthly' ? 'Monthly' : 'One-Time'}
                           size="small"
-                          variant="outlined"
                           sx={{
-                            borderColor: exp.frequency === 'monthly' ? 'var(--color-primary)' : 'var(--color-border)',
+                            bgcolor: exp.frequency === 'monthly' ? 'rgba(99, 102, 241, 0.08)' : 'var(--color-surface-subtle)',
                             color: exp.frequency === 'monthly' ? 'var(--color-primary-hover)' : 'var(--color-text-secondary)',
+                            border: exp.frequency === 'monthly' ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid var(--color-border)',
                             fontWeight: 600,
+                            borderRadius: '8px',
                           }}
                         />
                       </TableCell>
@@ -678,6 +694,7 @@ const Expenses: React.FC = () => {
                   >
                     <MenuItem value="rent">Rent</MenuItem>
                     <MenuItem value="salary">Salary</MenuItem>
+                    <MenuItem value="pf">Employer PF</MenuItem>
                     <MenuItem value="utilities">Utilities & Cloud</MenuItem>
                     <MenuItem value="marketing">Marketing & Subscriptions</MenuItem>
                     <MenuItem value="one-time">One-Time Equipment</MenuItem>
@@ -758,7 +775,7 @@ const Expenses: React.FC = () => {
   );
 };
 
-// Simple reusable KPI card component
+// Reusable KPI card component with vibrant styling and animations
 const MiniKpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string }> = ({
   label,
   value,
@@ -773,24 +790,53 @@ const MiniKpiCard: React.FC<{ label: string; value: string; icon: React.ReactNod
       position: 'relative',
       overflow: 'hidden',
       cursor: 'default',
+      background: `linear-gradient(135deg, var(--color-surface) 60%, ${color}0d 100%)`,
+      border: '1px solid var(--color-border)',
+      borderRadius: '16px',
+      transition: 'all 240ms cubic-bezier(0.16, 1, 0.3, 1)',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
       '&:hover': {
-        borderColor: 'rgba(148, 163, 184, 0.32)',
-        boxShadow: 'var(--shadow-card)',
-        transform: 'translateY(-2px)',
+        borderColor: color,
+        boxShadow: `0 12px 24px -10px ${color}50`,
+        transform: 'translateY(-4px)',
+        background: `linear-gradient(135deg, var(--color-surface) 40%, ${color}1a 100%)`,
+        '& .icon-wrapper': {
+          transform: 'scale(1.1) rotate(6deg)',
+          backgroundColor: color,
+          color: '#ffffff',
+          boxShadow: `0 8px 20px -6px ${color}`,
+        }
       },
     }}
   >
-    <Box sx={{ position: 'absolute', left: 0, top: 0, width: 4, height: '100%', bgcolor: color }} />
+    <Box sx={{ position: 'absolute', left: 0, top: 0, width: 4, height: '100%', bgcolor: color, borderRadius: '4px 0 0 4px' }} />
     <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5 }}>
-      <Box>
-        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.72rem' }}>
           {label}
         </Typography>
-        <Typography variant="h6" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mt: 1, fontFamily: 'Outfit' }}>
+        <Typography variant="h6" sx={{ color: 'var(--color-text-primary)', fontWeight: 800, mt: 0.5, fontFamily: 'Outfit', fontSize: '1.25rem' }}>
           {value}
         </Typography>
       </Box>
-      <Box sx={{ color, display: 'flex', '& svg': { fontSize: '1.6rem' } }}>{icon}</Box>
+      <Box
+        className="icon-wrapper"
+        sx={{
+          color: color,
+          backgroundColor: `${color}15`,
+          p: 1,
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 240ms cubic-bezier(0.16, 1, 0.3, 1)',
+          '& svg': { fontSize: '1.4rem' }
+        }}
+      >
+        {icon}
+      </Box>
     </Box>
   </Paper>
 );
