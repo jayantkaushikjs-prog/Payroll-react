@@ -358,8 +358,20 @@ const Payroll: React.FC = () => {
           {selectedTaxBreakdown?.tax_breakdown_json ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Projected Annual Gross:</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 650 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.grossIncome)}</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>YTD Gross Paid:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.grossPaidYTD || 0)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Projected Future Gross:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650 }}>
+                  {formatCurrency(
+                    Math.max(0, selectedTaxBreakdown.tax_breakdown_json.grossIncome - (selectedTaxBreakdown.tax_breakdown_json.grossPaidYTD || 0))
+                  )}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: 'rgba(255,255,255,0.02)', p: 1, borderRadius: '4px' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Projected Annual Gross:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.grossIncome)}</Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Standard Deduction:</Typography>
@@ -403,11 +415,24 @@ const Payroll: React.FC = () => {
               </Box>
               <Divider sx={{ borderColor: 'var(--color-border)' }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="subtitle1" sx={{ color: 'var(--color-warning)', fontWeight: 700 }}>Total Annual Tax Liability:</Typography>
-                <Typography variant="subtitle1" sx={{ color: 'var(--color-warning)', fontWeight: 700 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.finalTax)}</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Total Annual Tax Liability:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650, color: 'var(--color-warning)' }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.finalTax)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Less: YTD Tax Paid:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650, color: 'var(--color-success)' }}>-{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.taxPaidYTD || 0)}</Typography>
+              </Box>
+              <Divider sx={{ borderColor: 'var(--color-border)' }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>Remaining Annual Tax:</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--color-warning)' }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.remainingAnnualTax ?? selectedTaxBreakdown.tax_breakdown_json.finalTax)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Remaining Payroll Months:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650 }}>{selectedTaxBreakdown.tax_breakdown_json.remainingMonths ?? 12}</Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: 'rgba(99, 102, 241, 0.04)', p: 2, borderRadius: 'var(--radius-control)', border: '1px dashed rgba(99, 102, 241, 0.2)' }}>
-                <Typography variant="body1" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700 }}>Monthly TDS (Annual Tax / 12):</Typography>
+                <Typography variant="body1" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700 }}>Monthly TDS (Remaining Tax / Months):</Typography>
                 <Typography variant="body1" sx={{ color: 'var(--color-primary-hover)', fontWeight: 750 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.monthlyTDS)}</Typography>
               </Box>
             </Box>

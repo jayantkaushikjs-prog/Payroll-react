@@ -161,6 +161,7 @@ const Employees: React.FC = () => {
   // States for Detailed Employee Profile Tab
   const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
   const [profileYear, setProfileYear] = useState<number>(new Date().getFullYear());
+  const [profileViewMode, setProfileViewMode] = useState<'annual' | 'monthly'>('annual');
   const [profileFormData, setProfileFormData] = useState({
     employee_code: '',
     name: '',
@@ -1650,68 +1651,226 @@ const Employees: React.FC = () => {
                     <Typography sx={{ color: 'var(--color-text-secondary)' }}>No summary details available for this year.</Typography>
                   </Paper>
                 ) : (
-                  <Grid container spacing={3}>
-                    {/* Top Stats */}
-                    <Grid item xs={12} sm={6}>
-                      <Paper sx={{ p: 2.5, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>TOTAL AMOUNT PAID (YTD)</Typography>
-                          <Tooltip title={`Breakdown: Net Salary Paid YTD (${formatCurrency(profileSummary.amountPaid)}) with parallel deductions of PF (${formatCurrency(profileSummary.pfDeducted)}) and Tax (${formatCurrency(profileSummary.taxDeducted)})`} arrow>
-                            <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-success)' }}>
-                              <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                        <Typography variant="h4" sx={{ color: 'var(--color-success)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
-                          {formatCurrency(profileSummary.amountPaid)}
-                        </Typography>
-                      </Paper>
-                    </Grid>
+                  <Box>
+                    {/* View Mode Switcher Header */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                      <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>
+                        Financial Summary ({profileYear})
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
+                        <Button
+                          size="small"
+                          onClick={() => setProfileViewMode('annual')}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: 2,
+                            py: 0.4,
+                            borderRadius: 'calc(var(--radius-control) - 2px)',
+                            color: profileViewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)',
+                            background: profileViewMode === 'annual' ? 'var(--color-primary)' : 'transparent',
+                            '&:hover': {
+                              background: profileViewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
+                            }
+                          }}
+                        >
+                          Annual
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => setProfileViewMode('monthly')}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: 2,
+                            py: 0.4,
+                            borderRadius: 'calc(var(--radius-control) - 2px)',
+                            color: profileViewMode === 'monthly' ? '#fff' : 'var(--color-text-secondary)',
+                            background: profileViewMode === 'monthly' ? 'var(--color-primary)' : 'transparent',
+                            '&:hover': {
+                              background: profileViewMode === 'monthly' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
+                            }
+                          }}
+                        >
+                          Monthly
+                        </Button>
+                      </Box>
+                    </Box>
 
-                    <Grid item xs={12} sm={6}>
-                      <Paper sx={{ p: 2.5, background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-control)' }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>ESTIMATED TO BE PAID (REMAINING)</Typography>
-                          <Tooltip title={`Breakdown: Estimated remaining Net Salary (${formatCurrency(profileSummary.amountToBePaid)}) with projected remaining deductions of PF (${formatCurrency(profileSummary.expectedPFRemaining)}) and Tax (${formatCurrency(profileSummary.expectedTaxRemaining)})`} arrow>
-                            <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-primary-hover)' }}>
-                              <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                        <Typography variant="h4" sx={{ color: 'var(--color-primary-hover)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
-                          {formatCurrency(profileSummary.amountToBePaid)}
-                        </Typography>
-                      </Paper>
-                    </Grid>
+                    <Grid container spacing={3}>
+                      {/* Top Stats */}
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2.5, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>
+                              {profileViewMode === 'annual' ? 'TOTAL AMOUNT PAID (YTD)' : 'AVG MONTHLY NET PAID (YTD)'}
+                            </Typography>
+                            <Tooltip title={`Breakdown: Net Salary Paid YTD (${formatCurrency(profileSummary.amountPaid)}) with parallel deductions of PF (${formatCurrency(profileSummary.pfDeducted)}) and Tax (${formatCurrency(profileSummary.taxDeducted)})`} arrow>
+                              <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-success)' }}>
+                                <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                          <Typography variant="h4" sx={{ color: 'var(--color-success)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
+                            {profileViewMode === 'annual'
+                              ? formatCurrency(profileSummary.amountPaid)
+                              : formatCurrency(Number((profileSummary.amountPaid / (profileSummary.paidMonthsCount || 1)).toFixed(2)))}
+                          </Typography>
+                        </Paper>
+                      </Grid>
 
-                    {/* PF & Tax Summaries */}
-                    <Grid item xs={12} sm={6}>
-                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
-                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>PROVIDENT FUND (PF)</Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
-                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>PF Deducted (YTD):</Typography>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.pfDeducted)}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Est. PF Remaining:</Typography>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.expectedPFRemaining)}</Typography>
-                        </Box>
-                      </Paper>
-                    </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2.5, background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-control)' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
+                              {profileViewMode === 'annual' ? 'ESTIMATED TO BE PAID (REMAINING)' : 'ESTIMATED MONTHLY PAYOUT'}
+                            </Typography>
+                            <Tooltip title={`Breakdown: Estimated remaining Net Salary (${formatCurrency(profileSummary.amountToBePaid)}) with projected remaining deductions of PF (${formatCurrency(profileSummary.expectedPFRemaining)}) and Tax (${formatCurrency(profileSummary.expectedTaxRemaining)})`} arrow>
+                              <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-primary-hover)' }}>
+                                <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                          <Typography variant="h4" sx={{ color: 'var(--color-primary-hover)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
+                            {profileViewMode === 'annual'
+                              ? formatCurrency(profileSummary.amountToBePaid)
+                              : formatCurrency(Number((profileSummary.amountToBePaid / (profileSummary.remainingMonthsCount || 12)).toFixed(2)))}
+                          </Typography>
+                        </Paper>
+                      </Grid>
 
-                    <Grid item xs={12} sm={6}>
-                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
-                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>INCOME TAX (TDS)</Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
-                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Tax Deducted (YTD):</Typography>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.taxDeducted)}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Est. Tax Remaining:</Typography>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(profileSummary.expectedTaxRemaining)}</Typography>
-                        </Box>
-                      </Paper>
-                    </Grid>
+                      {/* PF & Tax Summaries */}
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
+                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>PROVIDENT FUND (PF)</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
+                            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                              {profileViewMode === 'annual' ? 'PF Deducted (YTD):' : 'Avg. PF / Month (Paid):'}
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
+                              {profileViewMode === 'annual'
+                                ? formatCurrency(profileSummary.pfDeducted)
+                                : formatCurrency(Number((profileSummary.pfDeducted / (profileSummary.paidMonthsCount || 1)).toFixed(2)))}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                              {profileViewMode === 'annual' ? 'Est. PF Remaining:' : 'Est. PF / Month (Rem):'}
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
+                              {profileViewMode === 'annual'
+                                ? formatCurrency(profileSummary.expectedPFRemaining)
+                                : formatCurrency(Number((profileSummary.expectedPFRemaining / (profileSummary.remainingMonthsCount || 12)).toFixed(2)))}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12} sm={6}>
+                        <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
+                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>INCOME TAX (TDS)</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
+                            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                              {profileViewMode === 'annual' ? 'Tax Deducted (YTD):' : 'Avg. TDS / Month (Paid):'}
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
+                              {profileViewMode === 'annual'
+                                ? formatCurrency(profileSummary.taxDeducted)
+                                : formatCurrency(Number((profileSummary.taxDeducted / (profileSummary.paidMonthsCount || 1)).toFixed(2)))}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                              {profileViewMode === 'annual' ? 'Est. Tax Remaining:' : 'Est. TDS / Month (Rem):'}
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
+                              {profileViewMode === 'annual'
+                                ? formatCurrency(profileSummary.expectedTaxRemaining)
+                                : formatCurrency(Number((profileSummary.expectedTaxRemaining / (profileSummary.remainingMonthsCount || 12)).toFixed(2)))}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      </Grid>
+
+                      {/* Active Salary Structure Breakdown */}
+                      {profileSummary.structure ? (
+                        <Grid item xs={12}>
+                          <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
+                            <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              ACTIVE SALARY BREAKDOWN ({profileViewMode === 'annual' ? 'ANNUAL VIEW' : 'MONTHLY VIEW'})
+                            </Typography>
+                            
+                            <Grid container spacing={2} sx={{ mt: 1.5 }}>
+                              <Grid item xs={6} sm={3}>
+                                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>CTC</Typography>
+                                <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-primary-hover)', mt: 0.5 }}>
+                                  {profileViewMode === 'annual'
+                                    ? formatCurrency(profileSummary.structure.ctc * 12)
+                                    : formatCurrency(profileSummary.structure.ctc)}
+                                </Typography>
+                              </Grid>
+
+                              <Grid item xs={6} sm={3}>
+                                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Gross Salary</Typography>
+                                <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                                  {profileViewMode === 'annual'
+                                    ? formatCurrency(profileSummary.structure.gross_salary * 12)
+                                    : formatCurrency(profileSummary.structure.gross_salary)}
+                                </Typography>
+                              </Grid>
+
+                              <Grid item xs={6} sm={3}>
+                                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Basic Salary</Typography>
+                                <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                                  {profileViewMode === 'annual'
+                                    ? formatCurrency(profileSummary.structure.basic_salary * 12)
+                                    : formatCurrency(profileSummary.structure.basic_salary)}
+                                </Typography>
+                              </Grid>
+
+                              <Grid item xs={6} sm={3}>
+                                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>HRA</Typography>
+                                <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                                  {profileViewMode === 'annual'
+                                    ? formatCurrency(profileSummary.structure.hra * 12)
+                                    : formatCurrency(profileSummary.structure.hra)}
+                                </Typography>
+                              </Grid>
+
+                              <Grid item xs={6} sm={3}>
+                                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer PF</Typography>
+                                <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                                  {profileViewMode === 'annual'
+                                    ? formatCurrency((profileSummary.structure.ctc - profileSummary.structure.gross_salary) * 12)
+                                    : formatCurrency(profileSummary.structure.ctc - profileSummary.structure.gross_salary)}
+                                </Typography>
+                              </Grid>
+
+                              {profileSummary.structure.special_allowance > 0 && (
+                                <Grid item xs={6} sm={3}>
+                                  <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Special Allowance</Typography>
+                                  <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                                    {profileViewMode === 'annual'
+                                      ? formatCurrency(profileSummary.structure.special_allowance * 12)
+                                      : formatCurrency(profileSummary.structure.special_allowance)}
+                                  </Typography>
+                                </Grid>
+                              )}
+
+                              {profileSummary.structure.other_allowance > 0 && (
+                                <Grid item xs={6} sm={3}>
+                                  <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Other Allowance</Typography>
+                                  <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                                    {profileViewMode === 'annual'
+                                      ? formatCurrency(profileSummary.structure.other_allowance * 12)
+                                      : formatCurrency(profileSummary.structure.other_allowance)}
+                                  </Typography>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Paper>
+                        </Grid>
+                      ) : null}
 
                     {/* Advances loan summary */}
                     <Grid item xs={12}>
@@ -1765,7 +1924,8 @@ const Employees: React.FC = () => {
                       </Paper>
                     </Grid>
                   </Grid>
-                )}
+                </Box>
+              )}
               </Grid>
             </Grid>
           )}

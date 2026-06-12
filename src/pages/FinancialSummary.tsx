@@ -71,6 +71,7 @@ const FinancialSummary: React.FC = () => {
   const { showToast } = useToast();
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
   const [financialYear, setFinancialYear] = useState<number>(new Date().getFullYear());
+  const [viewMode, setViewMode] = useState<'annual' | 'monthly'>('annual');
 
   // Fetch all employees for selection
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery(
@@ -201,6 +202,45 @@ const FinancialSummary: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
+          <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)', height: '42px', alignItems: 'center' }}>
+            <Button
+              size="small"
+              onClick={() => setViewMode('annual')}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 2,
+                py: 0.4,
+                borderRadius: 'calc(var(--radius-control) - 2px)',
+                color: viewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)',
+                background: viewMode === 'annual' ? 'var(--color-primary)' : 'transparent',
+                '&:hover': {
+                  background: viewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
+                }
+              }}
+            >
+              Annual
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setViewMode('monthly')}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 2,
+                py: 0.4,
+                borderRadius: 'calc(var(--radius-control) - 2px)',
+                color: viewMode === 'monthly' ? '#fff' : 'var(--color-text-secondary)',
+                background: viewMode === 'monthly' ? 'var(--color-primary)' : 'transparent',
+                '&:hover': {
+                  background: viewMode === 'monthly' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
+                }
+              }}
+            >
+              Monthly
+            </Button>
+          </Box>
         </Box>
       </Box>
 
@@ -228,10 +268,12 @@ const FinancialSummary: React.FC = () => {
               }}
             >
               <Typography variant="caption" sx={{ color: 'var(--color-success)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                TOTAL NET AMOUNT PAID (YTD)
+                {viewMode === 'annual' ? 'TOTAL NET AMOUNT PAID (YTD)' : 'AVG MONTHLY NET PAID (YTD)'}
               </Typography>
               <Typography variant="h3" sx={{ color: 'var(--color-success)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1.5 }}>
-                {formatCurrency(summary.amountPaid)}
+                {viewMode === 'annual'
+                  ? formatCurrency(summary.amountPaid)
+                  : formatCurrency(Number((summary.amountPaid / (summary.paidMonthsCount || 1)).toFixed(2)))}
               </Typography>
               <Typography variant="caption" sx={{ display: 'block', color: 'var(--color-text-secondary)', mt: 1 }}>
                 Calculated from all disbursed payroll structures for {financialYear}.
@@ -250,10 +292,12 @@ const FinancialSummary: React.FC = () => {
               }}
             >
               <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                ESTIMATED NET TO BE PAID (REMAINING)
+                {viewMode === 'annual' ? 'ESTIMATED NET TO BE PAID (REMAINING)' : 'ESTIMATED MONTHLY PAYOUT'}
               </Typography>
               <Typography variant="h3" sx={{ color: 'var(--color-primary-hover)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1.5 }}>
-                {formatCurrency(summary.amountToBePaid)}
+                {viewMode === 'annual'
+                  ? formatCurrency(summary.amountToBePaid)
+                  : formatCurrency(Number((summary.amountToBePaid / (summary.remainingMonthsCount || 12)).toFixed(2)))}
               </Typography>
               <Typography variant="caption" sx={{ display: 'block', color: 'var(--color-text-secondary)', mt: 1 }}>
                 Projected using current salary structure config for active months remaining.
@@ -268,22 +312,34 @@ const FinancialSummary: React.FC = () => {
                 Provident Fund (PF) Overview
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>PF Deducted (YTD):</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  {viewMode === 'annual' ? 'PF Deducted (YTD):' : 'Avg. PF / Month (Paid):'}
+                </Typography>
                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
-                  {formatCurrency(summary.pfDeducted)}
+                  {viewMode === 'annual'
+                    ? formatCurrency(summary.pfDeducted)
+                    : formatCurrency(Number((summary.pfDeducted / (summary.paidMonthsCount || 1)).toFixed(2)))}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Estimated PF Remaining:</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  {viewMode === 'annual' ? 'Estimated PF Remaining:' : 'Est. PF / Month (Rem):'}
+                </Typography>
                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
-                  {formatCurrency(summary.expectedPFRemaining)}
+                  {viewMode === 'annual'
+                    ? formatCurrency(summary.expectedPFRemaining)
+                    : formatCurrency(Number((summary.expectedPFRemaining / (summary.remainingMonthsCount || 12)).toFixed(2)))}
                 </Typography>
               </Box>
               <Divider sx={{ my: 1.5, borderColor: 'var(--color-border)' }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>Total PF contribution (Projected):</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                  {viewMode === 'annual' ? 'Total PF contribution (Projected):' : 'Avg. PF / Month (Annualized):'}
+                </Typography>
                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-accent)' }}>
-                  {formatCurrency(summary.pfDeducted + summary.expectedPFRemaining)}
+                  {viewMode === 'annual'
+                    ? formatCurrency(summary.pfDeducted + summary.expectedPFRemaining)
+                    : formatCurrency(Number(((summary.pfDeducted + summary.expectedPFRemaining) / 12).toFixed(2)))}
                 </Typography>
               </Box>
             </Paper>
@@ -295,26 +351,118 @@ const FinancialSummary: React.FC = () => {
                 Income Tax (TDS) Overview
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Tax Deducted (YTD):</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  {viewMode === 'annual' ? 'Tax Deducted (YTD):' : 'Avg. TDS / Month (Paid):'}
+                </Typography>
                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
-                  {formatCurrency(summary.taxDeducted)}
+                  {viewMode === 'annual'
+                    ? formatCurrency(summary.taxDeducted)
+                    : formatCurrency(Number((summary.taxDeducted / (summary.paidMonthsCount || 1)).toFixed(2)))}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Estimated Tax Remaining:</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  {viewMode === 'annual' ? 'Estimated Tax Remaining:' : 'Est. TDS / Month (Rem):'}
+                </Typography>
                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
-                  {formatCurrency(summary.expectedTaxRemaining)}
+                  {viewMode === 'annual'
+                    ? formatCurrency(summary.expectedTaxRemaining)
+                    : formatCurrency(Number((summary.expectedTaxRemaining / (summary.remainingMonthsCount || 12)).toFixed(2)))}
                 </Typography>
               </Box>
               <Divider sx={{ my: 1.5, borderColor: 'var(--color-border)' }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>Total TDS contribution (Projected):</Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                  {viewMode === 'annual' ? 'Total TDS contribution (Projected):' : 'Avg. TDS / Month (Annualized):'}
+                </Typography>
                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-warning)' }}>
-                  {formatCurrency(summary.taxDeducted + summary.expectedTaxRemaining)}
+                  {viewMode === 'annual'
+                    ? formatCurrency(summary.taxDeducted + summary.expectedTaxRemaining)
+                    : formatCurrency(Number(((summary.taxDeducted + summary.expectedTaxRemaining) / 12).toFixed(2)))}
                 </Typography>
               </Box>
             </Paper>
           </Grid>
+
+          {/* Active Salary Structure Breakdown */}
+          {summary.structure ? (
+            <Grid item xs={12}>
+              <Paper sx={{ ...cardSx, p: 3 }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, mb: 2.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  ACTIVE SALARY BREAKDOWN ({viewMode === 'annual' ? 'ANNUAL VIEW' : 'MONTHLY VIEW'})
+                </Typography>
+                
+                <Grid container spacing={3}>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>CTC</Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-primary-hover)', mt: 0.5 }}>
+                      {viewMode === 'annual'
+                        ? formatCurrency(summary.structure.ctc * 12)
+                        : formatCurrency(summary.structure.ctc)}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Gross Salary</Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                      {viewMode === 'annual'
+                        ? formatCurrency(summary.structure.gross_salary * 12)
+                        : formatCurrency(summary.structure.gross_salary)}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Basic Salary</Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                      {viewMode === 'annual'
+                        ? formatCurrency(summary.structure.basic_salary * 12)
+                        : formatCurrency(summary.structure.basic_salary)}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>HRA</Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                      {viewMode === 'annual'
+                        ? formatCurrency(summary.structure.hra * 12)
+                        : formatCurrency(summary.structure.hra)}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer PF</Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                      {viewMode === 'annual'
+                        ? formatCurrency((summary.structure.ctc - summary.structure.gross_salary) * 12)
+                        : formatCurrency(summary.structure.ctc - summary.structure.gross_salary)}
+                    </Typography>
+                  </Grid>
+
+                  {summary.structure.special_allowance > 0 && (
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Special Allowance</Typography>
+                      <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                        {viewMode === 'annual'
+                          ? formatCurrency(summary.structure.special_allowance * 12)
+                          : formatCurrency(summary.structure.special_allowance)}
+                      </Typography>
+                    </Grid>
+                  )}
+
+                  {summary.structure.other_allowance > 0 && (
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Other Allowance</Typography>
+                      <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                        {viewMode === 'annual'
+                          ? formatCurrency(summary.structure.other_allowance * 12)
+                          : formatCurrency(summary.structure.other_allowance)}
+                      </Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </Paper>
+            </Grid>
+          ) : null}
 
           {/* Salary advances */}
           <Grid item xs={12}>

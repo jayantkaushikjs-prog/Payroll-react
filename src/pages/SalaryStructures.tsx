@@ -26,6 +26,10 @@ import {
   CircularProgress,
   Tooltip,
   IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -76,6 +80,7 @@ const SalaryStructures: React.FC = () => {
   // Form State
   const [formData, setFormData] = useState({
     ctc: 0,
+    ctc_type: 'monthly',
     basic_percent: 50,
     hra_percent: 40,
     effective_from: '',
@@ -190,6 +195,7 @@ const SalaryStructures: React.FC = () => {
 
     setFormData({
       ctc: current ? Number(current.ctc) : 0,
+      ctc_type: 'monthly',
       basic_percent,
       hra_percent,
       effective_from: new Date().toISOString().split('T')[0],
@@ -238,9 +244,11 @@ const SalaryStructures: React.FC = () => {
       return;
     }
 
+    const submittedCtc = formData.ctc_type === 'annual' ? Number(formData.ctc) / 12 : Number(formData.ctc);
+
     revisionMutation.mutate({
       employee_id: selectedEmp.id,
-      ctc: Number(formData.ctc),
+      ctc: Number(submittedCtc.toFixed(2)),
       basic_percent: Number(formData.basic_percent),
       hra_percent: Number(formData.hra_percent),
       effective_from: formData.effective_from,
@@ -315,7 +323,10 @@ const SalaryStructures: React.FC = () => {
 
   // Dynamic calculations for preview
   const calculations = useMemo(() => {
-    const ctc = Number(formData.ctc) || 0;
+    let ctc = Number(formData.ctc) || 0;
+    if (formData.ctc_type === 'annual') {
+      ctc = ctc / 12;
+    }
     const basicRatio = (Number(formData.basic_percent) || 50) / 100;
     const hraRatio = (Number(formData.hra_percent) || 40) / 100;
 
@@ -597,8 +608,23 @@ const SalaryStructures: React.FC = () => {
           <DialogContent sx={{ py: 3 }}>
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
+                <FormControl fullWidth sx={inputStyles}>
+                  <InputLabel id="ctc-type-label">CTC Period</InputLabel>
+                  <Select
+                    labelId="ctc-type-label"
+                    id="ctc-type-select"
+                    value={formData.ctc_type || 'monthly'}
+                    label="CTC Period"
+                    onChange={(e) => setFormData({ ...formData, ctc_type: e.target.value as string })}
+                  >
+                    <MenuItem value="monthly">Monthly CTC</MenuItem>
+                    <MenuItem value="annual">Annual CTC</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Monthly CTC (Cost to Company)"
+                  label={formData.ctc_type === 'annual' ? "Annual CTC Amount" : "Monthly CTC Amount"}
                   type="number"
                   fullWidth
                   required
