@@ -8,7 +8,7 @@ import {
   TableHead, TableRow, Grid, Select, MenuItem, FormControl, InputLabel,
   CircularProgress, Chip,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
-  Tooltip, IconButton,
+  Tooltip, IconButton, Divider,
 } from '@mui/material';
 import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon, Payments as DisburseIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
 import { useToast } from '../context/ToastContext';
@@ -36,6 +36,8 @@ const Payroll: React.FC = () => {
   const [mo, setMo] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
   const [disburseOpen, setDisburseOpen] = useState(false);
+  const [selectedTaxBreakdown, setSelectedTaxBreakdown] = useState<any>(null);
+  
   const canEdit = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const { data: payrolls = [], isLoading } = useQuery(['payroll', mo, yr], async () => {
@@ -289,7 +291,20 @@ const Payroll: React.FC = () => {
                   </TableCell>
                   <TableCell align="right" sx={{ color: pr.non_payable_deduction > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{pr.non_payable_deduction > 0 ? `-${formatCurrency(pr.non_payable_deduction)}` : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{formatCurrency(pr.pf_deduction)}</TableCell>
-                  <TableCell align="right" sx={{ color: 'var(--color-warning)' }}>{formatCurrency(pr.tax_deduction)}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-warning)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {formatCurrency(pr.tax_deduction)}
+                      <Tooltip title="Click to view complete Income Tax calculation breakdown" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => setSelectedTaxBreakdown(pr)}
+                          sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}
+                        >
+                          <HelpOutlineIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
                   <TableCell align="right" sx={{ color: pr.advance_recovery > 0 ? '#fb923c' : 'var(--color-text-muted)' }}>{pr.advance_recovery > 0 ? formatCurrency(pr.advance_recovery) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-success)', fontWeight: 700 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -320,7 +335,92 @@ const Payroll: React.FC = () => {
         </TableContainer>
       </Paper>
 
+      {/* Tax Breakdown Dialog */}
+      <Dialog
+        open={!!selectedTaxBreakdown}
+        onClose={() => setSelectedTaxBreakdown(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            color: 'var(--color-text-primary)',
+            p: 1,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 'bold', borderBottom: '1px solid var(--color-border)', pb: 2 }}>
+          Income Tax Breakdown - {selectedTaxBreakdown?.employee?.name}
+        </DialogTitle>
+        <DialogContent sx={{ mt: 3 }}>
+          {selectedTaxBreakdown?.tax_breakdown_json ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Projected Annual Gross:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.grossIncome)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Standard Deduction:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650, color: 'var(--color-error)' }}>-{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.standardDeduction)}</Typography>
+              </Box>
+              <Divider sx={{ borderColor: 'var(--color-border)' }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 650 }}>Taxable Income (A):</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 750, color: 'var(--color-primary-hover)' }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.taxableIncome)}</Typography>
+              </Box>
+              
+              <Typography variant="subtitle2" sx={{ mt: 1, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Progressive Slab-wise Tax (B):</Typography>
+              <Box sx={{ bgcolor: 'var(--color-surface-subtle)', p: 2, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
+                {selectedTaxBreakdown.tax_breakdown_json.slabs.map((slab: any, idx: number) => (
+                  <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, '&:last-child': { mb: 0 } }}>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                      {slab.rate}% Slab ({formatCurrency(slab.from)} - {slab.to ? formatCurrency(slab.to) : 'Above'}):
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: slab.taxAmount > 0 ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>
+                      {formatCurrency(slab.taxAmount)}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
 
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Base Progressive Tax:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.baseTax)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Section 87A Rebate:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650, color: 'var(--color-success)' }}>-{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.rebate)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Surcharge (High Income):</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.surcharge)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>Health & Education Cess (4%):</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 650 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.cess)}</Typography>
+              </Box>
+              <Divider sx={{ borderColor: 'var(--color-border)' }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="subtitle1" sx={{ color: 'var(--color-warning)', fontWeight: 700 }}>Total Annual Tax Liability:</Typography>
+                <Typography variant="subtitle1" sx={{ color: 'var(--color-warning)', fontWeight: 700 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.finalTax)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: 'rgba(99, 102, 241, 0.04)', p: 2, borderRadius: 'var(--radius-control)', border: '1px dashed rgba(99, 102, 241, 0.2)' }}>
+                <Typography variant="body1" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700 }}>Monthly TDS (Annual Tax / 12):</Typography>
+                <Typography variant="body1" sx={{ color: 'var(--color-primary-hover)', fontWeight: 750 }}>{formatCurrency(selectedTaxBreakdown.tax_breakdown_json.monthlyTDS)}</Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>No detailed tax breakdown is available for this payroll record.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, borderTop: '1px solid var(--color-border)' }}>
+          <Button onClick={() => setSelectedTaxBreakdown(null)} variant="outlined" sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={disburseOpen}
