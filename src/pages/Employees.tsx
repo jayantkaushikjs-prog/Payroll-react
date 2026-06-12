@@ -130,7 +130,20 @@ const Employees: React.FC = () => {
   const [currentMainTab, setCurrentMainTab] = useState(0);
   const [currentSubTab, setCurrentSubTab] = useState(0);
   const [selectedConsoleEmp, setSelectedConsoleEmp] = useState<Employee | null>(null);
-  const [consoleFormData, setConsoleFormData] = useState({
+  const [consoleFormData, setConsoleFormData] = useState<{
+    employee_code: string;
+    name: string;
+    no_of_days_present: number;
+    deduction_absent: string | number;
+    appraisal: string | number;
+    leave_encashment: string | number;
+    late_arrival_deduction: string | number;
+    damages_recovery: string | number;
+    remarks: string;
+    joining_date: string;
+    relieving_date: string;
+    other_inputs: string;
+  }>({
     employee_code: '',
     name: '',
     no_of_days_present: 30,
@@ -162,7 +175,31 @@ const Employees: React.FC = () => {
   const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
   const [profileYear, setProfileYear] = useState<number>(new Date().getFullYear());
   const [profileViewMode, setProfileViewMode] = useState<'annual' | 'monthly'>('annual');
-  const [profileFormData, setProfileFormData] = useState({
+  const [profileFormData, setProfileFormData] = useState<{
+    employee_code: string;
+    name: string;
+    email: string;
+    phone: string;
+    department: string;
+    designation: string;
+    joining_date: string;
+    bank_name: string;
+    account_number: string;
+    ifsc: string;
+    tax_regime: string;
+    active_status: boolean;
+    pf_deduction: boolean;
+    tax_deduction: boolean;
+    relieving_date: string;
+    other_inputs: string;
+    no_of_days_present: number;
+    deduction_absent: string | number;
+    appraisal: string | number;
+    leave_encashment: string | number;
+    late_arrival_deduction: string | number;
+    damages_recovery: string | number;
+    remarks: string;
+  }>({
     employee_code: '',
     name: '',
     email: '',

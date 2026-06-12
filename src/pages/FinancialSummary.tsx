@@ -15,6 +15,7 @@ import {
   InputLabel,
   CircularProgress,
   Divider,
+  Button,
 } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -49,6 +50,16 @@ interface FinancialSummaryData {
   totalAdvancesTaken: number;
   totalAdvancesRepaid: number;
   remainingAdvanceBalance: number;
+  paidMonthsCount?: number;
+  remainingMonthsCount?: number;
+  structure?: {
+    ctc: number;
+    gross_salary: number;
+    basic_salary: number;
+    hra: number;
+    special_allowance: number;
+    other_allowance: number;
+  };
 }
 
 const cardSx = {
