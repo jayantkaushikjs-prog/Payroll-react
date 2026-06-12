@@ -51,17 +51,6 @@ const Signup: React.FC = () => {
     }
   };
 
-  const selectStyle = {
-    '& .MuiOutlinedInput-root': {
-      color: 'var(--color-text-primary)',
-      '& fieldset': { borderColor: 'var(--color-border)' },
-      '&:hover fieldset': { borderColor: 'var(--color-border-strong)' },
-      '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-    },
-    '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
-    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
-  };
-
   return (
     <Box
       sx={{
@@ -136,7 +125,6 @@ const Signup: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              sx={selectStyle}
             />
             <TextField
               label="Password"
@@ -147,10 +135,9 @@ const Signup: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
-              sx={selectStyle}
             />
 
-            <FormControl fullWidth margin="normal" sx={selectStyle}>
+            <FormControl fullWidth margin="normal">
               <InputLabel id="role-select-label">Select Role</InputLabel>
               <Select
                 labelId="role-select-label"

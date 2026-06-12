@@ -1557,18 +1557,7 @@ const Employees: React.FC = () => {
                             sx={inputStyles}
                           />
                         </Grid>
-                        <Grid item xs={12}>
-                          <Autocomplete
-                            options={['new', 'old']}
-                            value={profileFormData.tax_regime}
-                            disabled={!isHRorAdmin}
-                            onChange={(_, newValue) => setProfileFormData({ ...profileFormData, tax_regime: newValue || 'new' })}
-                            renderInput={(params) => (
-                              <TextField {...params} label="Tax Regime" required sx={inputStyles} />
-                            )}
-                            ListboxProps={{ sx: dropdownListStyles }}
-                          />
-                        </Grid>
+
                         
                         <Grid item xs={12} sx={{ mt: 1 }}>
                           <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
@@ -1901,7 +1890,7 @@ const Employees: React.FC = () => {
                     ListboxProps={{ sx: dropdownListStyles }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     label="Joining Date"
                     type="date"
@@ -1915,27 +1904,7 @@ const Employees: React.FC = () => {
                     sx={inputStyles}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Autocomplete
-                    options={['new', 'old']}
-                    getOptionLabel={(option) => option === 'new' ? 'New Tax Regime' : 'Old Tax Regime'}
-                    value={formData.tax_regime || 'new'}
-                    onChange={(_, value) => {
-                      setFormData({ ...formData, tax_regime: value || 'new' });
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Tax Regime"
-                        fullWidth
-                        required
-                        sx={inputStyles}
-                      />
-                    )}
-                    ListboxProps={{ sx: dropdownListStyles }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6}>
                   <FormControlLabel
                     control={
 	                      <Switch

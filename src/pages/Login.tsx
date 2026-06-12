@@ -15,14 +15,7 @@ import {
   Link,
 } from '@mui/material';
 import { LockOutlined as LockIcon, Visibility, VisibilityOff } from '@mui/icons-material';
-
-const THPMSLogo: React.FC<{ size?: number }> = ({ size = 48 }) => (
-  <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="40" y="30" width="50" height="140" fill="var(--color-text-primary)" rx="4" />
-    <rect x="110" y="30" width="50" height="140" fill="var(--color-text-primary)" rx="4" />
-    <rect x="85" y="85" width="30" height="30" fill="#0ea5e9" transform="rotate(45 100 100)" />
-  </svg>
-);
+import { THPMSLogo } from '../components/Layout';
 
 const Login: React.FC = () => {
   const { login, user } = useAuth();
@@ -114,16 +107,6 @@ const Login: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: 'var(--color-text-primary)',
-                  '& fieldset': { borderColor: 'var(--color-border)' },
-                  '&:hover fieldset': { borderColor: 'var(--color-border-strong)' },
-                  '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-                },
-                '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
-                '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
-              }}
             />
             <TextField
               label="Password"
@@ -146,16 +129,6 @@ const Login: React.FC = () => {
                     </IconButton>
                   </InputAdornment>
                 ),
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: 'var(--color-text-primary)',
-                  '& fieldset': { borderColor: 'var(--color-border)' },
-                  '&:hover fieldset': { borderColor: 'var(--color-border-strong)' },
-                  '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-                },
-                '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
-                '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
               }}
             />
 

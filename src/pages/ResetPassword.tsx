@@ -60,17 +60,6 @@ const ResetPassword: React.FC = () => {
     }
   };
 
-  const textFieldStyle = {
-    '& .MuiOutlinedInput-root': {
-      color: 'var(--color-text-primary)',
-      '& fieldset': { borderColor: 'var(--color-border)' },
-      '&:hover fieldset': { borderColor: 'var(--color-border-strong)' },
-      '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-    },
-    '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
-    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
-  };
-
   return (
     <Box
       sx={{
@@ -145,7 +134,6 @@ const ResetPassword: React.FC = () => {
               value={token}
               onChange={(e) => setToken(e.target.value)}
               disabled={loading}
-              sx={textFieldStyle}
             />
             <TextField
               label="New Password"
@@ -169,7 +157,6 @@ const ResetPassword: React.FC = () => {
                   </InputAdornment>
                 ),
               }}
-              sx={textFieldStyle}
             />
 
             <Button

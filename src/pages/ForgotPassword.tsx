@@ -11,7 +11,7 @@ import {
   CircularProgress,
   Link,
 } from '@mui/material';
-import { HelpOutlineOutlined as ForgotIcon, ContentCopy as CopyIcon } from '@mui/icons-material';
+import { HelpOutlineOutlined as ForgotIcon } from '@mui/icons-material';
 import api from '../services/api';
 
 const ForgotPassword: React.FC = () => {
@@ -38,17 +38,6 @@ const ForgotPassword: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const textFieldStyle = {
-    '& .MuiOutlinedInput-root': {
-      color: 'var(--color-text-primary)',
-      '& fieldset': { borderColor: 'var(--color-border)' },
-      '&:hover fieldset': { borderColor: 'var(--color-border-strong)' },
-      '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-    },
-    '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
-    '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
   };
 
   return (
@@ -122,7 +111,6 @@ const ForgotPassword: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                sx={textFieldStyle}
               />
 
               <Button

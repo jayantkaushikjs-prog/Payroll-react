@@ -39,7 +39,7 @@ import {
   Receipt as ExpensesIcon,
 } from '@mui/icons-material';
 
-const THPMSLogo: React.FC<{ size?: number; color?: string }> = ({ size = 32, color = 'var(--color-text-primary)' }) => (
+export const THPMSLogo: React.FC<{ size?: number; color?: string }> = ({ size = 32, color = 'var(--color-text-primary)' }) => (
   <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
     {/* Left vertical block */}
     <rect x="40" y="30" width="50" height="140" fill={color} rx="4" />
