@@ -529,7 +529,7 @@ const NonPayableDays: React.FC = () => {
                   fullWidth
                   required
                   inputProps={{ step: 0.5, min: 0.5, max: 31 }}
-                  value={formData.days}
+                  value={formData.days === 0 ? '' : formData.days}
                   onChange={(e) => setFormData({ ...formData, days: parseFloat(e.target.value) || 0 })}
                   sx={inputStyles}
                 />
@@ -568,6 +568,13 @@ const inputStyles = {
     '& fieldset': { borderColor: 'var(--color-border)' },
     '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+    '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
+      '-webkit-appearance': 'none',
+      margin: 0,
+    },
+    '& input[type=number]': {
+      '-moz-appearance': 'textfield',
+    },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
   '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },

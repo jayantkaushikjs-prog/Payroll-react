@@ -23,6 +23,7 @@ import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Expenses from './pages/Expenses';
+import PayrollCalculator from './pages/PayrollCalculator';
 
 interface ThemeModeContextType {
   mode: 'light' | 'dark';
@@ -159,6 +160,10 @@ const App: React.FC = () => {
                         <Reports />
                       </RoleProtectedRoute>
                     }
+                  />
+                  <Route
+                    path="calculator"
+                    element={<PayrollCalculator />}
                   />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />

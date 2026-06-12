@@ -558,7 +558,7 @@ const Advances: React.FC = () => {
                   fullWidth
                   required
                   inputProps={{ min: 1 }}
-                  value={formData.amount}
+                  value={formData.amount === 0 ? '' : formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
                   error={!!formErrors.amount}
                   helperText={formErrors.amount}
@@ -708,6 +708,13 @@ const inputStyles = {
     '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
     '&.Mui-disabled fieldset': { borderColor: 'rgba(255, 255, 255, 0.04)' },
+    '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
+      '-webkit-appearance': 'none',
+      margin: 0,
+    },
+    '& input[type=number]': {
+      '-moz-appearance': 'textfield',
+    },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
   '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },

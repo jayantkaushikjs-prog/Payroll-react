@@ -134,11 +134,11 @@ const Employees: React.FC = () => {
     employee_code: '',
     name: '',
     no_of_days_present: 30,
-    deduction_absent: 0,
-    appraisal: 0,
-    leave_encashment: 0,
-    late_arrival_deduction: 0,
-    damages_recovery: 0,
+    deduction_absent: '',
+    appraisal: '',
+    leave_encashment: '',
+    late_arrival_deduction: '',
+    damages_recovery: '',
     remarks: '',
     joining_date: '',
     relieving_date: '',
@@ -180,11 +180,11 @@ const Employees: React.FC = () => {
     relieving_date: '',
     other_inputs: '',
     no_of_days_present: 30,
-    deduction_absent: 0,
-    appraisal: 0,
-    leave_encashment: 0,
-    late_arrival_deduction: 0,
-    damages_recovery: 0,
+    deduction_absent: '',
+    appraisal: '',
+    leave_encashment: '',
+    late_arrival_deduction: '',
+    damages_recovery: '',
     remarks: '',
   });
 
@@ -211,11 +211,11 @@ const Employees: React.FC = () => {
         employee_code: selectedConsoleEmp.employee_code || '',
         name: selectedConsoleEmp.name || '',
         no_of_days_present: selectedConsoleEmp.no_of_days_present !== undefined ? selectedConsoleEmp.no_of_days_present : 30,
-        deduction_absent: selectedConsoleEmp.deduction_absent !== undefined ? Number(selectedConsoleEmp.deduction_absent) : 0,
-        appraisal: selectedConsoleEmp.appraisal !== undefined ? Number(selectedConsoleEmp.appraisal) : 0,
-        leave_encashment: selectedConsoleEmp.leave_encashment !== undefined ? Number(selectedConsoleEmp.leave_encashment) : 0,
-        late_arrival_deduction: selectedConsoleEmp.late_arrival_deduction !== undefined ? Number(selectedConsoleEmp.late_arrival_deduction) : 0,
-        damages_recovery: selectedConsoleEmp.damages_recovery !== undefined ? Number(selectedConsoleEmp.damages_recovery) : 0,
+        deduction_absent: selectedConsoleEmp.deduction_absent ? Number(selectedConsoleEmp.deduction_absent) : '',
+        appraisal: selectedConsoleEmp.appraisal ? Number(selectedConsoleEmp.appraisal) : '',
+        leave_encashment: selectedConsoleEmp.leave_encashment ? Number(selectedConsoleEmp.leave_encashment) : '',
+        late_arrival_deduction: selectedConsoleEmp.late_arrival_deduction ? Number(selectedConsoleEmp.late_arrival_deduction) : '',
+        damages_recovery: selectedConsoleEmp.damages_recovery ? Number(selectedConsoleEmp.damages_recovery) : '',
         remarks: selectedConsoleEmp.remarks || '',
         joining_date: selectedConsoleEmp.joining_date || '',
         relieving_date: selectedConsoleEmp.relieving_date || '',
@@ -275,11 +275,11 @@ const Employees: React.FC = () => {
           relieving_date: emp.relieving_date || '',
           other_inputs: emp.other_inputs || '',
           no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
-          deduction_absent: emp.deduction_absent !== undefined ? Number(emp.deduction_absent) : 0,
-          appraisal: emp.appraisal !== undefined ? Number(emp.appraisal) : 0,
-          leave_encashment: emp.leave_encashment !== undefined ? Number(emp.leave_encashment) : 0,
-          late_arrival_deduction: emp.late_arrival_deduction !== undefined ? Number(emp.late_arrival_deduction) : 0,
-          damages_recovery: emp.damages_recovery !== undefined ? Number(emp.damages_recovery) : 0,
+          deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
+          appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+          leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
+          late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
+          damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
           remarks: emp.remarks || '',
         });
       }
@@ -535,11 +535,11 @@ const Employees: React.FC = () => {
       relieving_date: emp.relieving_date || '',
       other_inputs: emp.other_inputs || '',
       no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
-      deduction_absent: emp.deduction_absent !== undefined ? Number(emp.deduction_absent) : 0,
-      appraisal: emp.appraisal !== undefined ? Number(emp.appraisal) : 0,
-      leave_encashment: emp.leave_encashment !== undefined ? Number(emp.leave_encashment) : 0,
-      late_arrival_deduction: emp.late_arrival_deduction !== undefined ? Number(emp.late_arrival_deduction) : 0,
-      damages_recovery: emp.damages_recovery !== undefined ? Number(emp.damages_recovery) : 0,
+      deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
+      appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+      leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
+      late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
+      damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
       remarks: emp.remarks || '',
     });
     setOpenProfileDialog(true);
@@ -1088,9 +1088,9 @@ const Employees: React.FC = () => {
                         label="Deduction (Absent)"
                         type="number"
                         fullWidth
-                        value={consoleFormData.deduction_absent}
+                        value={consoleFormData.deduction_absent === 0 ? '' : consoleFormData.deduction_absent}
                         onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, deduction_absent: Number(e.target.value) })
+                          setConsoleFormData({ ...consoleFormData, deduction_absent: parseFloat(e.target.value) || 0 })
                         }
                         sx={inputStyles}
                         inputProps={{ min: 0 }}
@@ -1101,9 +1101,9 @@ const Employees: React.FC = () => {
                         label="Appraisal"
                         type="number"
                         fullWidth
-                        value={consoleFormData.appraisal}
+                        value={consoleFormData.appraisal === 0 ? '' : consoleFormData.appraisal}
                         onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, appraisal: Number(e.target.value) })
+                          setConsoleFormData({ ...consoleFormData, appraisal: parseFloat(e.target.value) || 0 })
                         }
                         sx={inputStyles}
                         inputProps={{ min: 0 }}
@@ -1114,9 +1114,9 @@ const Employees: React.FC = () => {
                         label="Leave Encashment"
                         type="number"
                         fullWidth
-                        value={consoleFormData.leave_encashment}
+                        value={consoleFormData.leave_encashment === 0 ? '' : consoleFormData.leave_encashment}
                         onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, leave_encashment: Number(e.target.value) })
+                          setConsoleFormData({ ...consoleFormData, leave_encashment: parseFloat(e.target.value) || 0 })
                         }
                         sx={inputStyles}
                         inputProps={{ min: 0 }}
@@ -1127,9 +1127,9 @@ const Employees: React.FC = () => {
                         label="Late Arrival Deduction (depends on days, not on numbers)"
                         type="number"
                         fullWidth
-                        value={consoleFormData.late_arrival_deduction}
+                        value={consoleFormData.late_arrival_deduction === 0 ? '' : consoleFormData.late_arrival_deduction}
                         onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, late_arrival_deduction: Number(e.target.value) })
+                          setConsoleFormData({ ...consoleFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })
                         }
                         sx={inputStyles}
                         inputProps={{ min: 0 }}
@@ -1140,9 +1140,9 @@ const Employees: React.FC = () => {
                         label="Damages Recovery"
                         type="number"
                         fullWidth
-                        value={consoleFormData.damages_recovery}
+                        value={consoleFormData.damages_recovery === 0 ? '' : consoleFormData.damages_recovery}
                         onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, damages_recovery: Number(e.target.value) })
+                          setConsoleFormData({ ...consoleFormData, damages_recovery: parseFloat(e.target.value) || 0 })
                         }
                         sx={inputStyles}
                         inputProps={{ min: 0 }}
@@ -1411,8 +1411,8 @@ const Employees: React.FC = () => {
                             type="number"
                             fullWidth
                             disabled={!isHRorAdmin}
-                            value={profileFormData.deduction_absent}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, deduction_absent: Number(e.target.value) })}
+                            value={profileFormData.deduction_absent === 0 ? '' : profileFormData.deduction_absent}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, deduction_absent: parseFloat(e.target.value) || 0 })}
                             sx={inputStyles}
                             inputProps={{ min: 0 }}
                           />
@@ -1423,8 +1423,8 @@ const Employees: React.FC = () => {
                             type="number"
                             fullWidth
                             disabled={!isHRorAdmin}
-                            value={profileFormData.appraisal}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, appraisal: Number(e.target.value) })}
+                            value={profileFormData.appraisal === 0 ? '' : profileFormData.appraisal}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, appraisal: parseFloat(e.target.value) || 0 })}
                             sx={inputStyles}
                             inputProps={{ min: 0 }}
                           />
@@ -1435,8 +1435,8 @@ const Employees: React.FC = () => {
                             type="number"
                             fullWidth
                             disabled={!isHRorAdmin}
-                            value={profileFormData.leave_encashment}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, leave_encashment: Number(e.target.value) })}
+                            value={profileFormData.leave_encashment === 0 ? '' : profileFormData.leave_encashment}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, leave_encashment: parseFloat(e.target.value) || 0 })}
                             sx={inputStyles}
                             inputProps={{ min: 0 }}
                           />
@@ -1447,8 +1447,8 @@ const Employees: React.FC = () => {
                             type="number"
                             fullWidth
                             disabled={!isHRorAdmin}
-                            value={profileFormData.late_arrival_deduction}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, late_arrival_deduction: Number(e.target.value) })}
+                            value={profileFormData.late_arrival_deduction === 0 ? '' : profileFormData.late_arrival_deduction}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })}
                             sx={inputStyles}
                             inputProps={{ min: 0 }}
                           />
@@ -1459,8 +1459,8 @@ const Employees: React.FC = () => {
                             type="number"
                             fullWidth
                             disabled={!isHRorAdmin}
-                            value={profileFormData.damages_recovery}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, damages_recovery: Number(e.target.value) })}
+                            value={profileFormData.damages_recovery === 0 ? '' : profileFormData.damages_recovery}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, damages_recovery: parseFloat(e.target.value) || 0 })}
                             sx={inputStyles}
                             inputProps={{ min: 0 }}
                           />
@@ -2192,6 +2192,13 @@ const inputStyles = {
     '& fieldset': { borderColor: 'var(--color-border)' },
     '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+    '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
+      '-webkit-appearance': 'none',
+      margin: 0,
+    },
+    '& input[type=number]': {
+      '-moz-appearance': 'textfield',
+    },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
   '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },

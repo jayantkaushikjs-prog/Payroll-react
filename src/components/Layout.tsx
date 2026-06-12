@@ -146,6 +146,11 @@ const Layout: React.FC = () => {
       permissions: [Permission.VIEW_PAYROLL_REPORTS, Permission.VIEW_HR_REPORTS, Permission.VIEW_FINANCIAL_DASHBOARDS],
       requireAny: true,
     },
+    {
+      text: 'Payroll Simulator',
+      icon: <TrendIcon />,
+      path: '/calculator',
+    },
   ];
 
   const getRoleColor = (role: Role) => {
@@ -163,6 +168,7 @@ const Layout: React.FC = () => {
 
   const checkMenuItemAccess = (item: (typeof menuItems)[0]): boolean => {
     if (!user) return false;
+    if (!item.permissions) return true;
     if (item.requireAny) {
       return hasAnyPermission(item.permissions);
     }
