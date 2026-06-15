@@ -713,7 +713,7 @@ const Advances: React.FC = () => {
                 textTransform: 'none',
               }}
             >
-              {selectedAdvance ? 'Save Changes' : 'Issue loan'}
+              {selectedAdvance ? 'Save Changes' : 'Issue Advance'}
             </Button>
           </DialogActions>
         </form>
