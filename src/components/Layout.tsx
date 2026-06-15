@@ -131,6 +131,7 @@ const Layout: React.FC = () => {
       setTimeout(() => {
         setResetPwdOpen(false);
         setResetPwdSuccess(false);
+        logout();
       }, 2000);
     } catch (err: any) {
       setResetPwdError(err.response?.data?.message || 'Failed to change password');
