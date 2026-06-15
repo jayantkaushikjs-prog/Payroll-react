@@ -179,9 +179,13 @@ const Employees: React.FC = () => {
   const [openProfileDialog, setOpenProfileDialog] = useState(false);
   const [profileDialogTab, setProfileDialogTab] = useState(0);
 
-  // States for Detailed Employee Profile Tab
   const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
-  const [profileYear, setProfileYear] = useState<number>(new Date().getFullYear());
+  const currentYear = new Date().getFullYear();
+  const defaultProfileStart = new Date().getMonth() >= 3 ? `${currentYear}-04-01` : `${currentYear - 1}-04-01`;
+  const defaultProfileEnd = new Date().getMonth() >= 3 ? `${currentYear + 1}-03-31` : `${currentYear}-03-31`;
+
+  const [profileStartDate, setProfileStartDate] = useState<string>(defaultProfileStart);
+  const [profileEndDate, setProfileEndDate] = useState<string>(defaultProfileEnd);
   const [profileViewMode, setProfileViewMode] = useState<'annual' | 'monthly'>('annual');
   const [exportStartYear, setExportStartYear] = useState<number>(new Date().getFullYear() - 1);
   const [exportEndYear, setExportEndYear] = useState<number>(new Date().getFullYear());
@@ -239,10 +243,10 @@ const Employees: React.FC = () => {
 
   // Query for Detailed Employee Financial Summary
   const { data: profileSummary, isLoading: isLoadingProfileSummary } = useQuery(
-    ['profileFinancialSummary', profileEmpId, profileYear],
+    ['profileFinancialSummary', profileEmpId, profileStartDate, profileEndDate],
     async () => {
       if (!profileEmpId) return null;
-      const res = await api.get(`/employees/${profileEmpId}/financial-summary?year=${profileYear}`);
+      const res = await api.get(`/employees/${profileEmpId}/financial-summary?startDate=${profileStartDate}&endDate=${profileEndDate}`);
       return res.data;
     },
     {
@@ -591,6 +595,7 @@ const Employees: React.FC = () => {
       no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
       deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
       appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+      appraisal_effective_date: emp.appraisal_effective_date || '',
       leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
       late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
       damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
@@ -1408,28 +1413,46 @@ const Employees: React.FC = () => {
           <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
             Employee Profile & Financial Summary
           </Typography>
-          <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel id="dialog-profile-year-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
-            <Select
-              labelId="dialog-profile-year-select-label"
-              value={profileYear}
-              label="Year"
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <TextField
+              type="date"
+              label="Start Date"
+              value={profileStartDate}
+              onChange={(e) => setProfileStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
               size="small"
-              onChange={(e) => setProfileYear(Number(e.target.value))}
               sx={{
-                color: 'var(--color-text-primary)',
-                height: '38px',
-                borderRadius: 'var(--radius-control)',
+                width: 145,
+                '& .MuiInputBase-root': {
+                  color: 'var(--color-text-primary)',
+                  height: '38px',
+                  borderRadius: 'var(--radius-control)',
+                },
                 '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
                 '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
               }}
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                <MenuItem key={y} value={y}>{y}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            />
+            <TextField
+              type="date"
+              label="End Date"
+              value={profileEndDate}
+              onChange={(e) => setProfileEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              size="small"
+              sx={{
+                width: 145,
+                '& .MuiInputBase-root': {
+                  color: 'var(--color-text-primary)',
+                  height: '38px',
+                  borderRadius: 'var(--radius-control)',
+                },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+              }}
+            />
+          </Box>
         </DialogTitle>
         <DialogContent sx={{ py: 3 }}>
           {!profileEmpId ? (
@@ -1821,7 +1844,7 @@ const Employees: React.FC = () => {
                     {/* View Mode Switcher Header */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                       <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>
-                        Financial Summary ({profileYear})
+                        Financial Summary
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
                         <Button
@@ -2138,7 +2161,7 @@ const Employees: React.FC = () => {
                     <Grid item xs={12}>
                       <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', height: 320 }}>
                         <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
-                          Paid vs Projected Remaining Analysis ({profileYear})
+                          Paid vs Projected Remaining Analysis
                         </Typography>
                         <Box sx={{ height: 240 }}>
                           <ResponsiveContainer width="100%" height="100%">

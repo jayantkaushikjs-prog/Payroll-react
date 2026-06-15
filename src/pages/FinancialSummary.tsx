@@ -198,27 +198,43 @@ const FinancialSummary: React.FC = () => {
             </FormControl>
           )}
 
-          <FormControl sx={{ minWidth: 110 }}>
-            <InputLabel id="year-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
-            <Select
-              labelId="year-select-label"
-              value={financialYear}
-              label="Year"
-              onChange={(e) => setFinancialYear(Number(e.target.value))}
-              sx={{
+          <TextField
+            type="date"
+            label="Start Date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{
+              width: 155,
+              '& .MuiInputBase-root': {
                 color: 'var(--color-text-primary)',
                 height: '42px',
                 borderRadius: 'var(--radius-control)',
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
-              }}
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                <MenuItem key={y} value={y}>{y}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              },
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+            }}
+          />
+
+          <TextField
+            type="date"
+            label="End Date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{
+              width: 155,
+              '& .MuiInputBase-root': {
+                color: 'var(--color-text-primary)',
+                height: '42px',
+                borderRadius: 'var(--radius-control)',
+              },
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+            }}
+          />
 
           <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)', height: '42px', alignItems: 'center' }}>
             <Button
@@ -293,7 +309,7 @@ const FinancialSummary: React.FC = () => {
                   : formatCurrency(Number((summary.amountPaid / (summary.paidMonthsCount || 1)).toFixed(2)))}
               </Typography>
               <Typography variant="caption" sx={{ display: 'block', color: 'var(--color-text-secondary)', mt: 1 }}>
-                Calculated from all disbursed payroll structures for {financialYear}.
+                Calculated from all disbursed payroll structures for the selected period.
               </Typography>
             </Paper>
           </Grid>
