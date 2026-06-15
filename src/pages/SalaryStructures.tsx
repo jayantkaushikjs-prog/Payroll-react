@@ -30,6 +30,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TablePagination,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -67,6 +68,8 @@ const SalaryStructures: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [openRevisionDialog, setOpenRevisionDialog] = useState(false);
   const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
@@ -484,7 +487,7 @@ const SalaryStructures: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                employees.map((emp: Employee) => {
+                employees.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((emp: Employee) => {
                   const current = activeSalaries[emp.id];
                   return (
                     <TableRow
@@ -583,6 +586,28 @@ const SalaryStructures: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={employees.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(_, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          sx={{
+            color: 'var(--color-text-primary)',
+            borderTop: '1px solid var(--color-border)',
+            '& .MuiTablePagination-actions': {
+              color: 'var(--color-text-primary)',
+            },
+            '& .MuiTablePagination-select': {
+              color: 'var(--color-text-primary)',
+            },
+          }}
+        />
       </Paper>
 
       {/* Salary Revision Dialog */}

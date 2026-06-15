@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import { useLocation } from 'react-router-dom';
 import { useAuth, Role } from '../context/AuthContext';
 import { formatCurrency } from '../constants/currency';
 import {
@@ -33,6 +34,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  TablePagination,
 } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -82,6 +84,7 @@ interface Employee {
   no_of_days_present?: number;
   deduction_absent?: number;
   appraisal?: number;
+  appraisal_effective_date?: string | null;
   leave_encashment?: number;
   late_arrival_deduction?: number;
   damages_recovery?: number;
@@ -92,7 +95,10 @@ const Employees: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [formErrors, setFormErrors] = useState({
@@ -136,6 +142,7 @@ const Employees: React.FC = () => {
     no_of_days_present: number;
     deduction_absent: string | number;
     appraisal: string | number;
+    appraisal_effective_date: string;
     leave_encashment: string | number;
     late_arrival_deduction: string | number;
     damages_recovery: string | number;
@@ -149,6 +156,7 @@ const Employees: React.FC = () => {
     no_of_days_present: 30,
     deduction_absent: '',
     appraisal: '',
+    appraisal_effective_date: '',
     leave_encashment: '',
     late_arrival_deduction: '',
     damages_recovery: '',
@@ -175,6 +183,8 @@ const Employees: React.FC = () => {
   const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
   const [profileYear, setProfileYear] = useState<number>(new Date().getFullYear());
   const [profileViewMode, setProfileViewMode] = useState<'annual' | 'monthly'>('annual');
+  const [exportStartYear, setExportStartYear] = useState<number>(new Date().getFullYear() - 1);
+  const [exportEndYear, setExportEndYear] = useState<number>(new Date().getFullYear());
   const [profileFormData, setProfileFormData] = useState<{
     employee_code: string;
     name: string;
@@ -195,6 +205,7 @@ const Employees: React.FC = () => {
     no_of_days_present: number;
     deduction_absent: string | number;
     appraisal: string | number;
+    appraisal_effective_date: string;
     leave_encashment: string | number;
     late_arrival_deduction: string | number;
     damages_recovery: string | number;
@@ -219,6 +230,7 @@ const Employees: React.FC = () => {
     no_of_days_present: 30,
     deduction_absent: '',
     appraisal: '',
+    appraisal_effective_date: '',
     leave_encashment: '',
     late_arrival_deduction: '',
     damages_recovery: '',
@@ -250,6 +262,7 @@ const Employees: React.FC = () => {
         no_of_days_present: selectedConsoleEmp.no_of_days_present !== undefined ? selectedConsoleEmp.no_of_days_present : 30,
         deduction_absent: selectedConsoleEmp.deduction_absent ? Number(selectedConsoleEmp.deduction_absent) : '',
         appraisal: selectedConsoleEmp.appraisal ? Number(selectedConsoleEmp.appraisal) : '',
+        appraisal_effective_date: selectedConsoleEmp.appraisal_effective_date || '',
         leave_encashment: selectedConsoleEmp.leave_encashment ? Number(selectedConsoleEmp.leave_encashment) : '',
         late_arrival_deduction: selectedConsoleEmp.late_arrival_deduction ? Number(selectedConsoleEmp.late_arrival_deduction) : '',
         damages_recovery: selectedConsoleEmp.damages_recovery ? Number(selectedConsoleEmp.damages_recovery) : '',
@@ -281,7 +294,7 @@ const Employees: React.FC = () => {
       onSuccess: (updatedEmp) => {
         queryClient.invalidateQueries(['employees']);
         showToast('HR global inputs saved successfully!', 'success');
-        setSelectedConsoleEmp(updatedEmp);
+        setSelectedConsoleEmp(null);
       },
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to update HR inputs', 'error');
@@ -314,6 +327,7 @@ const Employees: React.FC = () => {
           no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
           deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
           appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+          appraisal_effective_date: emp.appraisal_effective_date || '',
           leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
           late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
           damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
@@ -333,6 +347,7 @@ const Employees: React.FC = () => {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
         showToast('Employee profile details saved successfully!', 'success');
+        setOpenProfileDialog(false);
       },
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to update employee details', 'error');
@@ -349,6 +364,7 @@ const Employees: React.FC = () => {
       relieving_date: profileFormData.relieving_date || null,
       other_inputs: profileFormData.other_inputs || null,
       remarks: profileFormData.remarks || null,
+      appraisal_effective_date: profileFormData.appraisal_effective_date || null,
     };
 
     updateProfileMutation.mutate({
@@ -373,6 +389,7 @@ const Employees: React.FC = () => {
       no_of_days_present: daysPresent,
       deduction_absent: Number(consoleFormData.deduction_absent) || 0,
       appraisal: Number(consoleFormData.appraisal) || 0,
+      appraisal_effective_date: consoleFormData.appraisal_effective_date || null,
       leave_encashment: Number(consoleFormData.leave_encashment) || 0,
       late_arrival_deduction: Number(consoleFormData.late_arrival_deduction) || 0,
       damages_recovery: Number(consoleFormData.damages_recovery) || 0,
@@ -582,6 +599,20 @@ const Employees: React.FC = () => {
     setOpenProfileDialog(true);
   };
 
+  // Effect to handle deep linking from global search (Layout)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const openProfileId = params.get('openProfile');
+    if (openProfileId && employees.length > 0) {
+      const emp = employees.find((e: any) => e.id === Number(openProfileId));
+      if (emp) {
+        handleOpenProfileDialog(emp);
+        // Clear query parameter to avoid opening it repeatedly
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [employees, location.search]);
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const nextErrors = {
@@ -694,6 +725,25 @@ const Employees: React.FC = () => {
       setTimeout(() => URL.revokeObjectURL(link.href), 100);
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Failed to export employees', 'error');
+    }
+  };
+
+  const handleExportFinancials = async () => {
+    if (!profileEmpId) return;
+    try {
+      const res = await api.get(`/employees/${profileEmpId}/export-financials?startYear=${exportStartYear}&endYear=${exportEndYear}`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      const employeeName = profileFormData.name ? profileFormData.name.replace(/\s+/g, '_') : 'employee';
+      link.download = `${employeeName}_financials_${exportStartYear}_to_${exportEndYear}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(link.href), 100);
+      showToast('Financial summary exported successfully', 'success');
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Failed to export financial summary', 'error');
     }
   };
 
@@ -905,7 +955,10 @@ const Employees: React.FC = () => {
               placeholder="Search by name, employee code, or department..."
               fullWidth
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(0);
+              }}
               InputProps={{
                 startAdornment: <SearchIcon sx={{ color: 'var(--color-text-muted)', mr: 1 }} />,
               }}
@@ -930,7 +983,8 @@ const Employees: React.FC = () => {
                 No employees found matching the search criteria.
               </Box>
             ) : (
-              <TableContainer>
+              <>
+                <TableContainer>
                 <Table sx={{ minWidth: 650 }}>
                   <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
                     <TableRow>
@@ -944,8 +998,17 @@ const Employees: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredEmployees.map((emp: Employee) => (
-                      <TableRow key={emp.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                    {filteredEmployees.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((emp: Employee) => (
+                      <TableRow
+                        key={emp.id}
+                        onClick={() => handleOpenProfileDialog(emp)}
+                        sx={{
+                          '&:last-child td, &:last-child th': { border: 0 },
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: 'var(--color-row-hover)' },
+                          transition: 'background-color 140ms ease',
+                        }}
+                      >
                         <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
                         <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
                         <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
@@ -969,18 +1032,36 @@ const Employees: React.FC = () => {
                         </TableCell>
                         <TableCell align="right">
                           <Tooltip title="View Profile & Financials">
-                            <IconButton onClick={() => handleOpenProfileDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 0.5 }}>
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenProfileDialog(emp);
+                              }}
+                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 0.5 }}
+                            >
                               <ViewIcon />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Edit Details">
-                            <IconButton onClick={() => handleOpenEditDialog(emp)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}>
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditDialog(emp);
+                              }}
+                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}
+                            >
                               <EditIcon />
                             </IconButton>
                           </Tooltip>
                           {isHRorAdmin && (
                             <Tooltip title="Delete Employee">
-                              <IconButton onClick={() => handleDelete(emp.id)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}>
+                              <IconButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(emp.id);
+                                }}
+                                sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}
+                              >
                                 <DeleteIcon />
                               </IconButton>
                             </Tooltip>
@@ -991,7 +1072,30 @@ const Employees: React.FC = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-            )}
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filteredEmployees.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(_, newPage) => setPage(newPage)}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                sx={{
+                  color: 'var(--color-text-primary)',
+                  borderTop: '1px solid var(--color-border)',
+                  '& .MuiTablePagination-actions': {
+                    color: 'var(--color-text-primary)',
+                  },
+                  '& .MuiTablePagination-select': {
+                    color: 'var(--color-text-primary)',
+                  },
+                }}
+              />
+            </>
+          )}
           </Paper>
         </>
       ) : (
@@ -1144,6 +1248,19 @@ const Employees: React.FC = () => {
                         }
                         sx={inputStyles}
                         inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Appraisal Effective Date"
+                        type="date"
+                        fullWidth
+                        value={consoleFormData.appraisal_effective_date}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, appraisal_effective_date: e.target.value })
+                        }
+                        sx={inputStyles}
+                        InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -1468,6 +1585,18 @@ const Employees: React.FC = () => {
                         </Grid>
                         <Grid item xs={6}>
                           <TextField
+                            label="Appraisal Effective Date"
+                            type="date"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.appraisal_effective_date}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, appraisal_effective_date: e.target.value })}
+                            sx={inputStyles}
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
                             label="Leave Encashment"
                             type="number"
                             fullWidth
@@ -1733,6 +1862,79 @@ const Employees: React.FC = () => {
                         </Button>
                       </Box>
                     </Box>
+
+                     {/* Export Tenure Data Section */}
+                     <Box
+                       sx={{
+                         p: 2,
+                         mb: 3,
+                         background: 'rgba(255, 255, 255, 0.02)',
+                         border: '1px solid var(--color-border)',
+                         borderRadius: 'var(--radius-control)',
+                         display: 'flex',
+                         flexWrap: 'wrap',
+                         alignItems: 'center',
+                         justifyContent: 'space-between',
+                         gap: 2,
+                       }}
+                     >
+                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                           Export Tenure:
+                         </Typography>
+                         <FormControl size="small" sx={{ minWidth: 100 }}>
+                           <Select
+                             value={exportStartYear}
+                             onChange={(e) => setExportStartYear(Number(e.target.value))}
+                             sx={{
+                               color: 'var(--color-text-primary)',
+                               height: '34px',
+                               borderRadius: 'var(--radius-control)',
+                               '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                             }}
+                           >
+                             {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                               <MenuItem key={y} value={y}>{y}</MenuItem>
+                             ))}
+                           </Select>
+                         </FormControl>
+                         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                           to
+                         </Typography>
+                         <FormControl size="small" sx={{ minWidth: 100 }}>
+                           <Select
+                             value={exportEndYear}
+                             onChange={(e) => setExportEndYear(Number(e.target.value))}
+                             sx={{
+                               color: 'var(--color-text-primary)',
+                               height: '34px',
+                               borderRadius: 'var(--radius-control)',
+                               '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                             }}
+                           >
+                             {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                               <MenuItem key={y} value={y}>{y}</MenuItem>
+                             ))}
+                           </Select>
+                         </FormControl>
+                       </Box>
+                       <Button
+                         variant="contained"
+                         size="small"
+                         onClick={handleExportFinancials}
+                         startIcon={<DownloadIcon />}
+                         sx={{
+                           textTransform: 'none',
+                           fontWeight: 600,
+                           height: '34px',
+                           borderRadius: 'var(--radius-control)',
+                           background: 'var(--color-primary)',
+                           '&:hover': { background: 'var(--color-primary-hover)' },
+                         }}
+                       >
+                         Export CSV
+                       </Button>
+                     </Box>
 
                     <Grid container spacing={3}>
                       {/* Top Stats */}
@@ -2101,22 +2303,24 @@ const Employees: React.FC = () => {
                     sx={inputStyles}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControlLabel
-                    control={
-	                      <Switch
-	                        checked={formData.active_status}
-	                        onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
-	                        sx={{
-	                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-	                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                        }}
-                      />
-                    }
-                    label="Active Status"
-                    sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
-                  />
-                </Grid>
+                {!!selectedEmp && (
+                  <Grid item xs={12} sm={6}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.active_status}
+                          onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                          }}
+                        />
+                      }
+                      label="Active Status"
+                      sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                    />
+                  </Grid>
+                )}
                 <Grid item xs={12} sm={4}>
                   <FormControlLabel
                     control={

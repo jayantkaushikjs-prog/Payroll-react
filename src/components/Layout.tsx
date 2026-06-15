@@ -19,6 +19,8 @@ import {
   Avatar,
   Chip,
   Tooltip,
+  Autocomplete,
+  TextField,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -37,7 +39,10 @@ import {
   ManageAccounts as AdminIcon,
   TrendingUp as TrendIcon,
   Receipt as ExpensesIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
+import api from '../services/api';
 
 export const THPMSLogo: React.FC<{ size?: number; color?: string }> = ({ size = 32, color = 'var(--color-text-primary)' }) => (
   <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -58,6 +63,11 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { data: employees = [] } = useQuery(['employees'], async () => {
+    const res = await api.get('/employees');
+    return res.data;
+  });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -289,7 +299,53 @@ const Layout: React.FC = () => {
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ flexGrow: 1 }} />
+          <Autocomplete
+            options={employees}
+            getOptionLabel={(option: any) => `${option.name} (${option.employee_code})`}
+            onChange={(_, value: any) => {
+              if (value) {
+                navigate(`/employees?openProfile=${value.id}`);
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Global Search (Employees)..."
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <SearchIcon sx={{ color: 'var(--color-text-secondary)', mr: 1, fontSize: '1.2rem' }} />
+                  ),
+                }}
+                sx={{
+                  width: { xs: 200, sm: 300, md: 350 },
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'var(--color-bg)',
+                    borderRadius: '20px',
+                    border: '1px solid var(--color-border)',
+                    paddingLeft: '12px !important',
+                    '& fieldset': { border: 'none' },
+                    '&:hover': {
+                      border: '1px solid var(--color-primary-hover)',
+                    },
+                    '&.Mui-focused': {
+                      border: '1px solid var(--color-primary)',
+                      boxShadow: '0 0 0 2px rgba(99, 102, 241, 0.2)',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: 'var(--color-text-primary)',
+                    fontFamily: 'Outfit',
+                    fontSize: '0.88rem',
+                  },
+                }}
+              />
+            )}
+            sx={{
+              ml: { xs: 1, sm: 2 },
+            }}
+          />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>

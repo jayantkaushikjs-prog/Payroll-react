@@ -93,7 +93,7 @@ const cardSx = {
   background: 'var(--color-surface)',
   border: '1px solid var(--color-border)',
   borderRadius: 'var(--radius-card)',
-  boxShadow: 'none',
+  boxShadow: 'var(--shadow-card)',
   transition: 'border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease',
 };
 
@@ -336,7 +336,7 @@ const Dashboard: React.FC = () => {
             <ChartPanel title="Department Distribution" empty={!departmentDistribution.length}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={departmentDistribution} dataKey="count" nameKey="department" outerRadius={95} innerRadius={60} paddingAngle={3}>
+                  <Pie data={departmentDistribution} dataKey="count" nameKey="department" outerRadius={80} innerRadius={50} paddingAngle={3}>
                     {departmentDistribution.map((_, index) => (
                       <Cell key={index} fill={chartColors[index % chartColors.length]} />
                     ))}
@@ -352,7 +352,20 @@ const Dashboard: React.FC = () => {
                     }}
                     formatter={(value) => [formatNumber(value as number), 'Employees']}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={72}
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{
+                      fontSize: '11px',
+                      fontFamily: 'Outfit',
+                      color: 'var(--color-text-secondary)',
+                      paddingTop: '8px',
+                      lineHeight: '1.4',
+                      overflowY: 'auto'
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </ChartPanel>
@@ -453,7 +466,7 @@ const Dashboard: React.FC = () => {
               <ChartPanel title="Expenses by Category" empty={!expensesCategoryDistribution.length}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={expensesCategoryDistribution} dataKey="amount" nameKey="category" outerRadius={95} innerRadius={60} paddingAngle={3}>
+                    <Pie data={expensesCategoryDistribution} dataKey="amount" nameKey="category" outerRadius={80} innerRadius={50} paddingAngle={3}>
                       {expensesCategoryDistribution.map((entry: any, index: number) => {
                         const colors: Record<string, string> = {
                           rent: '#10b981',
@@ -476,7 +489,20 @@ const Dashboard: React.FC = () => {
                       }}
                       formatter={(value, name) => [formatCurrency(value as number), String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
                     />
-                    <Legend formatter={(value) => String(value).charAt(0).toUpperCase() + String(value).slice(1)} iconType="circle" />
+                    <Legend
+                      formatter={(value) => String(value).charAt(0).toUpperCase() + String(value).slice(1)}
+                      verticalAlign="bottom"
+                      height={48}
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{
+                        fontSize: '11px',
+                        fontFamily: 'Outfit',
+                        color: 'var(--color-text-secondary)',
+                        paddingTop: '8px',
+                        lineHeight: '1.4'
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </ChartPanel>
@@ -525,11 +551,14 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
       cursor: 'default',
       backgroundColor: 'var(--color-surface)',
       border: '1px solid var(--color-border)',
+      borderLeft: `4px solid ${color}`,
       borderRadius: '16px',
-      transition: 'border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease',
+      boxShadow: 'var(--shadow-card)',
+      transition: 'border-color 200ms ease, border-left-width 200ms ease, box-shadow 200ms ease, transform 200ms ease',
       '&:hover': {
-        borderColor: color,
-        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
+        borderColor: 'var(--color-border-strong)',
+        borderLeftWidth: '6px',
+        boxShadow: 'var(--shadow-card-hover)',
         transform: 'translateY(-3px)',
         '& .icon-wrapper': {
           transform: 'scale(1.1) rotate(5deg)',
@@ -578,7 +607,20 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
 );
 
 const ChartPanel: React.FC<{ title: string; empty: boolean; children: React.ReactNode }> = ({ title, empty, children }) => (
-  <Paper sx={{ ...cardSx, p: 3.5, height: 400, borderRadius: '16px' }}>
+  <Paper
+    sx={{
+      ...cardSx,
+      p: 3.5,
+      height: 400,
+      borderRadius: '16px',
+      boxShadow: 'var(--shadow-card)',
+      transition: 'border-color 200ms ease, box-shadow 200ms ease',
+      '&:hover': {
+        boxShadow: 'var(--shadow-card-hover)',
+        borderColor: 'rgba(99, 102, 241, 0.25)',
+      }
+    }}
+  >
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
       <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
         {title}
@@ -612,7 +654,20 @@ const ChartPanel: React.FC<{ title: string; empty: boolean; children: React.Reac
 );
 
 const SummaryPanel: React.FC<{ title: string; rows: [string, string][] }> = ({ title, rows }) => (
-  <Paper sx={{ ...cardSx, p: 3.5, height: '100%', borderRadius: '16px' }}>
+  <Paper
+    sx={{
+      ...cardSx,
+      p: 3.5,
+      height: '100%',
+      borderRadius: '16px',
+      boxShadow: 'var(--shadow-card)',
+      transition: 'border-color 200ms ease, box-shadow 200ms ease',
+      '&:hover': {
+        boxShadow: 'var(--shadow-card-hover)',
+        borderColor: 'rgba(99, 102, 241, 0.25)',
+      }
+    }}
+  >
     <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 3 }}>
       {title}
     </Typography>
@@ -646,7 +701,20 @@ const SummaryPanel: React.FC<{ title: string; rows: [string, string][] }> = ({ t
 );
 
 const ActivityPanel: React.FC<{ activities: DashboardData['activities'] }> = ({ activities }) => (
-  <Paper sx={{ ...cardSx, p: 3.5, height: '100%', borderRadius: '16px' }}>
+  <Paper
+    sx={{
+      ...cardSx,
+      p: 3.5,
+      height: '100%',
+      borderRadius: '16px',
+      boxShadow: 'var(--shadow-card)',
+      transition: 'border-color 200ms ease, box-shadow 200ms ease',
+      '&:hover': {
+        boxShadow: 'var(--shadow-card-hover)',
+        borderColor: 'rgba(99, 102, 241, 0.25)',
+      }
+    }}
+  >
     <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 3 }}>
       Recent Activities
     </Typography>
@@ -691,7 +759,20 @@ const ActivityPanel: React.FC<{ activities: DashboardData['activities'] }> = ({ 
 );
 
 const QuickActions: React.FC<{ actions: ActionConfig[]; onNavigate: (path: string) => void }> = ({ actions, onNavigate }) => (
-  <Paper sx={{ ...cardSx, p: 3.5, height: '100%', borderRadius: '16px' }}>
+  <Paper
+    sx={{
+      ...cardSx,
+      p: 3.5,
+      height: '100%',
+      borderRadius: '16px',
+      boxShadow: 'var(--shadow-card)',
+      transition: 'border-color 200ms ease, box-shadow 200ms ease',
+      '&:hover': {
+        boxShadow: 'var(--shadow-card-hover)',
+        borderColor: 'rgba(99, 102, 241, 0.25)',
+      }
+    }}
+  >
     <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 3 }}>
       Quick Actions
     </Typography>

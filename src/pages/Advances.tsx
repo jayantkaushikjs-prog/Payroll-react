@@ -28,6 +28,8 @@ import {
   IconButton,
   Tooltip,
   Divider,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -57,6 +59,7 @@ interface EmployeeAdvance {
   start_month: number;
   start_year: number;
   is_fully_recovered: boolean;
+  is_advance_salary: boolean;
 }
 
 interface SalaryStructure {
@@ -91,6 +94,7 @@ const Advances: React.FC = () => {
     installment_amount: '',
     start_month: new Date().getMonth() + 1,
     start_year: currentYear,
+    is_advance_salary: false,
   });
 
   const isFinanceOrAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
@@ -223,6 +227,7 @@ const Advances: React.FC = () => {
       installment_amount: '',
       start_month: new Date().getMonth() + 1,
       start_year: currentYear,
+      is_advance_salary: false,
     });
     setOpenDialog(true);
   };
@@ -248,6 +253,7 @@ const Advances: React.FC = () => {
       installment_amount: adv.installment_amount ? String(adv.installment_amount) : '',
       start_month: adv.start_month,
       start_year: adv.start_year,
+      is_advance_salary: adv.is_advance_salary || false,
     });
     setOpenDialog(true);
   };
@@ -310,6 +316,7 @@ const Advances: React.FC = () => {
       installment_amount: formData.recovery_type === 'installment' ? Number(formData.installment_amount) : null,
       start_month: Number(formData.start_month),
       start_year: Number(formData.start_year),
+      is_advance_salary: formData.is_advance_salary,
     };
 
     if (selectedAdvance) {
@@ -422,6 +429,7 @@ const Advances: React.FC = () => {
               <TableRow>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Emp Code</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Issue Date</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Advance</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Recovery Type</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Monthly Installment</TableCell>
@@ -435,13 +443,13 @@ const Advances: React.FC = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
+                  <TableCell colSpan={11} align="center" sx={{ py: 3 }}>
                     <CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} />
                   </TableCell>
                 </TableRow>
               ) : advances.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
+                  <TableCell colSpan={11} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
                     No advances issued.
                   </TableCell>
                 </TableRow>
@@ -450,6 +458,7 @@ const Advances: React.FC = () => {
                   <TableRow key={adv.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' }, borderColor: 'rgba(255, 255, 255, 0.05)' }}>
                     <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{adv.employee?.employee_code}</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{adv.employee?.name}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(adv.date).toLocaleDateString('en-IN')}</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(adv.amount)}</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
                       {adv.recovery_type.replace('_', ' ')}
@@ -553,6 +562,20 @@ const Advances: React.FC = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
+                  label="Advance Issue Date"
+                  type="date"
+                  fullWidth
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.date}
+                  helperText={formErrors.date}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
                   label="Advance Amount (₹)"
                   type="number"
                   fullWidth
@@ -565,18 +588,17 @@ const Advances: React.FC = () => {
                   sx={inputStyles}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Advance Issue Date"
-                  type="date"
-                  fullWidth
-                  required
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                  error={!!formErrors.date}
-                  helperText={formErrors.date}
-                  sx={inputStyles}
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.is_advance_salary}
+                      onChange={(e) => setFormData({ ...formData, is_advance_salary: e.target.checked })}
+                      color="primary"
+                    />
+                  }
+                  label="Advance Salary (Disables next month's net salary to recover this advance)"
+                  sx={{ color: 'var(--color-text-primary)' }}
                 />
               </Grid>
               <Grid item xs={12}>
