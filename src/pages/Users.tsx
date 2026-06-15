@@ -35,12 +35,15 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
   Lock as LockIcon,
+  Block as BlockIcon,
+  LockOpen as LockOpenIcon,
 } from '@mui/icons-material';
 
 interface UserRecord {
   id: number;
   email: string;
   role: Role;
+  is_blocked: boolean;
   created_at: string;
 }
 
@@ -100,6 +103,25 @@ const Users: React.FC = () => {
     }
   );
 
+  // Toggle block user mutation
+  const toggleBlockMutation = useMutation(
+    async ({ id, is_blocked }: { id: number; is_blocked: boolean }) => {
+      await api.patch(`/users/${id}/block`, { is_blocked });
+    },
+    {
+      onSuccess: (_, variables) => {
+        queryClient.invalidateQueries(['users']);
+        showToast(
+          `User account ${variables.is_blocked ? 'blocked' : 'unblocked'} successfully.`,
+          'success'
+        );
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update block status', 'error');
+      },
+    }
+  );
+
   const handleOpenAddDialog = () => {
     setError(null);
     setEmail('');
@@ -129,6 +151,21 @@ const Users: React.FC = () => {
     }
     if (window.confirm(`Are you sure you want to delete user: ${user.email}?`)) {
       deleteUserMutation.mutate(user.id);
+    }
+  };
+
+  const handleToggleBlock = (user: UserRecord) => {
+    if (user.role === Role.SUPER_ADMIN) {
+      showToast('Super Admin cannot be blocked!', 'error');
+      return;
+    }
+    if (currentUser && currentUser.id === user.id) {
+      showToast('You cannot block your own logged-in account!', 'error');
+      return;
+    }
+    const action = user.is_blocked ? 'unblock' : 'block';
+    if (window.confirm(`Are you sure you want to ${action} user: ${user.email}?`)) {
+      toggleBlockMutation.mutate({ id: user.id, is_blocked: !user.is_blocked });
     }
   };
 
@@ -207,6 +244,7 @@ const Users: React.FC = () => {
               <TableRow>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email Address</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>System Role</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Created At</TableCell>
                 <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
               </TableRow>
@@ -214,13 +252,13 @@ const Users: React.FC = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                     <CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} />
                   </TableCell>
                 </TableRow>
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
                     No users found matching the search filters.
                   </TableCell>
                 </TableRow>
@@ -242,6 +280,15 @@ const Users: React.FC = () => {
                         sx={{ fontWeight: 700 }}
                       />
                     </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={u.is_blocked ? 'Blocked' : 'Active'}
+                        size="small"
+                        color={u.is_blocked ? 'error' : 'success'}
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                      />
+                    </TableCell>
                     <TableCell sx={{ color: 'var(--color-text-primary)' }}>
                       {new Date(u.created_at).toLocaleDateString(undefined, {
                         year: 'numeric',
@@ -253,7 +300,7 @@ const Users: React.FC = () => {
                     </TableCell>
                     <TableCell align="right">
                       {u.role === Role.SUPER_ADMIN ? (
-                        <Tooltip title="Super Admin cannot be deleted">
+                        <Tooltip title="Super Admin cannot be modified">
                           <span>
                             <IconButton disabled sx={{ color: 'var(--color-text-muted)' }}>
                               <LockIcon fontSize="small" />
@@ -261,15 +308,26 @@ const Users: React.FC = () => {
                           </span>
                         </Tooltip>
                       ) : (
-                        <Tooltip title="Delete User">
-                          <IconButton
-                            onClick={() => handleDelete(u)}
-                            sx={{ color: 'var(--color-error)' }}
-                            disabled={currentUser?.id === u.id}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                          <Tooltip title={u.is_blocked ? 'Unblock User' : 'Block User'}>
+                            <IconButton
+                              onClick={() => handleToggleBlock(u)}
+                              sx={{ color: u.is_blocked ? 'var(--color-success)' : 'var(--color-warning)' }}
+                              disabled={currentUser?.id === u.id}
+                            >
+                              {u.is_blocked ? <LockOpenIcon fontSize="small" /> : <BlockIcon fontSize="small" />}
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete User">
+                            <IconButton
+                              onClick={() => handleDelete(u)}
+                              sx={{ color: 'var(--color-error)' }}
+                              disabled={currentUser?.id === u.id}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       )}
                     </TableCell>
                   </TableRow>
@@ -339,7 +397,6 @@ const Users: React.FC = () => {
                     label="System Role"
                     onChange={(e) => setRole(e.target.value as Role)}
                   >
-                    <MenuItem value={Role.SUPER_ADMIN}>Super Admin</MenuItem>
                     <MenuItem value={Role.FINANCE}>Finance</MenuItem>
                     <MenuItem value={Role.HR}>HR</MenuItem>
                   </Select>

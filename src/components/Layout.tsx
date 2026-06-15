@@ -21,6 +21,15 @@ import {
   Tooltip,
   Autocomplete,
   TextField,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -40,6 +49,8 @@ import {
   TrendingUp as TrendIcon,
   Receipt as ExpensesIcon,
   Search as SearchIcon,
+  LockReset as LockResetIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
@@ -63,6 +74,75 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Profile menu state
+  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
+  const profileMenuOpen = Boolean(profileAnchorEl);
+
+  // Reset password dialog state
+  const [resetPwdOpen, setResetPwdOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetPwdLoading, setResetPwdLoading] = useState(false);
+  const [resetPwdError, setResetPwdError] = useState<string | null>(null);
+  const [resetPwdSuccess, setResetPwdSuccess] = useState(false);
+
+  const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
+    setProfileAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileClose = () => {
+    setProfileAnchorEl(null);
+  };
+
+  const handleOpenResetPwd = () => {
+    handleProfileClose();
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setResetPwdError(null);
+    setResetPwdSuccess(false);
+    setResetPwdOpen(true);
+  };
+
+  const handleResetPwdSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setResetPwdError('All fields are required');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setResetPwdError('New password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetPwdError('New passwords do not match');
+      return;
+    }
+    setResetPwdLoading(true);
+    setResetPwdError(null);
+    try {
+      await api.patch('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+      setResetPwdSuccess(true);
+      setTimeout(() => {
+        setResetPwdOpen(false);
+        setResetPwdSuccess(false);
+      }, 2000);
+    } catch (err: any) {
+      setResetPwdError(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setResetPwdLoading(false);
+    }
+  };
+
+  const handleLogoutFromMenu = () => {
+    handleProfileClose();
+    logout();
+  };
 
   const { data: employees = [] } = useQuery(['employees'], async () => {
     const res = await api.get('/employees');
@@ -355,8 +435,21 @@ const Layout: React.FC = () => {
             </Tooltip>
 
             {user && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Tooltip title={user.email}>
+              <>
+                <Box
+                  onClick={handleProfileClick}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    cursor: 'pointer',
+                    borderRadius: 'var(--radius-control)',
+                    px: 1.5,
+                    py: 0.5,
+                    transition: 'background-color 150ms ease',
+                    '&:hover': { bgcolor: 'var(--color-surface-subtle)' },
+                  }}
+                >
                   <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
                       {formatUserLabel(user.email)}
@@ -373,19 +466,55 @@ const Layout: React.FC = () => {
                       }}
                     />
                   </Box>
-                </Tooltip>
-                <Avatar
-                  sx={{
-                    bgcolor: 'var(--color-primary)',
-                    width: 36,
-                    height: 36,
-                    fontSize: '0.95rem',
-                    fontWeight: 600,
+                  <Avatar
+                    sx={{
+                      bgcolor: 'var(--color-primary)',
+                      width: 36,
+                      height: 36,
+                      fontSize: '0.95rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {user.email.charAt(0).toUpperCase()}
+                  </Avatar>
+                </Box>
+
+                {/* Profile Dropdown Menu */}
+                <Menu
+                  anchorEl={profileAnchorEl}
+                  open={profileMenuOpen}
+                  onClose={handleProfileClose}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  PaperProps={{
+                    sx: {
+                      bgcolor: 'var(--color-surface)',
+                      color: 'var(--color-text-primary)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-card)',
+                      minWidth: 200,
+                      mt: 1,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                    },
                   }}
                 >
-                  {user.email.charAt(0).toUpperCase()}
-                </Avatar>
-              </Box>
+                  <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid var(--color-border)' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                      {user.email}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--color-text-muted)' }}>
+                      {user.role}
+                    </Typography>
+                  </Box>
+                  <MenuItem onClick={handleOpenResetPwd} sx={{ gap: 1.5, py: 1.5, color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-text-primary)', bgcolor: 'var(--color-surface-subtle)' } }}>
+                    <LockResetIcon fontSize="small" /> Reset Password
+                  </MenuItem>
+                  <Divider sx={{ borderColor: 'var(--color-border)' }} />
+                  <MenuItem onClick={handleLogoutFromMenu} sx={{ gap: 1.5, py: 1.5, color: 'var(--color-error)', '&:hover': { bgcolor: 'rgba(244, 63, 94, 0.08)' } }}>
+                    <LogoutIcon fontSize="small" /> Logout
+                  </MenuItem>
+                </Menu>
+              </>
             )}
           </Box>
         </Toolbar>
@@ -438,8 +567,100 @@ const Layout: React.FC = () => {
           <Outlet />
         </Box>
       </Box>
+
+      {/* Reset Password Dialog */}
+      <Dialog
+        open={resetPwdOpen}
+        onClose={() => setResetPwdOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            color: 'var(--color-text-primary)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--color-border)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
+          Reset Password
+        </DialogTitle>
+        <form onSubmit={handleResetPwdSubmit}>
+          <DialogContent sx={{ py: 3 }}>
+            {resetPwdError && (
+              <Alert severity="error" sx={{ mb: 3, bgcolor: 'rgba(244, 63, 94, 0.15)', color: 'var(--color-error)' }}>
+                {resetPwdError}
+              </Alert>
+            )}
+            {resetPwdSuccess && (
+              <Alert severity="success" sx={{ mb: 3 }}>
+                Password changed successfully!
+              </Alert>
+            )}
+            <TextField
+              label="Current Password"
+              type="password"
+              fullWidth
+              required
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              sx={{ ...resetPwdInputStyles, mb: 3 }}
+            />
+            <TextField
+              label="New Password"
+              type="password"
+              fullWidth
+              required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              sx={{ ...resetPwdInputStyles, mb: 3 }}
+            />
+            <TextField
+              label="Confirm New Password"
+              type="password"
+              fullWidth
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              sx={resetPwdInputStyles}
+            />
+          </DialogContent>
+          <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <Button onClick={() => setResetPwdOpen(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={resetPwdLoading || resetPwdSuccess}
+              sx={{
+                background: 'var(--color-primary)',
+                borderRadius: 'var(--radius-control)',
+                px: 3,
+                textTransform: 'none',
+              }}
+            >
+              {resetPwdLoading ? <CircularProgress size={24} sx={{ color: 'var(--color-text-primary)' }} /> : 'Change Password'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
     </Box>
   );
+};
+
+const resetPwdInputStyles = {
+  '& .MuiOutlinedInput-root': {
+    color: 'var(--color-text-primary)',
+    borderRadius: 'var(--radius-control)',
+    '& fieldset': { borderColor: 'var(--color-border)' },
+    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+    '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+  },
+  '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
+  '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
 };
 
 export default Layout;
