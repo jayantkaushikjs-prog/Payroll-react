@@ -16,6 +16,7 @@ import {
   CircularProgress,
   Divider,
   Button,
+  TextField,
 } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -81,7 +82,12 @@ const FinancialSummary: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [selectedEmpId, setSelectedEmpId] = useState<number | ''>('');
-  const [financialYear, setFinancialYear] = useState<number>(new Date().getFullYear());
+  const currentYear = new Date().getFullYear();
+  const defaultStart = new Date().getMonth() >= 3 ? `${currentYear}-04-01` : `${currentYear - 1}-04-01`;
+  const defaultEnd = new Date().getMonth() >= 3 ? `${currentYear + 1}-03-31` : `${currentYear}-03-31`;
+
+  const [startDate, setStartDate] = useState<string>(defaultStart);
+  const [endDate, setEndDate] = useState<string>(defaultEnd);
   const [viewMode, setViewMode] = useState<'annual' | 'monthly'>('annual');
 
   // Fetch all employees for selection
@@ -105,10 +111,10 @@ const FinancialSummary: React.FC = () => {
 
   // Fetch financial summary for the selected employee
   const { data: summary, isLoading: isLoadingSummary, error } = useQuery<FinancialSummaryData | null>(
-    ['financialSummaryPage', selectedEmpId, financialYear],
+    ['financialSummaryPage', selectedEmpId, startDate, endDate],
     async () => {
       if (!selectedEmpId) return null;
-      const res = await api.get(`/employees/${selectedEmpId}/financial-summary?year=${financialYear}`);
+      const res = await api.get(`/employees/${selectedEmpId}/financial-summary?startDate=${startDate}&endDate=${endDate}`);
       return res.data;
     },
     {

@@ -82,10 +82,10 @@ const SalaryStructures: React.FC = () => {
 
   // Form State
   const [formData, setFormData] = useState({
-    ctc: 0,
+    ctc: '' as string | number,
     ctc_type: 'monthly',
-    basic_percent: 50,
-    hra_percent: 40,
+    basic_percent: '' as string | number,
+    hra_percent: '' as string | number,
     effective_from: '',
   });
 
@@ -187,8 +187,8 @@ const SalaryStructures: React.FC = () => {
       effective_from: '',
     });
 
-    let basic_percent = 50;
-    let hra_percent = 40;
+    let basic_percent: string | number = '';
+    let hra_percent: string | number = '';
     if (current && Number(current.gross_salary) > 0) {
       basic_percent = Math.round((Number(current.basic_salary) / Number(current.gross_salary)) * 100);
       if (Number(current.basic_salary) > 0) {
@@ -197,7 +197,7 @@ const SalaryStructures: React.FC = () => {
     }
 
     setFormData({
-      ctc: current ? Number(current.ctc) : 0,
+      ctc: current ? Number(current.ctc) : '',
       ctc_type: 'monthly',
       basic_percent,
       hra_percent,
@@ -223,15 +223,24 @@ const SalaryStructures: React.FC = () => {
     };
     let isValid = true;
 
-    if (Number(formData.ctc) <= 0) {
+    if (formData.ctc === '') {
+      nextErrors.ctc = 'CTC amount is required';
+      isValid = false;
+    } else if (Number(formData.ctc) <= 0) {
       nextErrors.ctc = 'CTC must be greater than 0';
       isValid = false;
     }
-    if (Number(formData.basic_percent) <= 0 || Number(formData.basic_percent) > 100) {
+    if (formData.basic_percent === '') {
+      nextErrors.basic_percent = 'Basic percentage is required';
+      isValid = false;
+    } else if (Number(formData.basic_percent) <= 0 || Number(formData.basic_percent) > 100) {
       nextErrors.basic_percent = 'Basic % must be between 1 and 100';
       isValid = false;
     }
-    if (Number(formData.hra_percent) <= 0 || Number(formData.hra_percent) > 100) {
+    if (formData.hra_percent === '') {
+      nextErrors.hra_percent = 'HRA percentage is required';
+      isValid = false;
+    } else if (Number(formData.hra_percent) <= 0 || Number(formData.hra_percent) > 100) {
       nextErrors.hra_percent = 'HRA % must be between 1 and 100';
       isValid = false;
     }
@@ -653,8 +662,8 @@ const SalaryStructures: React.FC = () => {
                   type="number"
                   fullWidth
                   required
-                  value={formData.ctc || ''}
-                  onChange={(e) => setFormData({ ...formData, ctc: parseFloat(e.target.value) || 0 })}
+                  value={formData.ctc}
+                  onChange={(e) => setFormData({ ...formData, ctc: e.target.value })}
                   error={!!formErrors.ctc}
                   helperText={formErrors.ctc}
                   sx={inputStyles}
@@ -681,8 +690,8 @@ const SalaryStructures: React.FC = () => {
                   fullWidth
                   required
                   inputProps={{ min: 1, max: 100 }}
-                  value={formData.basic_percent || ''}
-                  onChange={(e) => setFormData({ ...formData, basic_percent: parseFloat(e.target.value) || 0 })}
+                  value={formData.basic_percent}
+                  onChange={(e) => setFormData({ ...formData, basic_percent: e.target.value })}
                   error={!!formErrors.basic_percent}
                   helperText={formErrors.basic_percent}
                   sx={inputStyles}
@@ -695,8 +704,8 @@ const SalaryStructures: React.FC = () => {
                   fullWidth
                   required
                   inputProps={{ min: 1, max: 100 }}
-                  value={formData.hra_percent || ''}
-                  onChange={(e) => setFormData({ ...formData, hra_percent: parseFloat(e.target.value) || 0 })}
+                  value={formData.hra_percent}
+                  onChange={(e) => setFormData({ ...formData, hra_percent: e.target.value })}
                   error={!!formErrors.hra_percent}
                   helperText={formErrors.hra_percent}
                   sx={inputStyles}

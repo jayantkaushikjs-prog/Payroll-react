@@ -31,11 +31,15 @@ const PayrollCalculator: React.FC = () => {
 
   // Input states
   const [salaryType, setSalaryType] = useState<'CTC' | 'Gross'>('CTC');
-  const [salaryAmount, setSalaryAmount] = useState<string>('125000'); // Monthly default (1.25L, 15L annual CTC)
-  const [basicPercent, setBasicPercent] = useState<number>(50);
+  const [salaryAmount, setSalaryAmount] = useState<string>(''); // empty by default
+  const [basicPercent, setBasicPercent] = useState<string>(''); // empty by default
   const [pfApplicable, setPfApplicable] = useState<boolean>(true);
   const [pfMethod, setPfMethod] = useState<'actual' | 'ceiling'>('ceiling');
   const [pfCap, setPfCap] = useState<'none' | 'employee' | 'both'>('both');
+
+  // Validation states
+  const [salaryError, setSalaryError] = useState<string>('');
+  const [basicPercentError, setBasicPercentError] = useState<string>('');
 
   // Calculated variables (Monthly values)
   const [calculated, setCalculated] = useState({
@@ -99,15 +103,59 @@ const PayrollCalculator: React.FC = () => {
 
   // Recalculate on input changes
   useEffect(() => {
-    // 1. Parse amount based on mode
-    const amountVal = parseFloat(salaryAmount) || 0;
+    let sErr = '';
+    let bErr = '';
+
+    if (salaryAmount === '') {
+      sErr = 'Salary amount is required';
+    } else {
+      const val = parseFloat(salaryAmount);
+      if (isNaN(val) || val <= 0) {
+        sErr = 'Salary amount must be a positive number';
+      }
+    }
+
+    if (basicPercent === '') {
+      bErr = 'Basic salary percentage is required';
+    } else {
+      const val = parseFloat(basicPercent);
+      if (isNaN(val) || val < 10 || val > 100) {
+        bErr = 'Percentage must be between 10% and 100%';
+      }
+    }
+
+    setSalaryError(sErr);
+    setBasicPercentError(bErr);
+
+    if (sErr || bErr || salaryAmount === '' || basicPercent === '') {
+      setCalculated({
+        ctc: 0,
+        gross: 0,
+        basic: 0,
+        hra: 0,
+        otherAllowances: 0,
+        employeePF: 0,
+        employerPF: 0,
+        employeeESI: 0,
+        employerESI: 0,
+        annualTax: 0,
+        monthlyTDS: 0,
+        totalDeductions: 0,
+        netMonthly: 0,
+        netAnnual: 0,
+      });
+      return;
+    }
+
+    const amountVal = parseFloat(salaryAmount);
+    const basicPct = parseFloat(basicPercent);
     const monthlyInputAmount = viewMode === 'annual' ? amountVal / 12 : amountVal;
 
     let targetGross = 0;
 
     // Helper to compute employer components given a hypothetical gross
     const computeEmployerComponents = (hypotheticalGross: number) => {
-      const basic = hypotheticalGross * (basicPercent / 100);
+      const basic = hypotheticalGross * (basicPct / 100);
       let pfWage = basic;
       if (pfMethod === 'ceiling') {
         pfWage = Math.min(basic, 15000);
@@ -157,7 +205,7 @@ const PayrollCalculator: React.FC = () => {
 
     // 2. Perform final monthly breakdown using solved Gross
     const gross = Number(targetGross.toFixed(2));
-    const basic = Number((gross * (basicPercent / 100)).toFixed(2));
+    const basic = Number((gross * (basicPct / 100)).toFixed(2));
     const hra = Number((basic * 0.40).toFixed(2));
     const otherAllowances = Number((gross - basic - hra).toFixed(2));
 
@@ -282,6 +330,8 @@ const PayrollCalculator: React.FC = () => {
                     type="number"
                     value={salaryAmount}
                     onChange={(e) => setSalaryAmount(e.target.value)}
+                    error={!!salaryError}
+                    helperText={salaryError}
                   />
                 </Grid>
 
@@ -291,7 +341,9 @@ const PayrollCalculator: React.FC = () => {
                     label="Basic Salary Percentage of Gross"
                     type="number"
                     value={basicPercent}
-                    onChange={(e) => setBasicPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                    onChange={(e) => setBasicPercent(e.target.value)}
+                    error={!!basicPercentError}
+                    helperText={basicPercentError}
                     InputProps={{ inputProps: { min: 10, max: 100 } }}
                   />
                 </Grid>
