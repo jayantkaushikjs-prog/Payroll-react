@@ -22,6 +22,7 @@ jobs:
             echo "Running as: $(whoami)"
 
             cd /var/www/html/react/payroll-management-react
+            git stash
             git pull origin dev
             npm run build
 
