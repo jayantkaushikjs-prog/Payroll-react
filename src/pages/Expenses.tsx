@@ -111,13 +111,14 @@ const Expenses: React.FC = () => {
     return res.data;
   });
 
-  // Autocomplete category input state
-  const [categoryInputValue, setCategoryInputValue] = useState('');
+  // Manage Categories States
+  const [openCategoriesDialog, setOpenCategoriesDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   // Fetch expense categories
   const { data: dbCategories = [] } = useQuery(['expenseCategories'], async () => {
     const res = await api.get('/expenses/categories');
-    return res.data.map((c: any) => c.name);
+    return res.data;
   });
 
   // Create new category mutation
@@ -137,16 +138,42 @@ const Expenses: React.FC = () => {
     }
   );
 
-  const CATEGORY_OPTIONS = ['rent', 'salary', 'pf', 'utilities', 'marketing', 'one-time', 'other'];
-  const allCategories = Array.from(new Set([...CATEGORY_OPTIONS, ...dbCategories]));
-
-  const getCategoryOptions = () => {
-    const trimmedInput = categoryInputValue.trim().toLowerCase();
-    if (trimmedInput && !allCategories.some(o => o.toLowerCase() === trimmedInput)) {
-      return [...allCategories, `add "${trimmedInput}"`];
+  // Delete category mutation
+  const deleteCategoryMutation = useMutation(
+    async (id: number) => {
+      const res = await api.delete(`/expenses/categories/${id}`);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['expenseCategories']);
+        showToast('Expense category removed successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to remove category', 'error');
+      },
     }
-    return allCategories;
+  );
+
+  const allCategories = dbCategories.map((c: any) => c.name);
+
+  const withCurrentOption = (options: readonly string[], currentValue: string) => {
+    if (!currentValue || options.includes(currentValue)) {
+      return [...options];
+    }
+    return [currentValue, ...options];
   };
+
+  const handleAddCategory = async () => {
+    const trimmed = newCategoryName.trim().toLowerCase();
+    if (!trimmed) return;
+    try {
+      await addCategoryMutation.mutateAsync(trimmed);
+      setNewCategoryName('');
+    } catch (e) {}
+  };
+
+  const categoryOptions = withCurrentOption(allCategories, formData.category);
 
   // Create mutation
   const createMutation = useMutation(
@@ -358,12 +385,6 @@ const Expenses: React.FC = () => {
     }
   };
 
-  const getOptionLabel = (option: string) => {
-    if (option && option.startsWith('add "') && option.endsWith('"')) {
-      return `Add "${option.substring(5, option.length - 1)}"`;
-    }
-    return getCategoryLabel(option);
-  };
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
@@ -409,19 +430,38 @@ const Expenses: React.FC = () => {
             Export CSV
           </Button>
           {isFinanceOrAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenAdd}
-              sx={{
-                background: 'var(--color-primary)',
-                boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-                borderRadius: 'var(--radius-control)',
-                textTransform: 'none',
-              }}
-            >
-              Add Expense
-            </Button>
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => setOpenCategoriesDialog(true)}
+                sx={{
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text-secondary)',
+                  textTransform: 'none',
+                  borderRadius: 'var(--radius-control)',
+                  '&:hover': {
+                    borderColor: 'var(--color-border-strong)',
+                    bgcolor: 'var(--color-surface-subtle)',
+                    color: 'var(--color-text-primary)',
+                  },
+                }}
+              >
+                Categories
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenAdd}
+                sx={{
+                  background: 'var(--color-primary)',
+                  boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+                  borderRadius: 'var(--radius-control)',
+                  textTransform: 'none',
+                }}
+              >
+                Add Expense
+              </Button>
+            </>
           )}
         </Box>
       </Box>
@@ -733,27 +773,11 @@ const Expenses: React.FC = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Autocomplete
-                  freeSolo
-                  options={getCategoryOptions()}
+                  options={categoryOptions}
                   value={formData.category || null}
-                  inputValue={categoryInputValue}
-                  onInputChange={(_, newValue) => setCategoryInputValue(newValue)}
-                  getOptionLabel={getOptionLabel}
-                  onChange={async (_, value) => {
-                    if (value && value.startsWith('add "') && value.endsWith('"')) {
-                      const newCat = value.substring(5, value.length - 1).trim().toLowerCase();
-                      if (newCat) {
-                        try {
-                          await addCategoryMutation.mutateAsync(newCat);
-                          setFormData({ ...formData, category: newCat });
-                          setCategoryInputValue('');
-                        } catch (e) {
-                          // Handled by mutation
-                        }
-                      }
-                    } else {
-                      setFormData({ ...formData, category: value || '' });
-                    }
+                  getOptionLabel={(option) => getCategoryLabel(option)}
+                  onChange={(_, value) => {
+                    setFormData({ ...formData, category: value || '' });
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -835,6 +859,86 @@ const Expenses: React.FC = () => {
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+      {/* Manage Categories Dialog */}
+      <Dialog
+        open={openCategoriesDialog}
+        onClose={() => setOpenCategoriesDialog(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            boxShadow: 'var(--shadow-card)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
+          Manage Expense Categories
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          <Box sx={{ display: 'flex', gap: 1.5, mb: 3, mt: 1 }}>
+            <TextField
+              placeholder="New category..."
+              fullWidth
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              sx={inputStyles}
+            />
+            <Button
+              variant="contained"
+              onClick={handleAddCategory}
+              sx={{
+                background: 'var(--color-primary)',
+                borderRadius: 'var(--radius-control)',
+                textTransform: 'none',
+              }}
+            >
+              Add
+            </Button>
+          </Box>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: '300px', overflowY: 'auto' }}>
+            {dbCategories.map((cat: any) => (
+              <Box
+                key={cat.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 1.5,
+                  borderRadius: 'var(--radius-control)',
+                  border: '1px solid var(--color-border)',
+                  bgcolor: 'var(--color-surface-subtle)',
+                }}
+              >
+                <Typography sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize', fontWeight: 500 }}>
+                  {getCategoryLabel(cat.name)}
+                </Typography>
+                <IconButton
+                  onClick={() => deleteCategoryMutation.mutate(cat.id)}
+                  sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}
+                  disabled={['salary', 'pf', 'rent', 'utilities', 'marketing', 'one-time', 'other'].includes(cat.name)}
+                >
+                  <DeleteIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', px: 3, py: 2 }}>
+          <Button
+            onClick={() => setOpenCategoriesDialog(false)}
+            sx={{
+              color: 'var(--color-text-secondary)',
+              textTransform: 'none',
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

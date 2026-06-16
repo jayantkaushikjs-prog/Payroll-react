@@ -61,7 +61,6 @@ import {
   People as PeopleIcon,
   HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
-import { DEPARTMENT_OPTIONS, DESIGNATION_OPTIONS } from '../constants/employeeOptions';
 
 interface Employee {
   id: number;
@@ -175,22 +174,20 @@ const Employees: React.FC = () => {
     return res.data;
   });
 
-  // Autocomplete inputs state
-  const [deptInputValue, setDeptInputValue] = useState('');
-  const [desigInputValue, setDesigInputValue] = useState('');
-  const [profileDeptInputValue, setProfileDeptInputValue] = useState('');
-  const [profileDesigInputValue, setProfileDesigInputValue] = useState('');
+  // Manage Options States
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newDesigName, setNewDesigName] = useState('');
 
   // Fetch departments
   const { data: departments = [] } = useQuery(['departments'], async () => {
     const res = await api.get('/employees/departments');
-    return res.data.map((d: any) => d.name);
+    return res.data;
   });
 
   // Fetch designations
   const { data: designations = [] } = useQuery(['designations'], async () => {
     const res = await api.get('/employees/designations');
-    return res.data.map((d: any) => d.name);
+    return res.data;
   });
 
   // Mutations for creating departments & designations
@@ -206,6 +203,22 @@ const Employees: React.FC = () => {
       },
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to add department', 'error');
+      },
+    }
+  );
+
+  const deleteDepartmentMutation = useMutation(
+    async (id: number) => {
+      const res = await api.delete(`/employees/departments/${id}`);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['departments']);
+        showToast('Department removed successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to remove department', 'error');
       },
     }
   );
@@ -226,8 +239,42 @@ const Employees: React.FC = () => {
     }
   );
 
-  const allDepartments = Array.from(new Set([...DEPARTMENT_OPTIONS, ...departments]));
-  const allDesignations = Array.from(new Set([...DESIGNATION_OPTIONS, ...designations]));
+  const deleteDesignationMutation = useMutation(
+    async (id: number) => {
+      const res = await api.delete(`/employees/designations/${id}`);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['designations']);
+        showToast('Designation removed successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to remove designation', 'error');
+      },
+    }
+  );
+
+  const allDepartments = departments.map((d: any) => d.name);
+  const allDesignations = designations.map((d: any) => d.name);
+
+  const handleAddDept = async () => {
+    const trimmed = newDeptName.trim();
+    if (!trimmed) return;
+    try {
+      await addDepartmentMutation.mutateAsync(trimmed);
+      setNewDeptName('');
+    } catch (e) {}
+  };
+
+  const handleAddDesig = async () => {
+    const trimmed = newDesigName.trim();
+    if (!trimmed) return;
+    try {
+      await addDesignationMutation.mutateAsync(trimmed);
+      setNewDesigName('');
+    } catch (e) {}
+  };
 
   // Profile Details Dialog State
   const [openProfileDialog, setOpenProfileDialog] = useState(false);
@@ -871,39 +918,8 @@ const Employees: React.FC = () => {
   const departmentOptions = withCurrentOption(allDepartments, formData.department);
   const designationOptions = withCurrentOption(allDesignations, formData.designation);
 
-  const getDeptOptions = () => {
-    const trimmedInput = deptInputValue.trim();
-    if (trimmedInput && !departmentOptions.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
-      return [...departmentOptions, `Add "${trimmedInput}"`];
-    }
-    return departmentOptions;
-  };
-
-  const getDesigOptions = () => {
-    const trimmedInput = desigInputValue.trim();
-    if (trimmedInput && !designationOptions.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
-      return [...designationOptions, `Add "${trimmedInput}"`];
-    }
-    return designationOptions;
-  };
-
-  const getProfileDeptOptions = () => {
-    const options = withCurrentOption(allDepartments, profileFormData.department);
-    const trimmedInput = profileDeptInputValue.trim();
-    if (trimmedInput && !options.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
-      return [...options, `Add "${trimmedInput}"`];
-    }
-    return options;
-  };
-
-  const getProfileDesigOptions = () => {
-    const options = withCurrentOption(allDesignations, profileFormData.designation);
-    const trimmedInput = profileDesigInputValue.trim();
-    if (trimmedInput && !options.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
-      return [...options, `Add "${trimmedInput}"`];
-    }
-    return options;
-  };
+  const profileDeptOptions = withCurrentOption(allDepartments, profileFormData.department);
+  const profileDesigOptions = withCurrentOption(allDesignations, profileFormData.designation);
 
   return (
     <Box>
@@ -941,6 +957,7 @@ const Employees: React.FC = () => {
           >
             <Tab label="Employee Directory" />
             <Tab label="HR Global Console" />
+            <Tab label="Manage Options" />
           </Tabs>
         </Box>
       )}
@@ -1191,7 +1208,7 @@ const Employees: React.FC = () => {
           )}
           </Paper>
         </>
-      ) : (
+      ) : currentMainTab === 1 ? (
         /* HR Global Console View */
         <Box className="animate-fade-in">
           <Paper
@@ -1480,6 +1497,157 @@ const Employees: React.FC = () => {
             </Paper>
           )}
         </Box>
+      ) : (
+        /* Manage Options View */
+        <Grid container spacing={3} className="animate-fade-in">
+          {/* Department management column */}
+          <Grid item xs={12} md={6}>
+            <Paper
+              sx={{
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-card)',
+                p: 4,
+              }}
+            >
+              <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+                Manage Departments
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+                Add new departments or remove existing ones. Removed departments will no longer appear in employee forms.
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <TextField
+                  placeholder="New department name..."
+                  fullWidth
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                  sx={inputStyles}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddDept}
+                  sx={{
+                    background: 'var(--color-primary)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                    px: 3,
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: '400px', overflowY: 'auto' }}>
+                {departments.map((dept: any) => (
+                  <Box
+                    key={dept.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 2,
+                      borderRadius: 'var(--radius-control)',
+                      border: '1px solid var(--color-border)',
+                      bgcolor: 'var(--color-surface-subtle)',
+                    }}
+                  >
+                    <Typography sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
+                      {dept.name}
+                    </Typography>
+                    <IconButton
+                      onClick={() => deleteDepartmentMutation.mutate(dept.id)}
+                      sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                ))}
+                {departments.length === 0 && (
+                  <Typography sx={{ color: 'var(--color-text-muted)', py: 2, textAlign: 'center' }}>
+                    No departments added yet.
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Designation management column */}
+          <Grid item xs={12} md={6}>
+            <Paper
+              sx={{
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-card)',
+                p: 4,
+              }}
+            >
+              <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+                Manage Designations
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+                Add new designations or remove existing ones. Removed designations will no longer appear in employee forms.
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <TextField
+                  placeholder="New designation name..."
+                  fullWidth
+                  value={newDesigName}
+                  onChange={(e) => setNewDesigName(e.target.value)}
+                  sx={inputStyles}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddDesig}
+                  sx={{
+                    background: 'var(--color-primary)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                    px: 3,
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: '400px', overflowY: 'auto' }}>
+                {designations.map((desig: any) => (
+                  <Box
+                    key={desig.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      p: 2,
+                      borderRadius: 'var(--radius-control)',
+                      border: '1px solid var(--color-border)',
+                      bgcolor: 'var(--color-surface-subtle)',
+                    }}
+                  >
+                    <Typography sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
+                      {desig.name}
+                    </Typography>
+                    <IconButton
+                      onClick={() => deleteDesignationMutation.mutate(desig.id)}
+                      sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                ))}
+                {designations.length === 0 && (
+                  <Typography sx={{ color: 'var(--color-text-muted)', py: 2, textAlign: 'center' }}>
+                    No designations added yet.
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
       )}
 
       {/* Detailed Employee Profile Dialog */}
@@ -1634,27 +1802,11 @@ const Employees: React.FC = () => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <Autocomplete
-                            freeSolo
-                            options={getProfileDeptOptions()}
-                            value={profileFormData.department}
+                            options={profileDeptOptions}
+                            value={profileFormData.department || null}
                             disabled={!isHRorAdmin}
-                            inputValue={profileDeptInputValue}
-                            onInputChange={(_, newValue) => setProfileDeptInputValue(newValue)}
-                            onChange={async (_, value) => {
-                              if (value && value.startsWith('Add "') && value.endsWith('"')) {
-                                const newDept = value.substring(5, value.length - 1).trim();
-                                if (newDept) {
-                                  try {
-                                    await addDepartmentMutation.mutateAsync(newDept);
-                                    setProfileFormData({ ...profileFormData, department: newDept });
-                                    setProfileDeptInputValue('');
-                                  } catch (e) {
-                                    // Handled by mutation
-                                  }
-                                }
-                              } else {
-                                setProfileFormData({ ...profileFormData, department: value || '' });
-                              }
+                            onChange={(_, value) => {
+                              setProfileFormData({ ...profileFormData, department: value || '' });
                             }}
                             renderInput={(params) => (
                               <TextField {...params} label="Department" required sx={inputStyles} />
@@ -1664,27 +1816,11 @@ const Employees: React.FC = () => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <Autocomplete
-                            freeSolo
-                            options={getProfileDesigOptions()}
-                            value={profileFormData.designation}
+                            options={profileDesigOptions}
+                            value={profileFormData.designation || null}
                             disabled={!isHRorAdmin}
-                            inputValue={profileDesigInputValue}
-                            onInputChange={(_, newValue) => setProfileDesigInputValue(newValue)}
-                            onChange={async (_, value) => {
-                              if (value && value.startsWith('Add "') && value.endsWith('"')) {
-                                const newDesig = value.substring(5, value.length - 1).trim();
-                                if (newDesig) {
-                                  try {
-                                    await addDesignationMutation.mutateAsync(newDesig);
-                                    setProfileFormData({ ...profileFormData, designation: newDesig });
-                                    setProfileDesigInputValue('');
-                                  } catch (e) {
-                                    // Handled by mutation
-                                  }
-                                }
-                              } else {
-                                setProfileFormData({ ...profileFormData, designation: value || '' });
-                              }
+                            onChange={(_, value) => {
+                              setProfileFormData({ ...profileFormData, designation: value || '' });
                             }}
                             renderInput={(params) => (
                               <TextField {...params} label="Designation" required sx={inputStyles} />
@@ -2394,28 +2530,11 @@ const Employees: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Autocomplete
-                    freeSolo
-                    options={getDeptOptions()}
+                    options={departmentOptions}
                     value={formData.department || null}
-                    inputValue={deptInputValue}
-                    onInputChange={(_, newValue) => setDeptInputValue(newValue)}
-                    onChange={async (_, value) => {
-                      if (value && value.startsWith('Add "') && value.endsWith('"')) {
-                        const newDept = value.substring(5, value.length - 1).trim();
-                        if (newDept) {
-                          try {
-                            await addDepartmentMutation.mutateAsync(newDept);
-                            setFormData({ ...formData, department: newDept });
-                            setFormErrors({ ...formErrors, department: '' });
-                            setDeptInputValue('');
-                          } catch (e) {
-                            // Handled by mutation
-                          }
-                        }
-                      } else {
-                        setFormData({ ...formData, department: value || '' });
-                        setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
-                      }
+                    onChange={(_, value) => {
+                      setFormData({ ...formData, department: value || '' });
+                      setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -2433,28 +2552,11 @@ const Employees: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Autocomplete
-                    freeSolo
-                    options={getDesigOptions()}
+                    options={designationOptions}
                     value={formData.designation || null}
-                    inputValue={desigInputValue}
-                    onInputChange={(_, newValue) => setDesigInputValue(newValue)}
-                    onChange={async (_, value) => {
-                      if (value && value.startsWith('Add "') && value.endsWith('"')) {
-                        const newDesig = value.substring(5, value.length - 1).trim();
-                        if (newDesig) {
-                          try {
-                            await addDesignationMutation.mutateAsync(newDesig);
-                            setFormData({ ...formData, designation: newDesig });
-                            setFormErrors({ ...formErrors, designation: '' });
-                            setDesigInputValue('');
-                          } catch (e) {
-                            // Handled by mutation
-                          }
-                        }
-                      } else {
-                        setFormData({ ...formData, designation: value || '' });
-                        setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
-                      }
+                    onChange={(_, value) => {
+                      setFormData({ ...formData, designation: value || '' });
+                      setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
                     }}
                     renderInput={(params) => (
                       <TextField
