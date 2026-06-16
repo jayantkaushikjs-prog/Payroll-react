@@ -551,7 +551,7 @@ const Expenses: React.FC = () => {
                 onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                {allCategories.map((cat) => (
+                {allCategories.map((cat: string) => (
                   <MenuItem key={cat} value={cat}>
                     {getCategoryLabel(cat)}
                   </MenuItem>
