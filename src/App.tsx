@@ -31,7 +31,7 @@ interface ThemeModeContextType {
 }
 
 export const ThemeModeContext = createContext<ThemeModeContextType>({
-  mode: 'dark',
+  mode: 'light',
   toggleTheme: () => {},
 });
 
@@ -45,7 +45,7 @@ const queryClient = new QueryClient({
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('themeMode') as 'light' | 'dark') || 'dark';
+    return (localStorage.getItem('themeMode') as 'light' | 'dark') || 'light';
   });
 
   const toggleTheme = () => {
