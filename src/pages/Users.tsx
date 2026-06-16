@@ -355,7 +355,7 @@ const Users: React.FC = () => {
         }}
       >
         <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
-          Add New System User
+          Add New User
         </DialogTitle>
         <form onSubmit={handleFormSubmit}>
           <DialogContent sx={{ py: 3 }}>

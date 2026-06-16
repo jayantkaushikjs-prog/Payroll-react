@@ -238,7 +238,7 @@ const Layout: React.FC = () => {
       requireAny: true,
     },
     {
-      text: 'Payroll Simulator',
+      text: 'Payroll Calculator',
       icon: <TrendIcon />,
       path: '/calculator',
     },
