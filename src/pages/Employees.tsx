@@ -960,6 +960,26 @@ const Employees: React.FC = () => {
     emp.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const hasHrPreviewInput = (emp: Employee) =>
+    Number(emp.no_of_days_present ?? 30) !== 30 ||
+    Number(emp.deduction_absent || 0) > 0 ||
+    Number(emp.appraisal || 0) > 0 ||
+    Number(emp.leave_encashment || 0) > 0 ||
+    Number(emp.late_arrival_deduction || 0) > 0 ||
+    Number(emp.damages_recovery || 0) > 0 ||
+    Number(emp.bonus_incentives || 0) > 0 ||
+    Number(emp.other_deductions || 0) > 0 ||
+    Boolean(emp.remarks?.trim()) ||
+    Boolean(emp.relieving_date) ||
+    Boolean(emp.other_inputs?.trim());
+
+  const previewEmployees = employees.filter((emp: Employee) => hasHrPreviewInput(emp));
+  const previewValue = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === '') return '-';
+    return String(value);
+  };
+  const previewAmount = (value?: number) => Number(value || 0) > 0 ? Number(value).toLocaleString('en-IN') : '-';
+
   const departmentOptions = withCurrentOption(allDepartments, formData.department);
   const designationOptions = withCurrentOption(allDesignations, formData.designation);
 
@@ -1002,6 +1022,7 @@ const Employees: React.FC = () => {
           >
             <Tab label="Employee Directory" />
             <Tab label="HR Global Console" />
+            <Tab label="Preview" />
             <Tab label="Manage Options" />
           </Tabs>
         </Box>
@@ -1488,7 +1509,8 @@ const Employees: React.FC = () => {
                         label="Remarks"
                         fullWidth
                         multiline
-                        rows={2}
+                        minRows={2}
+                        maxRows={10}
                         value={consoleFormData.remarks}
                         onChange={(e) => setConsoleFormData({ ...consoleFormData, remarks: e.target.value })}
                         sx={inputStyles}
@@ -1568,6 +1590,101 @@ const Employees: React.FC = () => {
             </Paper>
           )}
         </Box>
+      ) : currentMainTab === 2 ? (
+        /* HR Inputs Preview View */
+        <Paper
+          className="animate-fade-in"
+          sx={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            overflow: 'hidden',
+            p: 3,
+          }}
+        >
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)' }}>
+              Edited Employee Inputs Preview
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+              Employees with non-default HR operation or lifecycle inputs appear here.
+            </Typography>
+          </Box>
+
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
+            </Box>
+          ) : previewEmployees.length === 0 ? (
+            <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              No edited employee inputs found.
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table sx={{ minWidth: 1900 }}>
+                <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                  <TableRow>
+                    <TableCell colSpan={11} align="center" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, borderBottom: '1px solid var(--color-border)' }}>
+                      Sub list 1
+                    </TableCell>
+                    <TableCell colSpan={3} align="center" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, borderBottom: '1px solid var(--color-border)' }}>
+                      Sub list 2
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    {[
+                      'Employee Code',
+                      'Employee Name',
+                      'No Of day Present',
+                      'Deduction (Absent)',
+                      'Appraisal',
+                      'Leave Encashment',
+                      'Late Arrival Deduction (depends on days, not on numbers)',
+                      'Damages Recovery',
+                      'Bonus / Incentives',
+                      'Other Deductions',
+                      'Remarks',
+                      'Joinings',
+                      'Relieving',
+                      'Other Inputs: any extra information, such as maternity, career break, etc etc',
+                    ].map((header) => (
+                      <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, verticalAlign: 'top' }}>
+                        {header}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {previewEmployees.map((emp: Employee) => (
+                    <TableRow
+                      key={emp.id}
+                      hover
+                      sx={{
+                        '&:last-child td, &:last-child th': { border: 0 },
+                        '&:hover': { bgcolor: 'var(--color-row-hover)' },
+                      }}
+                    >
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.employee_code}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? 30)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.deduction_absent)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.appraisal)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.leave_encashment)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.late_arrival_deduction)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.damages_recovery)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.other_deductions)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 220, whiteSpace: 'pre-wrap' }}>{previewValue(emp.remarks)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.joining_date)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.relieving_date)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 260, whiteSpace: 'pre-wrap' }}>{previewValue(emp.other_inputs)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
       ) : (
         /* Manage Options View */
         <Grid container spacing={3} className="animate-fade-in">
@@ -2014,7 +2131,8 @@ const Employees: React.FC = () => {
                             label="Remarks"
                             fullWidth
                             multiline
-                            rows={1.5}
+                            minRows={2}
+                            maxRows={10}
                             disabled={!isHRorAdmin}
                             value={profileFormData.remarks}
                             onChange={(e) => setProfileFormData({ ...profileFormData, remarks: e.target.value })}
@@ -2722,7 +2840,7 @@ const Employees: React.FC = () => {
                     />
                   </Grid>
                 )}
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6}>
                   <FormControlLabel
                     control={
 	                      <Switch
@@ -2738,24 +2856,6 @@ const Employees: React.FC = () => {
                     sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
                   />
                 </Grid>
-                {!!selectedEmp && (
-                  <Grid item xs={12} sm={4}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={formData.tax_deduction}
-                          onChange={(e) => setFormData({ ...formData, tax_deduction: e.target.checked })}
-                          sx={{
-                            '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                          }}
-                        />
-                      }
-                      label="Tax Deduction"
-                      sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
-                    />
-                  </Grid>
-                )}
 
                 {/* Bank Details Sub-header */}
                 <Grid item xs={12}>
