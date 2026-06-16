@@ -71,6 +71,8 @@ interface Employee {
   department: string;
   designation: string;
   joining_date: string;
+  monthly_ctc?: number;
+  annual_ctc?: number;
   bank_name: string;
   account_number: string;
   ifsc: string;
@@ -87,6 +89,8 @@ interface Employee {
   leave_encashment?: number;
   late_arrival_deduction?: number;
   damages_recovery?: number;
+  bonus_incentives?: number;
+  other_deductions?: number;
   remarks?: string | null;
 }
 
@@ -114,7 +118,23 @@ const Employees: React.FC = () => {
   });
 
   // Form Fields
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    employee_code: string;
+    name: string;
+    email: string;
+    phone: string;
+    department: string;
+    designation: string;
+    joining_date: string;
+    monthly_ctc: string | number;
+    bank_name: string;
+    account_number: string;
+    ifsc: string;
+    tax_regime: string;
+    active_status: boolean;
+    pf_deduction: boolean;
+    tax_deduction: boolean;
+  }>({
     employee_code: '',
     name: '',
     email: '',
@@ -122,12 +142,14 @@ const Employees: React.FC = () => {
     department: '',
     designation: '',
     joining_date: '',
+    monthly_ctc: '',
     bank_name: '',
     account_number: '',
     ifsc: '',
     tax_regime: 'new',
     active_status: true,
     pf_deduction: false,
+    tax_deduction: true,
   });
 
   // HR Console States
@@ -317,6 +339,8 @@ const Employees: React.FC = () => {
     leave_encashment: string | number;
     late_arrival_deduction: string | number;
     damages_recovery: string | number;
+    bonus_incentives: string | number;
+    other_deductions: string | number;
     remarks: string;
   }>({
     employee_code: '',
@@ -342,6 +366,8 @@ const Employees: React.FC = () => {
     leave_encashment: '',
     late_arrival_deduction: '',
     damages_recovery: '',
+    bonus_incentives: '',
+    other_deductions: '',
     remarks: '',
   });
 
@@ -441,6 +467,8 @@ const Employees: React.FC = () => {
           leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
           late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
           damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
+          bonus_incentives: emp.bonus_incentives ? Number(emp.bonus_incentives) : '',
+          other_deductions: emp.other_deductions ? Number(emp.other_deductions) : '',
           remarks: emp.remarks || '',
         });
       }
@@ -637,6 +665,7 @@ const Employees: React.FC = () => {
       department: '',
       designation: '',
       joining_date: new Date().toISOString().split('T')[0],
+      monthly_ctc: '',
       bank_name: '',
       account_number: '',
       ifsc: '',
@@ -670,6 +699,7 @@ const Employees: React.FC = () => {
       department: emp.department,
       designation: emp.designation,
       joining_date: emp.joining_date,
+      monthly_ctc: emp.monthly_ctc ? Number(emp.monthly_ctc) : '',
       bank_name: emp.bank_name,
       account_number: emp.account_number,
       ifsc: emp.ifsc,
@@ -707,6 +737,8 @@ const Employees: React.FC = () => {
       leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
       late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
       damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
+      bonus_incentives: emp.bonus_incentives ? Number(emp.bonus_incentives) : '',
+      other_deductions: emp.other_deductions ? Number(emp.other_deductions) : '',
       remarks: emp.remarks || '',
     });
     setOpenProfileDialog(true);
@@ -811,10 +843,16 @@ const Employees: React.FC = () => {
       return;
     }
 
+    const payload = {
+      ...formData,
+      monthly_ctc: Number(formData.monthly_ctc) || 0,
+      annual_ctc: (Number(formData.monthly_ctc) || 0) * 12,
+    };
+
     if (selectedEmp) {
-      updateMutation.mutate({ id: selectedEmp.id, data: formData });
+      updateMutation.mutate({ id: selectedEmp.id, data: payload });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(payload);
     }
   };
 
@@ -1947,6 +1985,30 @@ const Employees: React.FC = () => {
                             inputProps={{ min: 0 }}
                           />
                         </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            label="Bonus / Incentives"
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.bonus_incentives === 0 ? '' : profileFormData.bonus_incentives}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, bonus_incentives: parseFloat(e.target.value) || 0 })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0 }}
+                          />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            label="Other Deductions"
+                            type="number"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.other_deductions === 0 ? '' : profileFormData.other_deductions}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, other_deductions: parseFloat(e.target.value) || 0 })}
+                            sx={inputStyles}
+                            inputProps={{ min: 0 }}
+                          />
+                        </Grid>
                         <Grid item xs={12}>
                           <TextField
                             label="Remarks"
@@ -1960,7 +2022,7 @@ const Employees: React.FC = () => {
                           />
                         </Grid>
 
-                        <Grid item xs={12} sm={4}>
+                        <Grid item xs={12} sm={6}>
                           <FormControlLabel
                             control={
                               <Switch
@@ -1977,7 +2039,7 @@ const Employees: React.FC = () => {
                             sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
                           />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid item xs={12} sm={6}>
                           <FormControlLabel
                             control={
                               <Switch
@@ -1991,23 +2053,6 @@ const Employees: React.FC = () => {
                               />
                             }
                             label="PF"
-                            sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={profileFormData.tax_deduction}
-                                disabled={!isHRorAdmin}
-                                onChange={(e) => setProfileFormData({ ...profileFormData, tax_deduction: e.target.checked })}
-                                sx={{
-                                  '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                                }}
-                              />
-                            }
-                            label="Tax"
                             sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
                           />
                         </Grid>
@@ -2620,6 +2665,42 @@ const Employees: React.FC = () => {
                     InputLabelProps={{ shrink: true }}
                     error={!!formErrors.joining_date}
                     helperText={formErrors.joining_date}
+                    sx={inputStyles}
+                  />
+                </Grid>
+
+                {/* CTC Section */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mt: 1 }}>
+                    CTC DETAILS
+                  </Typography>
+                  <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Monthly CTC"
+                    type="number"
+                    fullWidth
+                    value={formData.monthly_ctc}
+                    onChange={(e) => {
+                      const monthly = e.target.value;
+                      setFormData({ ...formData, monthly_ctc: monthly });
+                    }}
+                    inputProps={{ min: 0 }}
+                    sx={inputStyles}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Annual CTC"
+                    type="number"
+                    fullWidth
+                    value={formData.monthly_ctc ? String(Number(formData.monthly_ctc) * 12) : ''}
+                    InputProps={{ readOnly: true }}
+                    disabled
+                    helperText="Auto-calculated (Monthly × 12)"
+                    inputProps={{ min: 0 }}
                     sx={inputStyles}
                   />
                 </Grid>
