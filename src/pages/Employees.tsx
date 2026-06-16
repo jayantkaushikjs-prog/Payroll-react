@@ -128,7 +128,7 @@ const Employees: React.FC = () => {
     ifsc: '',
     tax_regime: 'new',
     active_status: true,
-    pf_deduction: true,
+    pf_deduction: false,
     tax_deduction: true,
   });
 
@@ -174,6 +174,60 @@ const Employees: React.FC = () => {
     const res = await api.get('/employees');
     return res.data;
   });
+
+  // Autocomplete inputs state
+  const [deptInputValue, setDeptInputValue] = useState('');
+  const [desigInputValue, setDesigInputValue] = useState('');
+  const [profileDeptInputValue, setProfileDeptInputValue] = useState('');
+  const [profileDesigInputValue, setProfileDesigInputValue] = useState('');
+
+  // Fetch departments
+  const { data: departments = [] } = useQuery(['departments'], async () => {
+    const res = await api.get('/employees/departments');
+    return res.data.map((d: any) => d.name);
+  });
+
+  // Fetch designations
+  const { data: designations = [] } = useQuery(['designations'], async () => {
+    const res = await api.get('/employees/designations');
+    return res.data.map((d: any) => d.name);
+  });
+
+  // Mutations for creating departments & designations
+  const addDepartmentMutation = useMutation(
+    async (name: string) => {
+      const res = await api.post('/employees/departments', { name });
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['departments']);
+        showToast('New department added successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to add department', 'error');
+      },
+    }
+  );
+
+  const addDesignationMutation = useMutation(
+    async (name: string) => {
+      const res = await api.post('/employees/designations', { name });
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['designations']);
+        showToast('New designation added successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to add designation', 'error');
+      },
+    }
+  );
+
+  const allDepartments = Array.from(new Set([...DEPARTMENT_OPTIONS, ...departments]));
+  const allDesignations = Array.from(new Set([...DESIGNATION_OPTIONS, ...designations]));
 
   // Profile Details Dialog State
   const [openProfileDialog, setOpenProfileDialog] = useState(false);
@@ -534,7 +588,7 @@ const Employees: React.FC = () => {
       ifsc: '',
       tax_regime: 'new',
       active_status: true,
-      pf_deduction: true,
+      pf_deduction: false,
       tax_deduction: true,
     });
     setOpenDialog(true);
@@ -814,8 +868,42 @@ const Employees: React.FC = () => {
     emp.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const departmentOptions = withCurrentOption(DEPARTMENT_OPTIONS, formData.department);
-  const designationOptions = withCurrentOption(DESIGNATION_OPTIONS, formData.designation);
+  const departmentOptions = withCurrentOption(allDepartments, formData.department);
+  const designationOptions = withCurrentOption(allDesignations, formData.designation);
+
+  const getDeptOptions = () => {
+    const trimmedInput = deptInputValue.trim();
+    if (trimmedInput && !departmentOptions.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
+      return [...departmentOptions, `Add "${trimmedInput}"`];
+    }
+    return departmentOptions;
+  };
+
+  const getDesigOptions = () => {
+    const trimmedInput = desigInputValue.trim();
+    if (trimmedInput && !designationOptions.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
+      return [...designationOptions, `Add "${trimmedInput}"`];
+    }
+    return designationOptions;
+  };
+
+  const getProfileDeptOptions = () => {
+    const options = withCurrentOption(allDepartments, profileFormData.department);
+    const trimmedInput = profileDeptInputValue.trim();
+    if (trimmedInput && !options.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
+      return [...options, `Add "${trimmedInput}"`];
+    }
+    return options;
+  };
+
+  const getProfileDesigOptions = () => {
+    const options = withCurrentOption(allDesignations, profileFormData.designation);
+    const trimmedInput = profileDesigInputValue.trim();
+    if (trimmedInput && !options.some(o => o.toLowerCase() === trimmedInput.toLowerCase())) {
+      return [...options, `Add "${trimmedInput}"`];
+    }
+    return options;
+  };
 
   return (
     <Box>
@@ -1546,10 +1634,28 @@ const Employees: React.FC = () => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <Autocomplete
-                            options={DEPARTMENT_OPTIONS}
+                            freeSolo
+                            options={getProfileDeptOptions()}
                             value={profileFormData.department}
                             disabled={!isHRorAdmin}
-                            onChange={(_, newValue) => setProfileFormData({ ...profileFormData, department: newValue || '' })}
+                            inputValue={profileDeptInputValue}
+                            onInputChange={(_, newValue) => setProfileDeptInputValue(newValue)}
+                            onChange={async (_, value) => {
+                              if (value && value.startsWith('Add "') && value.endsWith('"')) {
+                                const newDept = value.substring(5, value.length - 1).trim();
+                                if (newDept) {
+                                  try {
+                                    await addDepartmentMutation.mutateAsync(newDept);
+                                    setProfileFormData({ ...profileFormData, department: newDept });
+                                    setProfileDeptInputValue('');
+                                  } catch (e) {
+                                    // Handled by mutation
+                                  }
+                                }
+                              } else {
+                                setProfileFormData({ ...profileFormData, department: value || '' });
+                              }
+                            }}
                             renderInput={(params) => (
                               <TextField {...params} label="Department" required sx={inputStyles} />
                             )}
@@ -1558,10 +1664,28 @@ const Employees: React.FC = () => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <Autocomplete
-                            options={DESIGNATION_OPTIONS}
+                            freeSolo
+                            options={getProfileDesigOptions()}
                             value={profileFormData.designation}
                             disabled={!isHRorAdmin}
-                            onChange={(_, newValue) => setProfileFormData({ ...profileFormData, designation: newValue || '' })}
+                            inputValue={profileDesigInputValue}
+                            onInputChange={(_, newValue) => setProfileDesigInputValue(newValue)}
+                            onChange={async (_, value) => {
+                              if (value && value.startsWith('Add "') && value.endsWith('"')) {
+                                const newDesig = value.substring(5, value.length - 1).trim();
+                                if (newDesig) {
+                                  try {
+                                    await addDesignationMutation.mutateAsync(newDesig);
+                                    setProfileFormData({ ...profileFormData, designation: newDesig });
+                                    setProfileDesigInputValue('');
+                                  } catch (e) {
+                                    // Handled by mutation
+                                  }
+                                }
+                              } else {
+                                setProfileFormData({ ...profileFormData, designation: value || '' });
+                              }
+                            }}
                             renderInput={(params) => (
                               <TextField {...params} label="Designation" required sx={inputStyles} />
                             )}
@@ -2270,11 +2394,28 @@ const Employees: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Autocomplete
-                    options={departmentOptions}
+                    freeSolo
+                    options={getDeptOptions()}
                     value={formData.department || null}
-                    onChange={(_, value) => {
-                      setFormData({ ...formData, department: value || '' });
-                      setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
+                    inputValue={deptInputValue}
+                    onInputChange={(_, newValue) => setDeptInputValue(newValue)}
+                    onChange={async (_, value) => {
+                      if (value && value.startsWith('Add "') && value.endsWith('"')) {
+                        const newDept = value.substring(5, value.length - 1).trim();
+                        if (newDept) {
+                          try {
+                            await addDepartmentMutation.mutateAsync(newDept);
+                            setFormData({ ...formData, department: newDept });
+                            setFormErrors({ ...formErrors, department: '' });
+                            setDeptInputValue('');
+                          } catch (e) {
+                            // Handled by mutation
+                          }
+                        }
+                      } else {
+                        setFormData({ ...formData, department: value || '' });
+                        setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
+                      }
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -2292,11 +2433,28 @@ const Employees: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Autocomplete
-                    options={designationOptions}
+                    freeSolo
+                    options={getDesigOptions()}
                     value={formData.designation || null}
-                    onChange={(_, value) => {
-                      setFormData({ ...formData, designation: value || '' });
-                      setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
+                    inputValue={desigInputValue}
+                    onInputChange={(_, newValue) => setDesigInputValue(newValue)}
+                    onChange={async (_, value) => {
+                      if (value && value.startsWith('Add "') && value.endsWith('"')) {
+                        const newDesig = value.substring(5, value.length - 1).trim();
+                        if (newDesig) {
+                          try {
+                            await addDesignationMutation.mutateAsync(newDesig);
+                            setFormData({ ...formData, designation: newDesig });
+                            setFormErrors({ ...formErrors, designation: '' });
+                            setDesigInputValue('');
+                          } catch (e) {
+                            // Handled by mutation
+                          }
+                        }
+                      } else {
+                        setFormData({ ...formData, designation: value || '' });
+                        setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
+                      }
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -2360,22 +2518,24 @@ const Employees: React.FC = () => {
                     sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
-                  <FormControlLabel
-                    control={
-	                      <Switch
-	                        checked={formData.tax_deduction}
-	                        onChange={(e) => setFormData({ ...formData, tax_deduction: e.target.checked })}
-	                        sx={{
-	                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-	                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                        }}
-                      />
-                    }
-                    label="Tax Deduction"
-                    sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
-                  />
-                </Grid>
+                {!!selectedEmp && (
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.tax_deduction}
+                          onChange={(e) => setFormData({ ...formData, tax_deduction: e.target.checked })}
+                          sx={{
+                            '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                          }}
+                        />
+                      }
+                      label="Tax Deduction"
+                      sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                    />
+                  </Grid>
+                )}
 
                 {/* Bank Details Sub-header */}
                 <Grid item xs={12}>

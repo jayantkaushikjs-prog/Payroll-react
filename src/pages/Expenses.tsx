@@ -33,6 +33,7 @@ import {
   CardContent,
   FormControlLabel,
   Switch,
+  Autocomplete,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -109,6 +110,43 @@ const Expenses: React.FC = () => {
     const res = await api.get(`/expenses?excludeSalaries=${excludeSalaries}`);
     return res.data;
   });
+
+  // Autocomplete category input state
+  const [categoryInputValue, setCategoryInputValue] = useState('');
+
+  // Fetch expense categories
+  const { data: dbCategories = [] } = useQuery(['expenseCategories'], async () => {
+    const res = await api.get('/expenses/categories');
+    return res.data.map((c: any) => c.name);
+  });
+
+  // Create new category mutation
+  const addCategoryMutation = useMutation(
+    async (name: string) => {
+      const res = await api.post('/expenses/categories', { name });
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['expenseCategories']);
+        showToast('New expense category added successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to add category', 'error');
+      },
+    }
+  );
+
+  const CATEGORY_OPTIONS = ['rent', 'salary', 'pf', 'utilities', 'marketing', 'one-time', 'other'];
+  const allCategories = Array.from(new Set([...CATEGORY_OPTIONS, ...dbCategories]));
+
+  const getCategoryOptions = () => {
+    const trimmedInput = categoryInputValue.trim().toLowerCase();
+    if (trimmedInput && !allCategories.some(o => o.toLowerCase() === trimmedInput)) {
+      return [...allCategories, `add "${trimmedInput}"`];
+    }
+    return allCategories;
+  };
 
   // Create mutation
   const createMutation = useMutation(
@@ -299,7 +337,7 @@ const Expenses: React.FC = () => {
       case 'utilities': return 'Utilities';
       case 'marketing': return 'Marketing';
       case 'one-time': return 'One-Time';
-      default: return 'Other';
+      default: return cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other';
     }
   };
 
@@ -311,8 +349,20 @@ const Expenses: React.FC = () => {
       case 'utilities': return { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.25)', label: 'Utilities' }; // Amber
       case 'marketing': return { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.08)', border: 'rgba(139, 92, 246, 0.25)', label: 'Marketing' }; // Purple
       case 'one-time': return { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.25)', label: 'One-Time' }; // Red
-      default: return { color: '#6b7280', bg: 'rgba(107, 114, 128, 0.08)', border: 'rgba(107, 114, 128, 0.25)', label: 'Other' }; // Grey
+      default: return { 
+        color: '#6b7280', 
+        bg: 'rgba(107, 114, 128, 0.08)', 
+        border: 'rgba(107, 114, 128, 0.25)', 
+        label: cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : 'Other' 
+      }; // Grey
     }
+  };
+
+  const getOptionLabel = (option: string) => {
+    if (option && option.startsWith('add "') && option.endsWith('"')) {
+      return `Add "${option.substring(5, option.length - 1)}"`;
+    }
+    return getCategoryLabel(option);
   };
 
   const getCategoryIcon = (cat: string) => {
@@ -461,13 +511,11 @@ const Expenses: React.FC = () => {
                 onChange={(e) => { setCategoryFilter(e.target.value); setPage(0); }}
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                <MenuItem value="rent">Rent</MenuItem>
-                <MenuItem value="salary">Salary</MenuItem>
-                <MenuItem value="pf">Employer PF</MenuItem>
-                <MenuItem value="utilities">Utilities & Cloud</MenuItem>
-                <MenuItem value="marketing">Marketing & Subscriptions</MenuItem>
-                <MenuItem value="one-time">One-Time Equipment</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
+                {allCategories.map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {getCategoryLabel(cat)}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>
@@ -684,23 +732,40 @@ const Expenses: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required sx={selectStyles}>
-                  <InputLabel id="form-category-label" sx={{ color: 'var(--color-text-secondary)' }}>Category</InputLabel>
-                  <Select
-                    labelId="form-category-label"
-                    value={formData.category}
-                    label="Category"
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <MenuItem value="rent">Rent</MenuItem>
-                    <MenuItem value="salary">Salary</MenuItem>
-                    <MenuItem value="pf">Employer PF</MenuItem>
-                    <MenuItem value="utilities">Utilities & Cloud</MenuItem>
-                    <MenuItem value="marketing">Marketing & Subscriptions</MenuItem>
-                    <MenuItem value="one-time">One-Time Equipment</MenuItem>
-                    <MenuItem value="other">Other</MenuItem>
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  freeSolo
+                  options={getCategoryOptions()}
+                  value={formData.category || null}
+                  inputValue={categoryInputValue}
+                  onInputChange={(_, newValue) => setCategoryInputValue(newValue)}
+                  getOptionLabel={getOptionLabel}
+                  onChange={async (_, value) => {
+                    if (value && value.startsWith('add "') && value.endsWith('"')) {
+                      const newCat = value.substring(5, value.length - 1).trim().toLowerCase();
+                      if (newCat) {
+                        try {
+                          await addCategoryMutation.mutateAsync(newCat);
+                          setFormData({ ...formData, category: newCat });
+                          setCategoryInputValue('');
+                        } catch (e) {
+                          // Handled by mutation
+                        }
+                      }
+                    } else {
+                      setFormData({ ...formData, category: value || '' });
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Category"
+                      fullWidth
+                      required
+                      sx={inputStyles}
+                    />
+                  )}
+                  ListboxProps={{ sx: dropdownListStyles }}
+                />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth required sx={selectStyles}>
@@ -863,6 +928,17 @@ const selectStyles = {
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
   '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
+};
+
+const dropdownListStyles = {
+  bgcolor: 'var(--color-surface)',
+  color: 'var(--color-text-primary)',
+  '& .MuiAutocomplete-option.Mui-focused': {
+    bgcolor: 'rgba(99, 102, 241, 0.18)',
+  },
+  '& .MuiAutocomplete-option[aria-selected="true"]': {
+    bgcolor: 'rgba(99, 102, 241, 0.24)',
+  },
 };
 
 export default Expenses;
