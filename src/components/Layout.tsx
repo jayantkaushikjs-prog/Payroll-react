@@ -173,12 +173,6 @@ const Layout: React.FC = () => {
       requireAny: true,
     },
     {
-      text: 'User Management',
-      icon: <AdminIcon />,
-      path: '/users',
-      permissions: [Permission.MANAGE_USERS],
-    },
-    {
       text: 'Employees',
       icon: <PeopleIcon />,
       path: '/employees',
@@ -241,6 +235,12 @@ const Layout: React.FC = () => {
       text: 'Payroll Calculator',
       icon: <TrendIcon />,
       path: '/calculator',
+    },
+    {
+      text: 'User Management',
+      icon: <AdminIcon />,
+      path: '/users',
+      permissions: [Permission.MANAGE_USERS],
     },
   ];
 

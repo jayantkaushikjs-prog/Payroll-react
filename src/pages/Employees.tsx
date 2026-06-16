@@ -128,7 +128,6 @@ const Employees: React.FC = () => {
     tax_regime: 'new',
     active_status: true,
     pf_deduction: false,
-    tax_deduction: true,
   });
 
   // HR Console States
@@ -145,6 +144,8 @@ const Employees: React.FC = () => {
     leave_encashment: string | number;
     late_arrival_deduction: string | number;
     damages_recovery: string | number;
+    bonus_incentives: string | number;
+    other_deductions: string | number;
     remarks: string;
     joining_date: string;
     relieving_date: string;
@@ -159,6 +160,8 @@ const Employees: React.FC = () => {
     leave_encashment: '',
     late_arrival_deduction: '',
     damages_recovery: '',
+    bonus_incentives: '',
+    other_deductions: '',
     remarks: '',
     joining_date: '',
     relieving_date: '',
@@ -371,6 +374,8 @@ const Employees: React.FC = () => {
         leave_encashment: selectedConsoleEmp.leave_encashment ? Number(selectedConsoleEmp.leave_encashment) : '',
         late_arrival_deduction: selectedConsoleEmp.late_arrival_deduction ? Number(selectedConsoleEmp.late_arrival_deduction) : '',
         damages_recovery: selectedConsoleEmp.damages_recovery ? Number(selectedConsoleEmp.damages_recovery) : '',
+        bonus_incentives: selectedConsoleEmp.bonus_incentives ? Number(selectedConsoleEmp.bonus_incentives) : '',
+        other_deductions: selectedConsoleEmp.other_deductions ? Number(selectedConsoleEmp.other_deductions) : '',
         remarks: selectedConsoleEmp.remarks || '',
         joining_date: selectedConsoleEmp.joining_date || '',
         relieving_date: selectedConsoleEmp.relieving_date || '',
@@ -498,6 +503,8 @@ const Employees: React.FC = () => {
       leave_encashment: Number(consoleFormData.leave_encashment) || 0,
       late_arrival_deduction: Number(consoleFormData.late_arrival_deduction) || 0,
       damages_recovery: Number(consoleFormData.damages_recovery) || 0,
+      bonus_incentives: Number(consoleFormData.bonus_incentives) || 0,
+      other_deductions: Number(consoleFormData.other_deductions) || 0,
       remarks: consoleFormData.remarks || null,
     };
 
@@ -1407,6 +1414,32 @@ const Employees: React.FC = () => {
                         value={consoleFormData.damages_recovery === 0 ? '' : consoleFormData.damages_recovery}
                         onChange={(e) =>
                           setConsoleFormData({ ...consoleFormData, damages_recovery: parseFloat(e.target.value) || 0 })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Bonus / Incentives"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.bonus_incentives === 0 ? '' : consoleFormData.bonus_incentives}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, bonus_incentives: parseFloat(e.target.value) || 0 })
+                        }
+                        sx={inputStyles}
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="Other Deductions"
+                        type="number"
+                        fullWidth
+                        value={consoleFormData.other_deductions === 0 ? '' : consoleFormData.other_deductions}
+                        onChange={(e) =>
+                          setConsoleFormData({ ...consoleFormData, other_deductions: parseFloat(e.target.value) || 0 })
                         }
                         sx={inputStyles}
                         inputProps={{ min: 0 }}
@@ -2522,9 +2555,13 @@ const Employees: React.FC = () => {
                     label="Phone Number"
                     fullWidth
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, phone: val });
+                    }}
                     error={!!formErrors.phone}
-                    helperText={formErrors.phone}
+                    helperText={formErrors.phone || 'Exactly 10 digits'}
+                    inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
                     sx={inputStyles}
                   />
                 </Grid>
@@ -2716,7 +2753,6 @@ const inputStyles = {
     color: 'var(--color-text-primary)',
     borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
     '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
       '-webkit-appearance': 'none',
