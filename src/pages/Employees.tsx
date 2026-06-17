@@ -37,6 +37,7 @@ import {
   TablePagination,
   Checkbox,
   Chip,
+  Menu,
 } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -404,6 +405,7 @@ const Employees: React.FC = () => {
 
   const [profileStartDate, setProfileStartDate] = useState<string>(defaultProfileStart);
   const [profileEndDate, setProfileEndDate] = useState<string>(defaultProfileEnd);
+  const [profileTenureAnchorEl, setProfileTenureAnchorEl] = useState<null | HTMLElement>(null);
   const [profileViewMode, setProfileViewMode] = useState<'annual' | 'monthly'>('annual');
   const [exportStartYear, setExportStartYear] = useState<number>(new Date().getFullYear() - 1);
   const [exportEndYear, setExportEndYear] = useState<number>(new Date().getFullYear());
@@ -1377,7 +1379,7 @@ const Employees: React.FC = () => {
                 </Table>
               </TableContainer>
               <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
+                rowsPerPageOptions={[10, 25, 50]}
                 component="div"
                 count={filteredEmployees.length}
                 rowsPerPage={rowsPerPage}
@@ -2068,44 +2070,60 @@ const Employees: React.FC = () => {
             Employee Profile & Financial Summary
           </Typography>
           <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <TextField
-              type="date"
-              label="Start Date"
-              value={profileStartDate}
-              onChange={(e) => setProfileStartDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              size="small"
+            <Button
+              variant="outlined"
+              onClick={(event) => setProfileTenureAnchorEl(event.currentTarget)}
               sx={{
-                width: 145,
-                '& .MuiInputBase-root': {
-                  color: 'var(--color-text-primary)',
-                  height: '38px',
-                  borderRadius: 'var(--radius-control)',
+                height: 38,
+                borderRadius: 'var(--radius-control)',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-primary)',
+                textTransform: 'none',
+                fontWeight: 700,
+                '&:hover': {
+                  borderColor: 'var(--color-primary)',
+                  bgcolor: 'var(--color-surface-subtle)',
                 },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
               }}
-            />
-            <TextField
-              type="date"
-              label="End Date"
-              value={profileEndDate}
-              onChange={(e) => setProfileEndDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              size="small"
-              sx={{
-                width: 145,
-                '& .MuiInputBase-root': {
-                  color: 'var(--color-text-primary)',
-                  height: '38px',
-                  borderRadius: 'var(--radius-control)',
+            >
+              Custom
+            </Button>
+            <Menu
+              anchorEl={profileTenureAnchorEl}
+              open={Boolean(profileTenureAnchorEl)}
+              onClose={() => setProfileTenureAnchorEl(null)}
+              PaperProps={{
+                sx: {
+                  mt: 1,
+                  p: 2,
+                  width: 330,
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-card)',
                 },
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
               }}
-            />
+            >
+              <Box sx={{ display: 'grid', gap: 2 }}>
+                <TextField
+                  type="date"
+                  label="Start Date"
+                  value={profileStartDate}
+                  onChange={(e) => setProfileStartDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={inputStyles}
+                />
+                <TextField
+                  type="date"
+                  label="End Date"
+                  value={profileEndDate}
+                  onChange={(e) => setProfileEndDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={inputStyles}
+                />
+              </Box>
+            </Menu>
           </Box>
         </DialogTitle>
         <DialogContent sx={{ py: 3 }}>

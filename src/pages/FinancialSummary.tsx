@@ -17,6 +17,7 @@ import {
   Divider,
   Button,
   TextField,
+  Menu,
 } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -89,6 +90,7 @@ const FinancialSummary: React.FC = () => {
   const [startDate, setStartDate] = useState<string>(defaultStart);
   const [endDate, setEndDate] = useState<string>(defaultEnd);
   const [viewMode, setViewMode] = useState<'annual' | 'monthly'>('annual');
+  const [tenureAnchorEl, setTenureAnchorEl] = useState<null | HTMLElement>(null);
 
   // Fetch all employees for selection
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery(
@@ -198,43 +200,79 @@ const FinancialSummary: React.FC = () => {
             </FormControl>
           )}
 
-          <TextField
-            type="date"
-            label="Start Date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
+          <Button
+            variant="outlined"
+            onClick={(event) => setTenureAnchorEl(event.currentTarget)}
             sx={{
-              width: 155,
-              '& .MuiInputBase-root': {
-                color: 'var(--color-text-primary)',
-                height: '42px',
-                borderRadius: 'var(--radius-control)',
+              height: '42px',
+              borderRadius: 'var(--radius-control)',
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-primary)',
+              textTransform: 'none',
+              fontWeight: 700,
+              px: 2.5,
+              '&:hover': {
+                borderColor: 'var(--color-primary)',
+                bgcolor: 'var(--color-surface-subtle)',
               },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
             }}
-          />
-
-          <TextField
-            type="date"
-            label="End Date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{
-              width: 155,
-              '& .MuiInputBase-root': {
-                color: 'var(--color-text-primary)',
-                height: '42px',
-                borderRadius: 'var(--radius-control)',
+          >
+            Custom
+          </Button>
+          <Menu
+            anchorEl={tenureAnchorEl}
+            open={Boolean(tenureAnchorEl)}
+            onClose={() => setTenureAnchorEl(null)}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                p: 2,
+                width: 330,
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-card)',
               },
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
             }}
-          />
+          >
+            <Box sx={{ display: 'grid', gap: 2 }}>
+              <TextField
+                type="date"
+                label="Start Date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{
+                  '& .MuiInputBase-root': {
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 'var(--radius-control)',
+                  },
+                  '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+                }}
+              />
+              <TextField
+                type="date"
+                label="End Date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{
+                  '& .MuiInputBase-root': {
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 'var(--radius-control)',
+                  },
+                  '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
+                }}
+              />
+            </Box>
+          </Menu>
 
           <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)', height: '42px', alignItems: 'center' }}>
             <Button
