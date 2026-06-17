@@ -128,6 +128,17 @@ const isNewEmployee = (emp: Employee) => {
 const isRelievingInMonth = (emp: Employee, month: string) =>
   Boolean(month) && dateToMonthValue(emp.relieving_date) === month;
 
+const isEditedInMonth = (emp: Employee, month: string) => {
+  if (!month || dateToMonthValue(emp.updated_at) !== month) return false;
+  if (!emp.created_at || !emp.updated_at) return true;
+
+  const createdAt = new Date(emp.created_at).getTime();
+  const updatedAt = new Date(emp.updated_at).getTime();
+  if (Number.isNaN(createdAt) || Number.isNaN(updatedAt)) return true;
+
+  return Math.abs(updatedAt - createdAt) > 1000;
+};
+
 const getPreviewTags = (emp: Employee, month: string) => {
   const tags: PreviewTagFilter[] = [];
   if (isRelievingInMonth(emp, month)) tags.push('relieving');
@@ -1071,7 +1082,7 @@ const Employees: React.FC = () => {
     Boolean(emp.other_inputs?.trim());
 
   const previewEmployees = employees
-    .filter((emp: Employee) => hasHrPreviewInput(emp))
+    .filter((emp: Employee) => hasHrPreviewInput(emp) || isEditedInMonth(emp, previewMonth))
     .filter((emp: Employee) => {
       if (previewTagFilters.length === 0) return true;
       const tags = getPreviewTags(emp, previewMonth);
@@ -1079,7 +1090,7 @@ const Employees: React.FC = () => {
     })
     .filter((emp: Employee) => {
       if (!previewMonth) return true;
-      return dateToMonthValue(emp.updated_at) === previewMonth || isRelievingInMonth(emp, previewMonth);
+      return isEditedInMonth(emp, previewMonth) || isRelievingInMonth(emp, previewMonth);
     });
 
   const togglePreviewTagFilter = (filter: PreviewTagFilter) => {
