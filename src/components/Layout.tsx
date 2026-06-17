@@ -286,7 +286,12 @@ const Layout: React.FC = () => {
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
                 onClick={() => {
-                  navigate(item.path);
+                  if (item.path === '/employees') {
+                    window.dispatchEvent(new CustomEvent('openEmployeeDirectory'));
+                    navigate('/employees?tab=directory');
+                  } else {
+                    navigate(item.path);
+                  }
                   setMobileOpen(false);
                 }}
                 sx={{

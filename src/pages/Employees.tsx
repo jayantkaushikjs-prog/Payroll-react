@@ -35,6 +35,8 @@ import {
   FormControl,
   InputLabel,
   TablePagination,
+  Checkbox,
+  Chip,
 } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -92,7 +94,83 @@ interface Employee {
   bonus_incentives?: number;
   other_deductions?: number;
   remarks?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
+
+type PreviewTagFilter = 'relieving' | 'new';
+
+const getCurrentMonthValue = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const dateToMonthValue = (value?: string | null) => {
+  if (!value) return '';
+  return value.slice(0, 7);
+};
+
+const isNewEmployee = (emp: Employee) => {
+  if (!emp.joining_date) return false;
+  const joiningDate = new Date(emp.joining_date);
+  if (Number.isNaN(joiningDate.getTime())) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  joiningDate.setHours(0, 0, 0, 0);
+
+  const oneMonthAfterJoining = new Date(joiningDate);
+  oneMonthAfterJoining.setMonth(oneMonthAfterJoining.getMonth() + 1);
+
+  return joiningDate <= today && today <= oneMonthAfterJoining;
+};
+
+const isRelievingInMonth = (emp: Employee, month: string) =>
+  Boolean(month) && dateToMonthValue(emp.relieving_date) === month;
+
+const getPreviewTags = (emp: Employee, month: string) => {
+  const tags: PreviewTagFilter[] = [];
+  if (isRelievingInMonth(emp, month)) tags.push('relieving');
+  if (isNewEmployee(emp)) tags.push('new');
+  return tags;
+};
+
+const PreviewRemarks: React.FC<{ remarks?: string | null }> = ({ remarks }) => {
+  const [expanded, setExpanded] = useState(false);
+  const text = remarks?.trim();
+  const previewLimit = 90;
+
+  if (!text) return <>-</>;
+
+  const shouldTruncate = text.length > previewLimit;
+  const displayText = expanded || !shouldTruncate ? text : `${text.slice(0, previewLimit).trimEnd()}...`;
+
+  return (
+    <Box>
+      <Typography component="span" sx={{ color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap' }}>
+        {displayText}
+      </Typography>
+      {shouldTruncate && (
+        <Button
+          variant="text"
+          size="small"
+          onClick={() => setExpanded((current) => !current)}
+          sx={{
+            ml: 0.5,
+            minWidth: 'auto',
+            p: 0,
+            textTransform: 'none',
+            fontWeight: 700,
+            color: 'var(--color-primary-hover)',
+            verticalAlign: 'baseline',
+          }}
+        >
+          {expanded ? 'Read less' : 'Read more'}
+        </Button>
+      )}
+    </Box>
+  );
+};
 
 const Employees: React.FC = () => {
   const { user } = useAuth();
@@ -155,6 +233,8 @@ const Employees: React.FC = () => {
   // HR Console States
   const [currentMainTab, setCurrentMainTab] = useState(0);
   const [currentSubTab, setCurrentSubTab] = useState(0);
+  const [previewTagFilters, setPreviewTagFilters] = useState<PreviewTagFilter[]>([]);
+  const [previewMonth, setPreviewMonth] = useState(getCurrentMonthValue);
   const [selectedConsoleEmp, setSelectedConsoleEmp] = useState<Employee | null>(null);
   const [consoleFormData, setConsoleFormData] = useState<{
     employee_code: string;
@@ -748,15 +828,32 @@ const Employees: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const openProfileId = params.get('openProfile');
+    const requestedTab = params.get('tab');
+    if (requestedTab === 'directory') {
+      setCurrentMainTab(0);
+      setCurrentSubTab(0);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     if (openProfileId && employees.length > 0) {
       const emp = employees.find((e: any) => e.id === Number(openProfileId));
       if (emp) {
+        setCurrentMainTab(0);
         handleOpenProfileDialog(emp);
         // Clear query parameter to avoid opening it repeatedly
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }, [employees, location.search]);
+
+  useEffect(() => {
+    const openDirectory = () => {
+      setCurrentMainTab(0);
+      setCurrentSubTab(0);
+    };
+
+    window.addEventListener('openEmployeeDirectory', openDirectory);
+    return () => window.removeEventListener('openEmployeeDirectory', openDirectory);
+  }, []);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -973,7 +1070,26 @@ const Employees: React.FC = () => {
     Boolean(emp.relieving_date) ||
     Boolean(emp.other_inputs?.trim());
 
-  const previewEmployees = employees.filter((emp: Employee) => hasHrPreviewInput(emp));
+  const previewEmployees = employees
+    .filter((emp: Employee) => hasHrPreviewInput(emp))
+    .filter((emp: Employee) => {
+      if (previewTagFilters.length === 0) return true;
+      const tags = getPreviewTags(emp, previewMonth);
+      return previewTagFilters.some((filter) => tags.includes(filter));
+    })
+    .filter((emp: Employee) => {
+      if (!previewMonth) return true;
+      return dateToMonthValue(emp.updated_at) === previewMonth || isRelievingInMonth(emp, previewMonth);
+    });
+
+  const togglePreviewTagFilter = (filter: PreviewTagFilter) => {
+    setPreviewTagFilters((current) =>
+      current.includes(filter)
+        ? current.filter((item) => item !== filter)
+        : [...current, filter]
+    );
+  };
+
   const previewValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') return '-';
     return String(value);
@@ -1611,6 +1727,66 @@ const Employees: React.FC = () => {
             </Typography>
           </Box>
 
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 2,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 3,
+              p: 2,
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-control)',
+              bgcolor: 'var(--color-surface-subtle)',
+            }}
+          >
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={previewTagFilters.length === 0}
+                    onChange={() => setPreviewTagFilters([])}
+                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                  />
+                }
+                label="All"
+                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={previewTagFilters.includes('relieving')}
+                    onChange={() => togglePreviewTagFilter('relieving')}
+                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                  />
+                }
+                label="Relieving"
+                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={previewTagFilters.includes('new')}
+                    onChange={() => togglePreviewTagFilter('new')}
+                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                  />
+                }
+                label="New"
+                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+              />
+            </Box>
+            <TextField
+              type="month"
+              label="Filter by edit/relieving month"
+              value={previewMonth}
+              onChange={(e) => setPreviewMonth(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ ...inputStyles, minWidth: 190 }}
+            />
+          </Box>
+
           {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
@@ -1621,32 +1797,23 @@ const Employees: React.FC = () => {
             </Box>
           ) : (
             <TableContainer>
-              <Table sx={{ minWidth: 1900 }}>
+              <Table sx={{ minWidth: 1500 }}>
                 <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-                  <TableRow>
-                    <TableCell colSpan={11} align="center" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, borderBottom: '1px solid var(--color-border)' }}>
-                      Sub list 1
-                    </TableCell>
-                    <TableCell colSpan={3} align="center" sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, borderBottom: '1px solid var(--color-border)' }}>
-                      Sub list 2
-                    </TableCell>
-                  </TableRow>
+                  
                   <TableRow>
                     {[
                       'Employee Code',
                       'Employee Name',
+                      'Tags',
                       'No Of day Present',
                       'Deduction (Absent)',
                       'Appraisal',
+                      'Bonus / Incentives',
                       'Leave Encashment',
                       'Late Arrival Deduction (depends on days, not on numbers)',
                       'Damages Recovery',
-                      'Bonus / Incentives',
                       'Other Deductions',
                       'Remarks',
-                      'Joinings',
-                      'Relieving',
-                      'Other Inputs: any extra information, such as maternity, career break, etc etc',
                     ].map((header) => (
                       <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, verticalAlign: 'top' }}>
                         {header}
@@ -1666,18 +1833,37 @@ const Employees: React.FC = () => {
                     >
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.employee_code}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
+                      <TableCell sx={{ minWidth: 140 }}>
+                        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+                          {getPreviewTags(emp, previewMonth).length > 0 ? getPreviewTags(emp, previewMonth).map((tag) => (
+                            <Chip
+                              key={tag}
+                              label={tag === 'relieving' ? 'Relieving' : 'New'}
+                              size="small"
+                              sx={{
+                                height: 24,
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                textTransform: 'capitalize',
+                                color: 'var(--color-primary-hover)',
+                                bgcolor: 'rgba(99, 102, 241, 0.12)',
+                                border: '1px solid rgba(99, 102, 241, 0.24)',
+                              }}
+                            />
+                          )) : '-'}
+                        </Box>
+                      </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? 30)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.deduction_absent)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.appraisal)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.leave_encashment)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.late_arrival_deduction)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.damages_recovery)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.other_deductions)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 220, whiteSpace: 'pre-wrap' }}>{previewValue(emp.remarks)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.joining_date)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.relieving_date)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 260, whiteSpace: 'pre-wrap' }}>{previewValue(emp.other_inputs)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 260 }}>
+                        <PreviewRemarks remarks={emp.remarks} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1687,7 +1873,18 @@ const Employees: React.FC = () => {
         </Paper>
       ) : (
         /* Manage Options View */
-        <Grid container spacing={3} className="animate-fade-in">
+        <Grid
+          container
+          spacing={3}
+          className="animate-fade-in"
+          sx={{
+            '& .manage-options-title': { fontSize: '17px' },
+            '& .manage-options-copy': { fontSize: '11px' },
+            '& .manage-options-name': { fontSize: '13px' },
+            '& .MuiInputBase-input': { fontSize: '13px' },
+            '& .MuiButton-root': { fontSize: '11px' },
+          }}
+        >
           {/* Department management column */}
           <Grid item xs={12} md={6}>
             <Paper
@@ -1698,10 +1895,10 @@ const Employees: React.FC = () => {
                 p: 4,
               }}
             >
-              <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+              <Typography className="manage-options-title" variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
                 Manage Departments
               </Typography>
-              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+              <Typography className="manage-options-copy" variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
                 Add new departments or remove existing ones. Removed departments will no longer appear in employee forms.
               </Typography>
               
@@ -1742,7 +1939,7 @@ const Employees: React.FC = () => {
                       bgcolor: 'var(--color-surface-subtle)',
                     }}
                   >
-                    <Typography sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
+                    <Typography className="manage-options-name" sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
                       {dept.name}
                     </Typography>
                     <IconButton
@@ -1754,7 +1951,7 @@ const Employees: React.FC = () => {
                   </Box>
                 ))}
                 {departments.length === 0 && (
-                  <Typography sx={{ color: 'var(--color-text-muted)', py: 2, textAlign: 'center' }}>
+                  <Typography className="manage-options-name" sx={{ color: 'var(--color-text-muted)', py: 2, textAlign: 'center' }}>
                     No departments added yet.
                   </Typography>
                 )}
@@ -1772,10 +1969,10 @@ const Employees: React.FC = () => {
                 p: 4,
               }}
             >
-              <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+              <Typography className="manage-options-title" variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
                 Manage Designations
               </Typography>
-              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+              <Typography className="manage-options-copy" variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
                 Add new designations or remove existing ones. Removed designations will no longer appear in employee forms.
               </Typography>
               
@@ -1816,7 +2013,7 @@ const Employees: React.FC = () => {
                       bgcolor: 'var(--color-surface-subtle)',
                     }}
                   >
-                    <Typography sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
+                    <Typography className="manage-options-name" sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
                       {desig.name}
                     </Typography>
                     <IconButton
@@ -1828,7 +2025,7 @@ const Employees: React.FC = () => {
                   </Box>
                 ))}
                 {designations.length === 0 && (
-                  <Typography sx={{ color: 'var(--color-text-muted)', py: 2, textAlign: 'center' }}>
+                  <Typography className="manage-options-name" sx={{ color: 'var(--color-text-muted)', py: 2, textAlign: 'center' }}>
                     No designations added yet.
                   </Typography>
                 )}
