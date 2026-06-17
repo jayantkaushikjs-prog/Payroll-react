@@ -48,6 +48,7 @@ interface Employee {
   department: string;
   designation: string;
   pf_deduction?: boolean;
+  active_status?: boolean;
 }
 
 interface SalaryStructure {
@@ -100,7 +101,7 @@ const SalaryStructures: React.FC = () => {
   // Fetch all employees
   const { data: employees = [], isLoading: loadingEmployees } = useQuery(['employees'], async () => {
     const res = await api.get('/employees');
-    return res.data;
+    return res.data.filter((emp: Employee) => emp.active_status !== false);
   });
 
   // Fetch PF settings

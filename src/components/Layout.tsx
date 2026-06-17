@@ -147,7 +147,7 @@ const Layout: React.FC = () => {
 
   const { data: employees = [] } = useQuery(['employees'], async () => {
     const res = await api.get('/employees');
-    return res.data;
+    return res.data.filter((emp: any) => emp.active_status !== false);
   });
 
   const handleDrawerToggle = () => {

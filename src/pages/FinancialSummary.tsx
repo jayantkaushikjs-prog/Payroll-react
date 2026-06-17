@@ -95,7 +95,7 @@ const FinancialSummary: React.FC = () => {
     ['employees-summary-list'],
     async () => {
       const res = await api.get('/employees');
-      return res.data as Employee[];
+      return (res.data as Employee[]).filter((emp) => emp.active_status !== false);
     },
     {
       onSuccess: (data) => {

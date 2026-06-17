@@ -289,6 +289,7 @@ const Employees: React.FC = () => {
     const res = await api.get('/employees');
     return res.data;
   });
+  const activeEmployees = employees.filter((emp: Employee) => emp.active_status !== false);
 
   // Manage Options States
   const [newDeptName, setNewDeptName] = useState('');
@@ -1081,7 +1082,7 @@ const Employees: React.FC = () => {
     Boolean(emp.relieving_date) ||
     Boolean(emp.other_inputs?.trim());
 
-  const previewEmployees = employees
+  const previewEmployees = activeEmployees
     .filter((emp: Employee) => hasHrPreviewInput(emp) || isEditedInMonth(emp, previewMonth))
     .filter((emp: Employee) => {
       if (previewTagFilters.length === 0) return true;
@@ -1420,7 +1421,7 @@ const Employees: React.FC = () => {
               Select an employee to modify their operational, salary, lifecycle, and leave adjustments globally.
             </Typography>
             <Autocomplete
-              options={employees}
+              options={activeEmployees}
               getOptionLabel={(emp) => `${emp.employee_code} - ${emp.name}`}
               value={selectedConsoleEmp}
               onChange={(_, newValue) => setSelectedConsoleEmp(newValue)}
