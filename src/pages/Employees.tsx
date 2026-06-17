@@ -99,7 +99,7 @@ interface Employee {
   updated_at?: string;
 }
 
-type PreviewTagFilter = 'relieving' | 'new';
+type PreviewTagFilter = 'relieving' | 'on_notice' | 'new' | 'old';
 
 const getCurrentMonthValue = () => {
   const today = new Date();
@@ -111,23 +111,41 @@ const dateToMonthValue = (value?: string | null) => {
   return value.slice(0, 7);
 };
 
-const isNewEmployee = (emp: Employee) => {
+const monthValueToDate = (month: string) => {
+  if (!month) return null;
+  const [year, monthNumber] = month.split('-').map(Number);
+  if (!year || !monthNumber) return null;
+  return new Date(year, monthNumber - 1, 1);
+};
+
+const isNewEmployee = (emp: Employee, month = getCurrentMonthValue()) => {
   if (!emp.joining_date) return false;
   const joiningDate = new Date(emp.joining_date);
   if (Number.isNaN(joiningDate.getTime())) return false;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const selectedMonth = monthValueToDate(month);
+  if (!selectedMonth) return false;
+
+  const selectedMonthEnd = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0);
+  selectedMonthEnd.setHours(0, 0, 0, 0);
   joiningDate.setHours(0, 0, 0, 0);
 
   const oneMonthAfterJoining = new Date(joiningDate);
   oneMonthAfterJoining.setMonth(oneMonthAfterJoining.getMonth() + 1);
 
-  return joiningDate <= today && today <= oneMonthAfterJoining;
+  return joiningDate <= selectedMonthEnd && selectedMonthEnd <= oneMonthAfterJoining;
 };
 
 const isRelievingInMonth = (emp: Employee, month: string) =>
   Boolean(month) && dateToMonthValue(emp.relieving_date) === month;
+
+const isOnNoticeInMonth = (emp: Employee, month: string) => {
+  if (!emp.relieving_date || !month) return false;
+  const selectedMonth = monthValueToDate(month);
+  const relievingMonth = monthValueToDate(dateToMonthValue(emp.relieving_date));
+  if (!selectedMonth || !relievingMonth) return false;
+  return selectedMonth < relievingMonth;
+};
 
 const isEditedInMonth = (emp: Employee, month: string) => {
   if (!month || dateToMonthValue(emp.updated_at) !== month) return false;
@@ -143,8 +161,43 @@ const isEditedInMonth = (emp: Employee, month: string) => {
 const getPreviewTags = (emp: Employee, month: string) => {
   const tags: PreviewTagFilter[] = [];
   if (isRelievingInMonth(emp, month)) tags.push('relieving');
-  if (isNewEmployee(emp)) tags.push('new');
+  if (isOnNoticeInMonth(emp, month)) tags.push('on_notice');
+  if (isNewEmployee(emp, month)) {
+    tags.push('new');
+  } else {
+    tags.push('old');
+  }
   return tags;
+};
+
+const getPreviewTagMeta = (tag: PreviewTagFilter) => {
+  const meta = {
+    new: {
+      label: 'New',
+      color: 'var(--color-success)',
+      bgcolor: 'rgba(16, 185, 129, 0.12)',
+      border: 'rgba(16, 185, 129, 0.28)',
+    },
+    old: {
+      label: 'Old',
+      color: 'var(--color-primary-hover)',
+      bgcolor: 'rgba(59, 130, 246, 0.12)',
+      border: 'rgba(59, 130, 246, 0.28)',
+    },
+    on_notice: {
+      label: 'On Notice',
+      color: 'var(--color-warning)',
+      bgcolor: 'rgba(251, 191, 36, 0.14)',
+      border: 'rgba(251, 191, 36, 0.3)',
+    },
+    relieving: {
+      label: 'Relieving',
+      color: 'var(--color-error)',
+      bgcolor: 'rgba(239, 68, 68, 0.12)',
+      border: 'rgba(239, 68, 68, 0.28)',
+    },
+  };
+  return meta[tag];
 };
 
 const PreviewRemarks: React.FC<{ remarks?: string | null }> = ({ remarks }) => {
@@ -191,7 +244,7 @@ const Employees: React.FC = () => {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [formErrors, setFormErrors] = useState({
@@ -993,12 +1046,12 @@ const Employees: React.FC = () => {
   const handleExportFinancials = async () => {
     if (!profileEmpId) return;
     try {
-      const res = await api.get(`/employees/${profileEmpId}/export-financials?startYear=${exportStartYear}&endYear=${exportEndYear}`, { responseType: 'blob' });
+      const res = await api.get(`/employees/${profileEmpId}/export-financials?startDate=${profileStartDate}&endDate=${profileEndDate}`, { responseType: 'blob' });
       const blob = new Blob([res.data], { type: 'text/csv' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       const employeeName = profileFormData.name ? profileFormData.name.replace(/\s+/g, '_') : 'employee';
-      link.download = `${employeeName}_financials_${exportStartYear}_to_${exportEndYear}.csv`;
+      link.download = `${employeeName}_financials_${profileStartDate}_to_${profileEndDate}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1093,7 +1146,7 @@ const Employees: React.FC = () => {
     })
     .filter((emp: Employee) => {
       if (!previewMonth) return true;
-      return isEditedInMonth(emp, previewMonth) || isRelievingInMonth(emp, previewMonth);
+      return isEditedInMonth(emp, previewMonth) || isRelievingInMonth(emp, previewMonth) || isOnNoticeInMonth(emp, previewMonth);
     });
 
   const togglePreviewTagFilter = (filter: PreviewTagFilter) => {
@@ -1781,6 +1834,28 @@ const Employees: React.FC = () => {
               <FormControlLabel
                 control={
                   <Checkbox
+                    checked={previewTagFilters.includes('old')}
+                    onChange={() => togglePreviewTagFilter('old')}
+                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                  />
+                }
+                label="Old"
+                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={previewTagFilters.includes('on_notice')}
+                    onChange={() => togglePreviewTagFilter('on_notice')}
+                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                  />
+                }
+                label="On Notice"
+                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
                     checked={previewTagFilters.includes('relieving')}
                     onChange={() => togglePreviewTagFilter('relieving')}
                     sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
@@ -1853,16 +1928,16 @@ const Employees: React.FC = () => {
                           {getPreviewTags(emp, previewMonth).length > 0 ? getPreviewTags(emp, previewMonth).map((tag) => (
                             <Chip
                               key={tag}
-                              label={tag === 'relieving' ? 'Relieving' : 'New'}
+                              label={getPreviewTagMeta(tag).label}
                               size="small"
                               sx={{
                                 height: 24,
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
                                 textTransform: 'capitalize',
-                                color: 'var(--color-primary-hover)',
-                                bgcolor: 'rgba(99, 102, 241, 0.12)',
-                                border: '1px solid rgba(99, 102, 241, 0.24)',
+                                color: getPreviewTagMeta(tag).color,
+                                bgcolor: getPreviewTagMeta(tag).bgcolor,
+                                border: `1px solid ${getPreviewTagMeta(tag).border}`,
                               }}
                             />
                           )) : '-'}

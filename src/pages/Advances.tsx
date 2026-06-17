@@ -79,6 +79,7 @@ const Advances: React.FC = () => {
     date: '',
     reason: '',
     recovery_type: '',
+    installment_months: '',
     installment_amount: '',
     start_month: '',
     start_year: '',
@@ -91,6 +92,7 @@ const Advances: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     reason: '',
     recovery_type: 'one_time' as 'one_time' | 'installment',
+    installment_months: '',
     installment_amount: '',
     start_month: new Date().getMonth() + 1,
     start_year: currentYear,
@@ -113,6 +115,11 @@ const Advances: React.FC = () => {
     return res.data;
   });
 
+  const calculatedInstallmentAmount =
+    formData.recovery_type === 'installment' && Number(formData.amount) > 0 && Number(formData.installment_months) > 0
+      ? Number((Number(formData.amount) / Number(formData.installment_months)).toFixed(2))
+      : '';
+
   const handleMutationError = (err: any, fallbackMessage: string) => {
     const backendMessage = err.response?.data?.message;
     const errors = {
@@ -121,6 +128,7 @@ const Advances: React.FC = () => {
       date: '',
       reason: '',
       recovery_type: '',
+      installment_months: '',
       installment_amount: '',
       start_month: '',
       start_year: '',
@@ -140,7 +148,7 @@ const Advances: React.FC = () => {
         } else if (lowerMsg.includes('recovery type')) {
           errors.recovery_type = msg;
         } else if (lowerMsg.includes('installment')) {
-          errors.installment_amount = msg;
+          errors.installment_months = msg;
         } else if (lowerMsg.includes('month')) {
           errors.start_month = msg;
         } else if (lowerMsg.includes('year')) {
@@ -214,6 +222,7 @@ const Advances: React.FC = () => {
       date: '',
       reason: '',
       recovery_type: '',
+      installment_months: '',
       installment_amount: '',
       start_month: '',
       start_year: '',
@@ -224,6 +233,7 @@ const Advances: React.FC = () => {
       date: new Date().toISOString().split('T')[0],
       reason: '',
       recovery_type: 'one_time',
+      installment_months: '',
       installment_amount: '',
       start_month: new Date().getMonth() + 1,
       start_year: currentYear,
@@ -240,6 +250,7 @@ const Advances: React.FC = () => {
       date: '',
       reason: '',
       recovery_type: '',
+      installment_months: '',
       installment_amount: '',
       start_month: '',
       start_year: '',
@@ -250,6 +261,9 @@ const Advances: React.FC = () => {
       date: adv.date,
       reason: adv.reason || '',
       recovery_type: adv.recovery_type,
+      installment_months: adv.recovery_type === 'installment' && adv.installment_amount
+        ? String(Math.ceil(Number(adv.amount) / Number(adv.installment_amount)))
+        : '',
       installment_amount: adv.installment_amount ? String(adv.installment_amount) : '',
       start_month: adv.start_month,
       start_year: adv.start_year,
@@ -266,6 +280,7 @@ const Advances: React.FC = () => {
       date: '',
       reason: '',
       recovery_type: '',
+      installment_months: '',
       installment_amount: '',
       start_month: '',
       start_year: '',
@@ -288,14 +303,17 @@ const Advances: React.FC = () => {
     }
 
     if (formData.recovery_type === 'installment') {
-      if (!formData.installment_amount) {
-        nextErrors.installment_amount = 'Installment amount is required for installment recovery';
+      if (!formData.installment_months) {
+        nextErrors.installment_months = 'No. of months is required for installment recovery';
         isValid = false;
-      } else if (Number(formData.installment_amount) < 1) {
-        nextErrors.installment_amount = 'Installment amount must be at least 1';
+      } else if (Number(formData.installment_months) < 1) {
+        nextErrors.installment_months = 'No. of months must be at least 1';
         isValid = false;
-      } else if (Number(formData.installment_amount) > Number(formData.amount)) {
-        nextErrors.installment_amount = 'Installment amount cannot exceed the advance amount';
+      } else if (!Number.isInteger(Number(formData.installment_months))) {
+        nextErrors.installment_months = 'No. of months must be a whole number';
+        isValid = false;
+      } else if (Number(formData.amount) / Number(formData.installment_months) < 1) {
+        nextErrors.installment_months = 'No. of months is too high for this advance amount';
         isValid = false;
       }
     }
@@ -313,7 +331,9 @@ const Advances: React.FC = () => {
       date: formData.date,
       reason: formData.reason,
       recovery_type: formData.recovery_type,
-      installment_amount: formData.recovery_type === 'installment' ? Number(formData.installment_amount) : null,
+      installment_amount: formData.recovery_type === 'installment'
+        ? Number((Number(formData.amount) / Number(formData.installment_months)).toFixed(2))
+        : null,
       start_month: Number(formData.start_month),
       start_year: Number(formData.start_year),
       is_advance_salary: formData.is_advance_salary,
@@ -623,14 +643,22 @@ const Advances: React.FC = () => {
                 <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <FormControl fullWidth required error={!!formErrors.recovery_type} sx={selectStyles}>
                   <InputLabel id="recovery-type-label" sx={{ color: 'var(--color-text-secondary)' }}>Recovery Type</InputLabel>
                   <Select
                     labelId="recovery-type-label"
                     value={formData.recovery_type}
                     label="Recovery Type"
-                    onChange={(e) => setFormData({ ...formData, recovery_type: e.target.value as 'one_time' | 'installment' })}
+                    onChange={(e) => {
+                      const recoveryType = e.target.value as 'one_time' | 'installment';
+                      setFormData({
+                        ...formData,
+                        recovery_type: recoveryType,
+                        installment_months: recoveryType === 'installment' ? formData.installment_months : '',
+                        installment_amount: recoveryType === 'installment' ? formData.installment_amount : '',
+                      });
+                    }}
                   >
                     <MenuItem value="one_time">One Time Recovery</MenuItem>
                     <MenuItem value="installment">Installment Schedule</MenuItem>
@@ -642,18 +670,29 @@ const Advances: React.FC = () => {
                   )}
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <TextField
-                  label="Monthly Installment (₹)"
+                  label="No. of Months"
                   type="number"
                   fullWidth
                   disabled={formData.recovery_type === 'one_time'}
                   required={formData.recovery_type === 'installment'}
                   inputProps={{ min: 1 }}
-                  value={formData.installment_amount}
-                  onChange={(e) => setFormData({ ...formData, installment_amount: e.target.value })}
-                  error={!!formErrors.installment_amount}
-                  helperText={formErrors.installment_amount}
+                  value={formData.installment_months}
+                  onChange={(e) => setFormData({ ...formData, installment_months: e.target.value })}
+                  error={!!formErrors.installment_months}
+                  helperText={formErrors.installment_months}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  label="Monthly Installment (₹)"
+                  type="number"
+                  fullWidth
+                  disabled
+                  value={calculatedInstallmentAmount}
+                  helperText={formData.recovery_type === 'installment' && calculatedInstallmentAmount ? 'Auto-calculated' : ''}
                   sx={inputStyles}
                 />
               </Grid>
