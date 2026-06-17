@@ -1753,6 +1753,17 @@ const Employees: React.FC = () => {
                 label="All"
                 sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
               />
+                <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={previewTagFilters.includes('new')}
+                    onChange={() => togglePreviewTagFilter('new')}
+                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                  />
+                }
+                label="New"
+                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+              />
               <FormControlLabel
                 control={
                   <Checkbox
@@ -1764,17 +1775,7 @@ const Employees: React.FC = () => {
                 label="Relieving"
                 sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
               />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={previewTagFilters.includes('new')}
-                    onChange={() => togglePreviewTagFilter('new')}
-                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
-                  />
-                }
-                label="New"
-                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
-              />
+            
             </Box>
             <TextField
               type="month"
