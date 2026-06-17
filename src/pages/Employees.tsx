@@ -106,6 +106,13 @@ const getCurrentMonthValue = () => {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 };
 
+const monthLabels = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const formatMonthLabel = (month?: number) => month ? monthLabels[month - 1] || '-' : '-';
+
 const dateToMonthValue = (value?: string | null) => {
   if (!value) return '';
   return value.slice(0, 7);
@@ -158,16 +165,11 @@ const isEditedInMonth = (emp: Employee, month: string) => {
   return Math.abs(updatedAt - createdAt) > 1000;
 };
 
-const getPreviewTags = (emp: Employee, month: string) => {
-  const tags: PreviewTagFilter[] = [];
-  if (isRelievingInMonth(emp, month)) tags.push('relieving');
-  if (isOnNoticeInMonth(emp, month)) tags.push('on_notice');
-  if (isNewEmployee(emp, month)) {
-    tags.push('new');
-  } else {
-    tags.push('old');
-  }
-  return tags;
+const getPreviewTag = (emp: Employee, month: string): PreviewTagFilter => {
+  if (isRelievingInMonth(emp, month)) return 'relieving';
+  if (isOnNoticeInMonth(emp, month)) return 'on_notice';
+  if (isNewEmployee(emp, month)) return 'new';
+  return 'old';
 };
 
 const getPreviewTagMeta = (tag: PreviewTagFilter) => {
@@ -1141,8 +1143,7 @@ const Employees: React.FC = () => {
     .filter((emp: Employee) => hasHrPreviewInput(emp) || isEditedInMonth(emp, previewMonth))
     .filter((emp: Employee) => {
       if (previewTagFilters.length === 0) return true;
-      const tags = getPreviewTags(emp, previewMonth);
-      return previewTagFilters.some((filter) => tags.includes(filter));
+      return previewTagFilters.includes(getPreviewTag(emp, previewMonth));
     })
     .filter((emp: Employee) => {
       if (!previewMonth) return true;
@@ -1925,22 +1926,26 @@ const Employees: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
                       <TableCell sx={{ minWidth: 140 }}>
                         <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-                          {getPreviewTags(emp, previewMonth).length > 0 ? getPreviewTags(emp, previewMonth).map((tag) => (
+                          {(() => {
+                            const tag = getPreviewTag(emp, previewMonth);
+                            const meta = getPreviewTagMeta(tag);
+                            return (
                             <Chip
                               key={tag}
-                              label={getPreviewTagMeta(tag).label}
+                              label={meta.label}
                               size="small"
                               sx={{
                                 height: 24,
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
                                 textTransform: 'capitalize',
-                                color: getPreviewTagMeta(tag).color,
-                                bgcolor: getPreviewTagMeta(tag).bgcolor,
-                                border: `1px solid ${getPreviewTagMeta(tag).border}`,
+                                color: meta.color,
+                                bgcolor: meta.bgcolor,
+                                border: `1px solid ${meta.border}`,
                               }}
                             />
-                          )) : '-'}
+                            );
+                          })()}
                         </Box>
                       </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? 30)}</TableCell>
@@ -2913,6 +2918,50 @@ const Employees: React.FC = () => {
                             </Typography>
                           </Grid>
                         </Grid>
+                        {profileSummary.advanceDetails?.length > 0 && (
+                          <TableContainer sx={{ mt: 2, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                            <Table size="small">
+                              <TableHead sx={{ bgcolor: 'var(--color-surface)' }}>
+                                <TableRow>
+                                  {['Date', 'Amount', 'Type', 'Installment', 'Months', 'Start', 'Recovered', 'Remaining'].map((header) => (
+                                    <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', fontWeight: 700 }}>
+                                      {header}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {profileSummary.advanceDetails.map((advance: any) => {
+                                  const months = advance.installment_amount
+                                    ? Math.ceil(Number(advance.amount) / Number(advance.installment_amount))
+                                    : '-';
+                                  return (
+                                    <TableRow key={advance.id}>
+                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{advance.date}</TableCell>
+                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{formatCurrency(advance.amount)}</TableCell>
+                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem', textTransform: 'capitalize' }}>
+                                        {advance.recovery_type?.replace('_', ' ')}
+                                      </TableCell>
+                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>
+                                        {advance.installment_amount ? formatCurrency(advance.installment_amount) : '-'}
+                                      </TableCell>
+                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{months}</TableCell>
+                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>
+                                        {formatMonthLabel(advance.start_month)} {advance.start_year}
+                                      </TableCell>
+                                      <TableCell sx={{ color: 'var(--color-success)', fontSize: '0.78rem', fontWeight: 600 }}>
+                                        {formatCurrency(advance.total_recovered)}
+                                      </TableCell>
+                                      <TableCell sx={{ color: advance.remaining_amount > 0 ? '#fb923c' : 'var(--color-text-muted)', fontSize: '0.78rem', fontWeight: 600 }}>
+                                        {formatCurrency(advance.remaining_amount)}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        )}
                       </Paper>
                     </Grid>
 
