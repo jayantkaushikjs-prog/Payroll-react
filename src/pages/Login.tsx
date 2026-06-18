@@ -15,7 +15,7 @@ import {
   Link,
 } from '@mui/material';
 import { LockOutlined as LockIcon, Visibility, VisibilityOff } from '@mui/icons-material';
-import { THPMSLogo } from '../components/Layout';
+import { THPMSLogo } from '../components/brand/THPMSLogo';
 
 const Login: React.FC = () => {
   const { login, user } = useAuth();

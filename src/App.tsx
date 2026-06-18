@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, CssBaseline } from '@mui/material';
@@ -8,6 +8,7 @@ import { buildTheme } from './theme';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 import Layout from './components/Layout';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeModeContext } from './context/ThemeModeContext';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -24,18 +25,6 @@ import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Expenses from './pages/Expenses';
 import PayrollCalculator from './pages/PayrollCalculator';
-
-interface ThemeModeContextType {
-  mode: 'light' | 'dark';
-  toggleTheme: () => void;
-}
-
-export const ThemeModeContext = createContext<ThemeModeContextType>({
-  mode: 'light',
-  toggleTheme: () => {},
-});
-
-export const useThemeMode = () => useContext(ThemeModeContext);
 
 const queryClient = new QueryClient({
   defaultOptions: {

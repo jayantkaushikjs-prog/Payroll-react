@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Role, Permission } from '../constants/permissions';
-import { useThemeMode } from '../App';
+import { useThemeMode } from '../context/ThemeModeContext';
 import {
   Box,
   Drawer,
@@ -54,17 +54,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
-
-export const THPMSLogo: React.FC<{ size?: number; color?: string }> = ({ size = 32, color = 'var(--color-text-primary)' }) => (
-  <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* Left vertical block */}
-    <rect x="40" y="30" width="50" height="140" fill={color} rx="4" />
-    {/* Right vertical block */}
-    <rect x="110" y="30" width="50" height="140" fill={color} rx="4" />
-    {/* Center blue diamond rotated by 45 degrees */}
-    <rect x="85" y="85" width="30" height="30" fill="#0ea5e9" transform="rotate(45 100 100)" />
-  </svg>
-);
+import { THPMSLogo } from './brand/THPMSLogo';
 
 const drawerWidth = 260;
 

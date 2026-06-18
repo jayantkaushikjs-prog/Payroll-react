@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth, Permission } from '../context/AuthContext';
-import api from '../services/api';
 import {
   Box, Button, Typography, Paper, Grid, Select, MenuItem,
   FormControl, InputLabel,
@@ -19,6 +18,7 @@ import {
   Wallet as SalaryIcon,
   Percent as TaxIcon,
 } from '@mui/icons-material';
+import { downloadCsvFile } from '../utils/download';
 
 const ss = {
   '& .MuiOutlinedInput-root': { color: 'var(--color-text-primary)', borderRadius: 'var(--radius-control)',
@@ -50,13 +50,7 @@ const Reports: React.FC = () => {
 
   const downloadCsv = async (url: string, filename: string) => {
     try {
-      const res = await api.get(url, { responseType: 'blob' });
-      const blob = new Blob([res.data], { type: 'text/csv' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      await downloadCsvFile(url, filename);
       showToast(`${filename} downloaded!`, 'success');
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Download failed', 'error');

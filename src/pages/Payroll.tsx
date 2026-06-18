@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { formatCurrency } from '../constants/currency';
 import { useAuth, Role } from '../context/AuthContext';
+import { downloadCsvFile } from '../utils/download';
 import {
   Box, Button, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Grid, Select, MenuItem, FormControl, InputLabel,
@@ -71,13 +72,7 @@ const Payroll: React.FC = () => {
 
   const downloadCsv = async (url: string, filename: string) => {
     try {
-      const res = await api.get(url, { responseType: 'blob' });
-      const blob = new Blob([res.data], { type: 'text/csv' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      await downloadCsvFile(url, filename);
       showToast(`${filename} downloaded successfully!`, 'success');
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Download failed', 'error');
