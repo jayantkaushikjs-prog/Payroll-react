@@ -112,6 +112,7 @@ interface PreviewReview {
     from?: string;
     to?: string;
     remarks?: string;
+    email?: string;
     created_at: string;
   }>;
   hr_marked_done_at?: string | null;
@@ -1288,6 +1289,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     }
     return log.action.replace(/_/g, ' ');
   };
+  const previewLogEmail = (log: NonNullable<PreviewReview['logs']>[number]) => log.email || '';
 
   const departmentOptions = withCurrentOption(allDepartments, formData.department);
   const designationOptions = withCurrentOption(allDesignations, formData.designation);
@@ -2202,9 +2204,16 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
                           {previewLogText(log)}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                          {new Date(log.created_at).toLocaleString()}
-                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mt: 0.25 }}>
+                          {previewLogEmail(log) && (
+                            <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
+                              {previewLogEmail(log)}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                            {new Date(log.created_at).toLocaleString()}
+                          </Typography>
+                        </Box>
                       </Box>
                     ))}
                   </Box>
