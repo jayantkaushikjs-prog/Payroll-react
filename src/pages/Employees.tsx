@@ -569,23 +569,23 @@ const Employees: React.FC = () => {
     }
   }, [employees, selectedConsoleEmp]);
 
-  // // HR Console update mutation
-  // const saveConsoleMutation = useMutation(
-  //   async ({ id, data }: { id: number; data: any }) => {
-  //     const res = await api.put(`/employees/${id}`, data);
-  //     return res.data;
-  //   },
-  //   {
-  //     onSuccess: (updatedEmp) => {
-  //       queryClient.invalidateQueries(['employees']);
-  //       showToast('HR global inputs saved successfully!', 'success');
-  //       setSelectedConsoleEmp(null);
-  //     },
-  //     onError: (err: any) => {
-  //       showToast(err.response?.data?.message || 'Failed to update HR inputs', 'error');
-  //     },
-  //   }
-  // );
+  // HR Console update mutation
+  const saveConsoleMutation = useMutation(
+    async ({ id, data }: { id: number; data: any }) => {
+      const res = await api.put(`/employees/${id}`, data);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['employees']);
+        showToast('HR global inputs saved successfully!', 'success');
+        setSelectedConsoleEmp(null);
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update HR inputs', 'error');
+      },
+    }
+  );
 
   // Effect to load employee details when profileEmpId is selected
   useEffect(() => {
