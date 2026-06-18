@@ -1911,164 +1911,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             p: 3,
           }}
         >
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)' }}>
-              Edited Employee Inputs Preview
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-              Employees with non-default HR operation or lifecycle inputs appear here.
-            </Typography>
-          </Box>
-
-          <Paper
-            elevation={0}
-            sx={{
-              mb: 3,
-              p: 2,
-              bgcolor: 'var(--color-surface-subtle)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-control)',
-            }}
-          >
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box>
-                <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
-                  HR Preview Status
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.25 }}>
-                  {isPreviewReviewLoading
-                    ? 'Loading review status...'
-                    : previewReview?.status === 'done'
-                      ? `Marked done${previewReview.hr_marked_done_at ? ` on ${new Date(previewReview.hr_marked_done_at).toLocaleString()}` : ''}.`
-                      : 'Marked undone. Finance should wait for HR completion.'}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <Chip
-                  label={previewReview?.status === 'done' ? 'Done' : 'Undone'}
-                  size="small"
-                  sx={{
-                    fontWeight: 700,
-                    color: previewReview?.status === 'done' ? 'var(--color-success)' : 'var(--color-warning)',
-                    bgcolor: previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                    border: `1px solid ${previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-                  }}
-                />
-                {isHRorAdmin && (
-                  <Button
-                    variant="contained"
-                    disabled={updatePreviewStatusMutation.isLoading}
-                    onClick={() => updatePreviewStatusMutation.mutate(previewReview?.status === 'done' ? 'undone' : 'done')}
-                    sx={{
-                      background: previewReview?.status === 'done' ? 'var(--color-warning)' : 'var(--color-primary)',
-                      borderRadius: 'var(--radius-control)',
-                      textTransform: 'none',
-                    }}
-                  >
-                    {previewReview?.status === 'done' ? 'Mark Undone' : 'Mark Done'}
-                  </Button>
-                )}
-              </Box>
-            </Box>
-
-            {isFinance && previewReview?.status === 'done' && (
-              <Box sx={{ mb: 2, p: 1.5, borderRadius: 'var(--radius-control)', bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.22)', color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>
-                HR has marked this preview sheet as done. Please review and add remarks if corrections are needed.
-              </Box>
-            )}
-
-            <Grid container spacing={2} alignItems="flex-start">
-              <Grid item xs={12} md={9}>
-                <TextField
-                  label="Finance Remarks"
-                  placeholder="Comment any mistake or correction needed in this sheet..."
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  maxRows={6}
-                  value={financeRemarksDraft}
-                  onChange={(e) => setFinanceRemarksDraft(e.target.value)}
-                  disabled={!isFinance && !isAdmin}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  disabled={(!isFinance && !isAdmin) || updateFinanceRemarksMutation.isLoading}
-                  onClick={() => updateFinanceRemarksMutation.mutate()}
-                  sx={{
-                    mt: { xs: 0, md: 1 },
-                    borderColor: 'var(--color-border)',
-                    color: 'var(--color-text-primary)',
-                    borderRadius: 'var(--radius-control)',
-                    textTransform: 'none',
-                  }}
-                >
-                  Save Remarks
-                </Button>
-              </Grid>
-            </Grid>
-
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid var(--color-border)' }}>
-              <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mb: 1 }}>
-                Sheet Activity Logs
-              </Typography>
-              {previewLogs.length > 0 ? (
-                <Box>
-                  <Box sx={{ display: 'grid', gap: 1 }}>
-                    {paginatedPreviewLogs.map((log, index) => (
-                      <Box
-                        key={`${log.created_at}-${previewLogPage}-${index}`}
-                        sx={{
-                          p: 1.25,
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 'var(--radius-control)',
-                          bgcolor: 'var(--color-surface)',
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
-                          {previewLogText(log)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                          {new Date(log.created_at).toLocaleString()}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                  <TablePagination
-                    component="div"
-                    count={previewLogs.length}
-                    page={previewLogPage}
-                    rowsPerPage={previewLogRowsPerPage}
-                    rowsPerPageOptions={[5, 10, 25]}
-                    onPageChange={(_, nextPage) => setPreviewLogPage(nextPage)}
-                    onRowsPerPageChange={(event) => {
-                      setPreviewLogRowsPerPage(parseInt(event.target.value, 10));
-                      setPreviewLogPage(0);
-                    }}
-                    sx={{
-                      color: 'var(--color-text-primary)',
-                      borderTop: '1px solid var(--color-border)',
-                      mt: 1,
-                      '& .MuiTablePagination-actions': {
-                        color: 'var(--color-text-primary)',
-                      },
-                      '& .MuiTablePagination-select': {
-                        color: 'var(--color-text-primary)',
-                      },
-                    }}
-                  />
-                </Box>
-              ) : (
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                  No activity logs yet.
-                </Typography>
-              )}
-            </Box>
-          </Paper>
-
           <Box
             sx={{
               display: 'flex',
@@ -2239,6 +2081,164 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               </Table>
             </TableContainer>
           )}
+
+          <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid var(--color-border)' }}>
+            <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)' }}>
+              Edited Employee Inputs Preview
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+              Employees with non-default HR operation or lifecycle inputs appear here.
+            </Typography>
+          </Box>
+
+          <Paper
+            elevation={0}
+            sx={{
+              mt: 3,
+              p: 2,
+              bgcolor: 'var(--color-surface-subtle)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-control)',
+            }}
+          >
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
+                  HR Preview Status
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.25 }}>
+                  {isPreviewReviewLoading
+                    ? 'Loading review status...'
+                    : previewReview?.status === 'done'
+                      ? `Marked done${previewReview.hr_marked_done_at ? ` on ${new Date(previewReview.hr_marked_done_at).toLocaleString()}` : ''}.`
+                      : 'Marked undone. Finance should wait for HR completion.'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Chip
+                  label={previewReview?.status === 'done' ? 'Done' : 'Undone'}
+                  size="small"
+                  sx={{
+                    fontWeight: 700,
+                    color: previewReview?.status === 'done' ? 'var(--color-success)' : 'var(--color-warning)',
+                    bgcolor: previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                    border: `1px solid ${previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                  }}
+                />
+                {isHRorAdmin && (
+                  <Button
+                    variant="contained"
+                    disabled={updatePreviewStatusMutation.isLoading}
+                    onClick={() => updatePreviewStatusMutation.mutate(previewReview?.status === 'done' ? 'undone' : 'done')}
+                    sx={{
+                      background: previewReview?.status === 'done' ? 'var(--color-warning)' : 'var(--color-primary)',
+                      borderRadius: 'var(--radius-control)',
+                      textTransform: 'none',
+                    }}
+                  >
+                    {previewReview?.status === 'done' ? 'Mark Undone' : 'Mark Done'}
+                  </Button>
+                )}
+              </Box>
+            </Box>
+
+            {isFinance && previewReview?.status === 'done' && (
+              <Box sx={{ mb: 2, p: 1.5, borderRadius: 'var(--radius-control)', bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.22)', color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>
+                HR has marked this preview sheet as done. Please review and add remarks if corrections are needed.
+              </Box>
+            )}
+
+            <Grid container spacing={2} alignItems="flex-start">
+              <Grid item xs={12} md={9}>
+                <TextField
+                  label="Finance Remarks"
+                  placeholder="Comment any mistake or correction needed in this sheet..."
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  maxRows={6}
+                  value={financeRemarksDraft}
+                  onChange={(e) => setFinanceRemarksDraft(e.target.value)}
+                  disabled={!isFinance && !isAdmin}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  disabled={(!isFinance && !isAdmin) || updateFinanceRemarksMutation.isLoading}
+                  onClick={() => updateFinanceRemarksMutation.mutate()}
+                  sx={{
+                    mt: { xs: 0, md: 1 },
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                  }}
+                >
+                  Save Remarks
+                </Button>
+              </Grid>
+            </Grid>
+
+            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid var(--color-border)' }}>
+              <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mb: 1 }}>
+                Sheet Activity Logs
+              </Typography>
+              {previewLogs.length > 0 ? (
+                <Box>
+                  <Box sx={{ display: 'grid', gap: 1 }}>
+                    {paginatedPreviewLogs.map((log, index) => (
+                      <Box
+                        key={`${log.created_at}-${previewLogPage}-${index}`}
+                        sx={{
+                          p: 1.25,
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-control)',
+                          bgcolor: 'var(--color-surface)',
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                          {previewLogText(log)}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                          {new Date(log.created_at).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                  <TablePagination
+                    component="div"
+                    count={previewLogs.length}
+                    page={previewLogPage}
+                    rowsPerPage={previewLogRowsPerPage}
+                    rowsPerPageOptions={[5, 10, 25]}
+                    onPageChange={(_, nextPage) => setPreviewLogPage(nextPage)}
+                    onRowsPerPageChange={(event) => {
+                      setPreviewLogRowsPerPage(parseInt(event.target.value, 10));
+                      setPreviewLogPage(0);
+                    }}
+                    sx={{
+                      color: 'var(--color-text-primary)',
+                      borderTop: '1px solid var(--color-border)',
+                      mt: 1,
+                      '& .MuiTablePagination-actions': {
+                        color: 'var(--color-text-primary)',
+                      },
+                      '& .MuiTablePagination-select': {
+                        color: 'var(--color-text-primary)',
+                      },
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  No activity logs yet.
+                </Typography>
+              )}
+            </Box>
+          </Paper>
         </Paper>
       ) : (
         /* Manage Options View */
