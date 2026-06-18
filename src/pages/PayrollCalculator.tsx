@@ -6,11 +6,6 @@ import {
   Grid,
   Typography,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormControlLabel,
   Switch,
   Divider,
   Paper,
@@ -30,22 +25,19 @@ const PayrollCalculator: React.FC = () => {
   const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
 
   // Input states
-  const [salaryType, setSalaryType] = useState<'CTC' | 'Gross'>('CTC');
   const [salaryAmount, setSalaryAmount] = useState<string>(''); // empty by default
-  const [basicPercent, setBasicPercent] = useState<string>(''); // empty by default
   const [pfApplicable, setPfApplicable] = useState<boolean>(true);
-  const [pfMethod, setPfMethod] = useState<'actual' | 'ceiling'>('ceiling');
-  const [pfCap, setPfCap] = useState<'none' | 'employee' | 'both'>('both');
 
   // Validation states
   const [salaryError, setSalaryError] = useState<string>('');
-  const [basicPercentError, setBasicPercentError] = useState<string>('');
 
   // Calculated variables (Monthly values)
   const [calculated, setCalculated] = useState({
     ctc: 0,
     gross: 0,
     basic: 0,
+    basicAfterDeductions: 0,
+    grossPlusBasic: 0,
     hra: 0,
     otherAllowances: 0,
     employeePF: 0,
@@ -104,7 +96,6 @@ const PayrollCalculator: React.FC = () => {
   // Recalculate on input changes
   useEffect(() => {
     let sErr = '';
-    let bErr = '';
 
     if (salaryAmount === '') {
       sErr = 'Salary amount is required';
@@ -115,23 +106,15 @@ const PayrollCalculator: React.FC = () => {
       }
     }
 
-    if (basicPercent === '') {
-      bErr = 'Basic salary percentage is required';
-    } else {
-      const val = parseFloat(basicPercent);
-      if (isNaN(val) || val < 10 || val > 100) {
-        bErr = 'Percentage must be between 10% and 100%';
-      }
-    }
-
     setSalaryError(sErr);
-    setBasicPercentError(bErr);
 
-    if (sErr || bErr || salaryAmount === '' || basicPercent === '') {
+    if (sErr || salaryAmount === '') {
       setCalculated({
         ctc: 0,
         gross: 0,
         basic: 0,
+        basicAfterDeductions: 0,
+        grossPlusBasic: 0,
         hra: 0,
         otherAllowances: 0,
         employeePF: 0,
@@ -148,117 +131,38 @@ const PayrollCalculator: React.FC = () => {
     }
 
     const amountVal = parseFloat(salaryAmount);
-    const basicPct = parseFloat(basicPercent);
-    const monthlyInputAmount = viewMode === 'annual' ? amountVal / 12 : amountVal;
-
-    let targetGross = 0;
-
-    // Helper to compute employer components given a hypothetical gross
-    const computeEmployerComponents = (hypotheticalGross: number) => {
-      const basic = hypotheticalGross * (basicPct / 100);
-      let pfWage = basic;
-      if (pfMethod === 'ceiling') {
-        pfWage = Math.min(basic, 15000);
-      }
-
-      let employerPF = 0;
-      if (pfApplicable) {
-        employerPF = pfWage * 0.12;
-        if (pfCap === 'both') {
-          employerPF = Math.min(employerPF, 1800);
-        }
-      }
-
-      let employerESI = 0;
-      if (hypotheticalGross <= 21000) {
-        employerESI = hypotheticalGross * 0.0325;
-      }
-
-      return { employerPF, employerESI };
-    };
-
-    if (salaryType === 'Gross') {
-      targetGross = monthlyInputAmount;
-    } else {
-      // CTC Mode: use Bisection method to solve for monthly Gross Salary
-      let low = 0;
-      let high = monthlyInputAmount;
-      let solvedGross = monthlyInputAmount;
-
-      for (let i = 0; i < 80; i++) {
-        solvedGross = (low + high) / 2;
-        const { employerPF, employerESI } = computeEmployerComponents(solvedGross);
-        const calculatedCTC = solvedGross + employerPF + employerESI;
-
-        if (Math.abs(calculatedCTC - monthlyInputAmount) < 0.0001) {
-          break;
-        }
-
-        if (calculatedCTC > monthlyInputAmount) {
-          high = solvedGross;
-        } else {
-          low = solvedGross;
-        }
-      }
-      targetGross = solvedGross;
-    }
-
-    // 2. Perform final monthly breakdown using solved Gross
-    const gross = Number(targetGross.toFixed(2));
-    const basic = Number((gross * (basicPct / 100)).toFixed(2));
+    const ctc = Number((viewMode === 'annual' ? amountVal / 12 : amountVal).toFixed(2));
+    const basic = Number((ctc * 0.50).toFixed(2));
     const hra = Number((basic * 0.40).toFixed(2));
-    const otherAllowances = Number((gross - basic - hra).toFixed(2));
+    const pfApplies = basic <= 15000 || pfApplicable;
+    const esiApplies = basic < 21000;
 
-    // PF Wage
-    let pfWage = basic;
-    if (pfMethod === 'ceiling') {
-      pfWage = Math.min(basic, 15000);
-    }
+    const employeePF = pfApplies ? Number(Math.min(basic * 0.12, 1800).toFixed(2)) : 0;
+    const employerPF = pfApplies ? Number(Math.min(basic * 0.12, 1800).toFixed(2)) : 0;
+    const employeeESI = esiApplies ? Number((basic * 0.0075).toFixed(2)) : 0;
+    const employerESI = esiApplies ? Number((basic * 0.0325).toFixed(2)) : 0;
 
-    // Employee PF
-    let employeePF = 0;
-    if (pfApplicable) {
-      employeePF = pfWage * 0.12;
-      if (pfCap === 'employee' || pfCap === 'both') {
-        employeePF = Math.min(employeePF, 1800);
-      }
-    }
-    employeePF = Number(employeePF.toFixed(2));
+    const remainingCtc = Number((ctc - basic).toFixed(2));
+    const gross = Number((remainingCtc - employerPF - employerESI).toFixed(2));
+    const otherAllowances = Number((basic - hra).toFixed(2));
 
-    // Employer PF
-    let employerPF = 0;
-    if (pfApplicable) {
-      employerPF = pfWage * 0.12;
-      if (pfCap === 'both') {
-        employerPF = Math.min(employerPF, 1800);
-      }
-    }
-    employerPF = Number(employerPF.toFixed(2));
-
-    // ESI (if gross <= 21,000)
-    let employeeESI = 0;
-    let employerESI = 0;
-    if (gross <= 21000) {
-      employeeESI = Number((gross * 0.0075).toFixed(2));
-      employerESI = Number((gross * 0.0325).toFixed(2));
-    }
-
-    // Tax (calculated on projected annual gross)
-    const annualGross = gross * 12;
-    const annualTax = calculateAnnualTax(annualGross);
+    // Tax is calculated on taxable CTC under the selected frequency.
+    const annualCtc = ctc * 12;
+    const annualTax = calculateAnnualTax(annualCtc);
     const monthlyTDS = Number((annualTax / 12).toFixed(2));
 
     const totalDeductions = Number((employeePF + employeeESI + monthlyTDS).toFixed(2));
-    const netMonthly = Number((gross - totalDeductions).toFixed(2));
+    const basicAfterDeductions = Number((basic - totalDeductions).toFixed(2));
+    const grossPlusBasic = Number((gross + basic).toFixed(2));
+    const netMonthly = Number((gross + basicAfterDeductions).toFixed(2));
     const netAnnual = Number((netMonthly * 12).toFixed(2));
-
-    // Derive CTC
-    const ctc = Number((gross + employerPF + employerESI).toFixed(2));
 
     setCalculated({
       ctc,
       gross,
       basic,
+      basicAfterDeductions,
+      grossPlusBasic,
       hra,
       otherAllowances,
       employeePF,
@@ -271,7 +175,7 @@ const PayrollCalculator: React.FC = () => {
       netMonthly,
       netAnnual,
     });
-  }, [salaryType, salaryAmount, basicPercent, pfApplicable, pfMethod, pfCap, viewMode]);
+  }, [salaryAmount, pfApplicable, viewMode]);
 
   return (
     <Box sx={{ p: 4, maxWidth: '1400px', margin: '0 auto' }}>
@@ -293,23 +197,7 @@ const PayrollCalculator: React.FC = () => {
               <Grid container spacing={3}>
                 <Grid item xs={12}>
                   <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 600 }}>
-                    1. Salary Structure Base (Type)
-                  </Typography>
-                  <ToggleButtonGroup
-                    value={salaryType}
-                    exclusive
-                    onChange={(_, value) => value && setSalaryType(value)}
-                    fullWidth
-                    sx={{ background: 'var(--color-bg-paper)', border: '1px solid var(--color-border)', mb: 1 }}
-                  >
-                    <ToggleButton value="CTC">Cost To Company (CTC)</ToggleButton>
-                    <ToggleButton value="Gross">Gross Salary</ToggleButton>
-                  </ToggleButtonGroup>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 600 }}>
-                    2. Select Frequency
+                    1. Select Frequency
                   </Typography>
                   <ToggleButtonGroup
                     value={viewMode}
@@ -326,7 +214,7 @@ const PayrollCalculator: React.FC = () => {
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label={`3. Salary Amount (${viewMode === 'annual' ? 'Annualized' : 'Monthly'})`}
+                    label={`2. CTC Amount (${viewMode === 'annual' ? 'Annualized' : 'Monthly'})`}
                     type="number"
                     value={salaryAmount}
                     onChange={(e) => setSalaryAmount(e.target.value)}
@@ -336,25 +224,12 @@ const PayrollCalculator: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Basic Salary Percentage of Gross"
-                    type="number"
-                    value={basicPercent}
-                    onChange={(e) => setBasicPercent(e.target.value)}
-                    error={!!basicPercentError}
-                    helperText={basicPercentError}
-                    InputProps={{ inputProps: { min: 10, max: 100 } }}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
                 </Grid>
 
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>Provident Fund (PF) Applicable</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>PF Member / Enrolled</Typography>
                     <Switch
                       checked={pfApplicable}
                       onChange={(e) => setPfApplicable(e.target.checked)}
@@ -363,38 +238,6 @@ const PayrollCalculator: React.FC = () => {
                   </Box>
                 </Grid>
 
-                {pfApplicable && (
-                  <>
-                    <Grid item xs={12}>
-                      <FormControl fullWidth>
-                        <InputLabel>PF Calculation Basis</InputLabel>
-                        <Select
-                          value={pfMethod}
-                          label="PF Calculation Basis"
-                          onChange={(e) => setPfMethod(e.target.value as 'actual' | 'ceiling')}
-                        >
-                          <MenuItem value="actual">Actual Basic Salary (12% of Basic)</MenuItem>
-                          <MenuItem value="ceiling">Statutory Wage Ceiling (12% capped at ₹15k wage)</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <FormControl fullWidth>
-                        <InputLabel>PF Cap Method</InputLabel>
-                        <Select
-                          value={pfCap}
-                          label="PF Cap Method"
-                          onChange={(e) => setPfCap(e.target.value as 'none' | 'employee' | 'both')}
-                        >
-                          <MenuItem value="none">No Cap (Pure 12% of selected base)</MenuItem>
-                          <MenuItem value="employee">Cap Employee PF at ₹1,800/month</MenuItem>
-                          <MenuItem value="both">Cap Employee & Employer PF at ₹1,800/month</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                  </>
-                )}
               </Grid>
             </CardContent>
           </Card>
@@ -458,13 +301,13 @@ const PayrollCalculator: React.FC = () => {
                     </TableRow>
 
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, pl: 3 }}>Gross Salary</TableCell>
+                      <TableCell sx={{ fontWeight: 600, pl: 3 }}>Gross from Remaining 50% After Employer Benefits</TableCell>
                       <TableCell align="right">{formatCurrency(calculated.gross)}</TableCell>
                       <TableCell align="right">{formatCurrency(calculated.gross * 12)}</TableCell>
                     </TableRow>
 
                     <TableRow>
-                      <TableCell sx={{ pl: 5, color: 'text.secondary' }}>Basic Salary ({basicPercent}%)</TableCell>
+                      <TableCell sx={{ pl: 5, color: 'text.secondary' }}>Basic Salary (50% of CTC)</TableCell>
                       <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatCurrency(calculated.basic)}</TableCell>
                       <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatCurrency(calculated.basic * 12)}</TableCell>
                     </TableRow>
@@ -476,7 +319,7 @@ const PayrollCalculator: React.FC = () => {
                     </TableRow>
 
                     <TableRow>
-                      <TableCell sx={{ pl: 5, color: 'text.secondary' }}>Other Allowances</TableCell>
+                      <TableCell sx={{ pl: 5, color: 'text.secondary' }}>Other Allowances (Basic - HRA)</TableCell>
                       <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatCurrency(calculated.otherAllowances)}</TableCell>
                       <TableCell align="right" sx={{ color: 'text.secondary' }}>{formatCurrency(calculated.otherAllowances * 12)}</TableCell>
                     </TableRow>
@@ -489,13 +332,13 @@ const PayrollCalculator: React.FC = () => {
                     </TableRow>
 
                     <TableRow>
-                      <TableCell sx={{ pl: 3 }}>Employee PF Contribution (12%)</TableCell>
+                      <TableCell sx={{ pl: 3 }}>Employee PF Contribution (12% of Basic, capped at ₹1,800)</TableCell>
                       <TableCell align="right" sx={{ color: '#ef4444' }}>-{formatCurrency(calculated.employeePF)}</TableCell>
                       <TableCell align="right" sx={{ color: '#ef4444' }}>-{formatCurrency(calculated.employeePF * 12)}</TableCell>
                     </TableRow>
 
                     <TableRow>
-                      <TableCell sx={{ pl: 3 }}>Employee ESI Contribution (0.75%)</TableCell>
+                      <TableCell sx={{ pl: 3 }}>Employee ESI Contribution (0.75% of Basic)</TableCell>
                       <TableCell align="right" sx={{ color: '#ef4444' }}>-{formatCurrency(calculated.employeeESI)}</TableCell>
                       <TableCell align="right" sx={{ color: '#ef4444' }}>-{formatCurrency(calculated.employeeESI * 12)}</TableCell>
                     </TableRow>
@@ -508,26 +351,38 @@ const PayrollCalculator: React.FC = () => {
 
                     {/* Employer Share */}
                     <TableRow sx={{ background: 'rgba(59, 130, 246, 0.02)' }}>
-                      <TableCell sx={{ fontWeight: 600 }}>Employer Share (Outside Gross / Part of CTC)</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Employer Benefits Deducted from Remaining 50% CTC</TableCell>
                       <TableCell align="right" />
                       <TableCell align="right" />
                     </TableRow>
 
                     <TableRow>
-                      <TableCell sx={{ pl: 3 }}>Employer PF Contribution</TableCell>
+                      <TableCell sx={{ pl: 3 }}>Employer PF Contribution (12% of Basic, capped at ₹1,800)</TableCell>
                       <TableCell align="right">{formatCurrency(calculated.employerPF)}</TableCell>
                       <TableCell align="right">{formatCurrency(calculated.employerPF * 12)}</TableCell>
                     </TableRow>
 
                     <TableRow>
-                      <TableCell sx={{ pl: 3 }}>Employer ESI Contribution</TableCell>
+                      <TableCell sx={{ pl: 3 }}>Employer ESI Contribution (3.25% of Basic)</TableCell>
                       <TableCell align="right">{formatCurrency(calculated.employerESI)}</TableCell>
                       <TableCell align="right">{formatCurrency(calculated.employerESI * 12)}</TableCell>
                     </TableRow>
 
+                    <TableRow>
+                      <TableCell sx={{ pl: 3 }}>Basic Left After Employee Deductions</TableCell>
+                      <TableCell align="right">{formatCurrency(calculated.basicAfterDeductions)}</TableCell>
+                      <TableCell align="right">{formatCurrency(calculated.basicAfterDeductions * 12)}</TableCell>
+                    </TableRow>
+
+                    <TableRow>
+                      <TableCell sx={{ pl: 3 }}>Gross + Basic Before Employee Deductions</TableCell>
+                      <TableCell align="right">{formatCurrency(calculated.grossPlusBasic)}</TableCell>
+                      <TableCell align="right">{formatCurrency(calculated.grossPlusBasic * 12)}</TableCell>
+                    </TableRow>
+
                     {/* Net Total Summary */}
                     <TableRow sx={{ background: 'rgba(16, 185, 129, 0.04)' }}>
-                      <TableCell sx={{ fontWeight: 700 }}>Net Take-Home Salary</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Net Take-Home Salary (Gross + Basic Left)</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(calculated.netMonthly)}</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(calculated.netAnnual)}</TableCell>
                     </TableRow>

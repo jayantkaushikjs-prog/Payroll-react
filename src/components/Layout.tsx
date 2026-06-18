@@ -48,6 +48,7 @@ import {
   ManageAccounts as AdminIcon,
   TrendingUp as TrendIcon,
   Receipt as ExpensesIcon,
+  FactCheck as PreviewSheetIcon,
   Search as SearchIcon,
   LockReset as LockResetIcon,
   Person as PersonIcon,
@@ -167,6 +168,13 @@ const Layout: React.FC = () => {
       icon: <PeopleIcon />,
       path: '/employees',
       permissions: [Permission.CREATE_EMPLOYEE, Permission.VIEW_EMPLOYEE],
+      requireAny: true,
+    },
+    {
+      text: 'Preview Sheet',
+      icon: <PreviewSheetIcon />,
+      path: '/preview-sheet',
+      permissions: [Permission.VIEW_EMPLOYEE, Permission.MANAGE_SALARY_STRUCTURES],
       requireAny: true,
     },
     {

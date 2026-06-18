@@ -340,32 +340,31 @@ const SalaryStructures: React.FC = () => {
     if (formData.ctc_type === 'annual') {
       ctc = ctc / 12;
     }
-    const basicRatio = (Number(formData.basic_percent) || 50) / 100;
-    const hraRatio = (Number(formData.hra_percent) || 40) / 100;
+    const basicRatio = 0.50;
+    const hraRatio = 0.40;
 
-    let gross_salary = ctc;
     let employer_pf = 0;
+    let employer_esi = 0;
+    const basic_salary = basicRatio * ctc;
+    const pfApplies = basic_salary <= 15000 || (selectedEmp && selectedEmp.pf_deduction !== false);
 
-    if (selectedEmp && selectedEmp.pf_deduction !== false) {
+    if (pfApplies) {
       const activeSetting = [...pfList]
         .sort((a, b) => b.effective_date.localeCompare(a.effective_date))
         .find(s => !formData.effective_from || s.effective_date <= formData.effective_from);
 
       const rate = activeSetting ? Number(activeSetting.employer_contribution_rate) / 100 : 0.12;
-      const gross_salary_uncapped = ctc / (1 + basicRatio * rate);
-      if (basicRatio * gross_salary_uncapped * rate > 1800) {
-        gross_salary = ctc - 1800;
-        employer_pf = 1800;
-      } else {
-        gross_salary = gross_salary_uncapped;
-        employer_pf = basicRatio * gross_salary * rate;
-      }
+      employer_pf = Math.min(basic_salary * rate, 1800);
     }
 
-    const basic_salary = basicRatio * gross_salary;
+    if (basic_salary < 21000) {
+      employer_esi = basic_salary * 0.0325;
+    }
+
     const hra = hraRatio * basic_salary;
+    const gross_salary = ctc - basic_salary - employer_pf - employer_esi;
     const special_allowance = 0;
-    const other_allowance = Math.max(0, gross_salary - basic_salary - hra);
+    const other_allowance = Math.max(0, basic_salary - hra);
 
     return {
       gross_salary,
@@ -374,8 +373,9 @@ const SalaryStructures: React.FC = () => {
       special_allowance,
       other_allowance,
       employer_pf,
+      employer_esi,
     };
-  }, [formData.ctc, formData.basic_percent, formData.hra_percent, formData.effective_from, selectedEmp, pfList]);
+  }, [formData.ctc, formData.ctc_type, formData.effective_from, selectedEmp, pfList]);
 
   return (
     <Box>
@@ -686,15 +686,12 @@ const SalaryStructures: React.FC = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Basic Salary % of Gross"
+                  label="Basic Salary % of CTC"
                   type="number"
                   fullWidth
                   required
-                  inputProps={{ min: 1, max: 100 }}
-                  value={formData.basic_percent}
-                  onChange={(e) => setFormData({ ...formData, basic_percent: e.target.value })}
-                  error={!!formErrors.basic_percent}
-                  helperText={formErrors.basic_percent}
+                  value={50}
+                  disabled
                   sx={inputStyles}
                 />
               </Grid>
@@ -704,11 +701,8 @@ const SalaryStructures: React.FC = () => {
                   type="number"
                   fullWidth
                   required
-                  inputProps={{ min: 1, max: 100 }}
-                  value={formData.hra_percent}
-                  onChange={(e) => setFormData({ ...formData, hra_percent: e.target.value })}
-                  error={!!formErrors.hra_percent}
-                  helperText={formErrors.hra_percent}
+                  value={40}
+                  disabled
                   sx={inputStyles}
                 />
               </Grid>
@@ -723,7 +717,7 @@ const SalaryStructures: React.FC = () => {
                     <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
                       <CardContent sx={{ py: '10px !important', px: 2 }}>
                         <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                          Basic Salary ({formData.basic_percent}% of Gross)
+                          Basic Salary (50% of CTC)
                         </Typography>
                         <Typography variant="body1" sx={{ color: 'var(--color-text-primary)', fontWeight: 600, mt: 0.5 }}>
                           {formatCurrency(calculations.basic_salary)}
@@ -735,7 +729,7 @@ const SalaryStructures: React.FC = () => {
                     <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
                       <CardContent sx={{ py: '10px !important', px: 2 }}>
                         <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                          HRA ({formData.hra_percent}% of Basic)
+                          HRA (40% of Basic)
                         </Typography>
                         <Typography variant="body1" sx={{ color: 'var(--color-text-primary)', fontWeight: 600, mt: 0.5 }}>
                           {formatCurrency(calculations.hra)}
@@ -747,7 +741,7 @@ const SalaryStructures: React.FC = () => {
                     <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
                       <CardContent sx={{ py: '10px !important', px: 2 }}>
                         <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                          Other Allowances (Remaining)
+                          Other Allowances (Basic - HRA)
                         </Typography>
                         <Typography variant="body1" sx={{ color: 'var(--color-text-primary)', fontWeight: 600, mt: 0.5 }}>
                           {formatCurrency(calculations.other_allowance)}
@@ -767,11 +761,23 @@ const SalaryStructures: React.FC = () => {
                       </CardContent>
                     </Card>
                   </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Card sx={{ bgcolor: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                      <CardContent sx={{ py: '10px !important', px: 2 }}>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                          Employer ESI Share
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, mt: 0.5 }}>
+                          {formatCurrency(calculations.employer_esi)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
                   <Grid item xs={12}>
                     <Card sx={{ bgcolor: 'rgba(16, 185, 129, 0.04)', border: '1px dashed rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
                       <CardContent sx={{ py: '12px !important', px: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="body2" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>
-                          Calculated Gross Salary
+                          Calculated Gross from Remaining 50%
                         </Typography>
                         <Typography variant="h5" sx={{ color: 'var(--color-success)', fontWeight: 700, fontFamily: 'Outfit' }}>
                           {formatCurrency(calculations.gross_salary)}

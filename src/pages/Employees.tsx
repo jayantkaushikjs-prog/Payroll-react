@@ -82,6 +82,7 @@ interface Employee {
   tax_regime: string;
   active_status: boolean;
   pf_deduction?: boolean;
+  pf_uan?: string | null;
   tax_deduction?: boolean;
   relieving_date?: string | null;
   other_inputs?: string | null;
@@ -100,6 +101,22 @@ interface Employee {
 }
 
 type PreviewTagFilter = 'relieving' | 'on_notice' | 'new' | 'old';
+
+interface PreviewReview {
+  id: number;
+  month: string;
+  status: 'done' | 'undone';
+  finance_remarks?: string | null;
+  logs?: Array<{
+    action: string;
+    from?: string;
+    to?: string;
+    remarks?: string;
+    created_at: string;
+  }>;
+  hr_marked_done_at?: string | null;
+  hr_marked_undone_at?: string | null;
+}
 
 const getCurrentMonthValue = () => {
   const today = new Date();
@@ -239,7 +256,11 @@ const PreviewRemarks: React.FC<{ remarks?: string | null }> = ({ remarks }) => {
   );
 };
 
-const Employees: React.FC = () => {
+interface EmployeesProps {
+  previewOnly?: boolean;
+}
+
+const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -260,6 +281,7 @@ const Employees: React.FC = () => {
     bank_name: '',
     account_number: '',
     ifsc: '',
+    pf_uan: '',
   });
 
   // Form Fields
@@ -275,6 +297,7 @@ const Employees: React.FC = () => {
     bank_name: string;
     account_number: string;
     ifsc: string;
+    pf_uan: string;
     tax_regime: string;
     active_status: boolean;
     pf_deduction: boolean;
@@ -291,6 +314,7 @@ const Employees: React.FC = () => {
     bank_name: '',
     account_number: '',
     ifsc: '',
+    pf_uan: '',
     tax_regime: 'new',
     active_status: true,
     pf_deduction: false,
@@ -338,6 +362,8 @@ const Employees: React.FC = () => {
   });
 
   const isHRorAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.HR);
+  const isFinance = user && user.role === Role.FINANCE;
+  const canViewPreview = Boolean(isHRorAdmin || isFinance);
   const isAdmin = user && user.role === Role.SUPER_ADMIN;
 
   // Fetch employees
@@ -346,6 +372,29 @@ const Employees: React.FC = () => {
     return res.data;
   });
   const activeEmployees = employees.filter((emp: Employee) => emp.active_status !== false);
+
+  const { data: previewReview, isLoading: isPreviewReviewLoading } = useQuery(
+    ['hrPreviewReview', previewMonth],
+    async () => {
+      const res = await api.get(`/employees/preview-review?month=${previewMonth}`);
+      return res.data as PreviewReview;
+    },
+    { enabled: canViewPreview && Boolean(previewMonth) }
+  );
+
+  const [financeRemarksDraft, setFinanceRemarksDraft] = useState('');
+
+  useEffect(() => {
+    setFinanceRemarksDraft(previewReview?.finance_remarks || '');
+  }, [previewReview?.finance_remarks]);
+
+  useEffect(() => {
+    if (!isFinance || previewReview?.status !== 'done') return;
+    const notificationKey = `hr-preview-done-notified-${previewReview.month}-${previewReview.hr_marked_done_at || ''}`;
+    if (localStorage.getItem(notificationKey)) return;
+    showToast(`HR marked ${previewReview.month} preview as done for Finance review.`, 'success');
+    localStorage.setItem(notificationKey, 'true');
+  }, [isFinance, previewReview?.status, previewReview?.month, previewReview?.hr_marked_done_at, showToast]);
 
   // Manage Options States
   const [newDeptName, setNewDeptName] = useState('');
@@ -475,6 +524,7 @@ const Employees: React.FC = () => {
     bank_name: string;
     account_number: string;
     ifsc: string;
+    pf_uan: string;
     tax_regime: string;
     active_status: boolean;
     pf_deduction: boolean;
@@ -502,6 +552,7 @@ const Employees: React.FC = () => {
     bank_name: '',
     account_number: '',
     ifsc: '',
+    pf_uan: '',
     tax_regime: 'new',
     active_status: true,
     pf_deduction: true,
@@ -603,6 +654,7 @@ const Employees: React.FC = () => {
           bank_name: emp.bank_name || '',
           account_number: emp.account_number || '',
           ifsc: emp.ifsc || '',
+          pf_uan: emp.pf_uan || '',
           tax_regime: emp.tax_regime || 'new',
           active_status: emp.active_status !== false,
           pf_deduction: emp.pf_deduction !== false,
@@ -648,6 +700,7 @@ const Employees: React.FC = () => {
     
     const payload = {
       ...profileFormData,
+      pf_uan: profileFormData.pf_uan.trim() || undefined,
       relieving_date: profileFormData.relieving_date || null,
       other_inputs: profileFormData.other_inputs || null,
       remarks: profileFormData.remarks || null,
@@ -706,6 +759,7 @@ const Employees: React.FC = () => {
       bank_name: '',
       account_number: '',
       ifsc: '',
+      pf_uan: '',
     };
 
     if (Array.isArray(backendMessage)) {
@@ -805,6 +859,7 @@ const Employees: React.FC = () => {
       bank_name: '',
       account_number: '',
       ifsc: '',
+      pf_uan: '',
     });
     setFormData({
       employee_code: `EMP${String(employees.length + 1).padStart(3, '0')}`,
@@ -818,6 +873,7 @@ const Employees: React.FC = () => {
       bank_name: '',
       account_number: '',
       ifsc: '',
+      pf_uan: '',
       tax_regime: 'new',
       active_status: true,
       pf_deduction: false,
@@ -839,6 +895,7 @@ const Employees: React.FC = () => {
       bank_name: '',
       account_number: '',
       ifsc: '',
+      pf_uan: '',
     });
     setFormData({
       employee_code: emp.employee_code,
@@ -852,6 +909,7 @@ const Employees: React.FC = () => {
       bank_name: emp.bank_name,
       account_number: emp.account_number,
       ifsc: emp.ifsc,
+      pf_uan: emp.pf_uan || '',
       tax_regime: emp.tax_regime || 'new',
       active_status: emp.active_status,
       pf_deduction: emp.pf_deduction !== false,
@@ -873,6 +931,7 @@ const Employees: React.FC = () => {
       bank_name: emp.bank_name || '',
       account_number: emp.account_number || '',
       ifsc: emp.ifsc || '',
+      pf_uan: emp.pf_uan || '',
       tax_regime: emp.tax_regime || 'new',
       active_status: emp.active_status !== false,
       pf_deduction: emp.pf_deduction !== false,
@@ -937,6 +996,7 @@ const Employees: React.FC = () => {
       bank_name: '',
       account_number: '',
       ifsc: '',
+      pf_uan: '',
     };
     let isValid = true;
 
@@ -1002,6 +1062,11 @@ const Employees: React.FC = () => {
       isValid = false;
     }
 
+    if (formData.pf_uan && (formData.pf_uan.trim().length < 5 || formData.pf_uan.trim().length > 50)) {
+      nextErrors.pf_uan = 'PF No. / UAN must be between 5 and 50 characters';
+      isValid = false;
+    }
+
     setFormErrors(nextErrors);
 
     if (!isValid) {
@@ -1009,11 +1074,16 @@ const Employees: React.FC = () => {
       return;
     }
 
-    const payload = {
+    const payload: any = {
       ...formData,
       monthly_ctc: Number(formData.monthly_ctc) || 0,
       annual_ctc: (Number(formData.monthly_ctc) || 0) * 12,
     };
+    if (formData.pf_uan.trim()) {
+      payload.pf_uan = formData.pf_uan.trim();
+    } else {
+      delete payload.pf_uan;
+    }
 
     if (selectedEmp) {
       updateMutation.mutate({ id: selectedEmp.id, data: payload });
@@ -1158,11 +1228,55 @@ const Employees: React.FC = () => {
     );
   };
 
+  const updatePreviewStatusMutation = useMutation(
+    async (status: 'done' | 'undone') => {
+      const res = await api.put('/employees/preview-review/status', { month: previewMonth, status });
+      return res.data as PreviewReview;
+    },
+    {
+      onSuccess: (_, status) => {
+        queryClient.invalidateQueries(['hrPreviewReview', previewMonth]);
+        showToast(status === 'done' ? 'Preview sheet marked as done. Finance has been notified.' : 'Preview sheet marked as undone.', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update preview status', 'error');
+      },
+    }
+  );
+
+  const updateFinanceRemarksMutation = useMutation(
+    async () => {
+      const res = await api.put('/employees/preview-review/finance-remarks', {
+        month: previewMonth,
+        finance_remarks: financeRemarksDraft,
+      });
+      return res.data as PreviewReview;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['hrPreviewReview', previewMonth]);
+        showToast('Finance remarks saved.', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to save finance remarks', 'error');
+      },
+    }
+  );
+
   const previewValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') return '-';
     return String(value);
   };
   const previewAmount = (value?: number) => Number(value || 0) > 0 ? Number(value).toLocaleString('en-IN') : '-';
+  const previewLogText = (log: NonNullable<PreviewReview['logs']>[number]) => {
+    if (log.action === 'status_changed') {
+      return `Status changed from ${log.from || '-'} to ${log.to || '-'}`;
+    }
+    if (log.action === 'finance_remarks_updated') {
+      return `Finance remarks updated${log.remarks ? `: ${log.remarks}` : ''}`;
+    }
+    return log.action.replace(/_/g, ' ');
+  };
 
   const departmentOptions = withCurrentOption(allDepartments, formData.department);
   const designationOptions = withCurrentOption(allDesignations, formData.designation);
@@ -1183,7 +1297,7 @@ const Employees: React.FC = () => {
         </Box>
       </Box>
 
-      {isHRorAdmin && (
+      {canViewPreview && !previewOnly && (
         <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 3 }}>
           <Tabs
             value={currentMainTab}
@@ -1204,15 +1318,15 @@ const Employees: React.FC = () => {
               },
             }}
           >
-            <Tab label="Employee Directory" />
+            {isHRorAdmin && <Tab label="Employee Directory" />}
             {/* <Tab label="HR Global Console" /> */}
             <Tab label="Preview" />
-            <Tab label="Manage Options" />
+            {isHRorAdmin && <Tab label="Manage Options" />}
           </Tabs>
         </Box>
       )}
 
-      {(!isHRorAdmin || currentMainTab === 0) ? (
+      {(!previewOnly && ((!isHRorAdmin && !isFinance) || (isHRorAdmin && currentMainTab === 0))) ? (
         <>
           {/* Employee Directory View */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
@@ -1458,7 +1572,7 @@ const Employees: React.FC = () => {
           )}
           </Paper>
         </>
-      ) : currentMainTab === 1 ? (
+      ) : previewOnly || currentMainTab === 1 || isFinance ? (
       //   /* HR Global Console View */
       //   <Box className="animate-fade-in">
       //     <Paper
@@ -1794,6 +1908,130 @@ const Employees: React.FC = () => {
               Employees with non-default HR operation or lifecycle inputs appear here.
             </Typography>
           </Box>
+
+          <Paper
+            elevation={0}
+            sx={{
+              mb: 3,
+              p: 2,
+              bgcolor: 'var(--color-surface-subtle)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-control)',
+            }}
+          >
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
+                  HR Preview Status
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.25 }}>
+                  {isPreviewReviewLoading
+                    ? 'Loading review status...'
+                    : previewReview?.status === 'done'
+                      ? `Marked done${previewReview.hr_marked_done_at ? ` on ${new Date(previewReview.hr_marked_done_at).toLocaleString()}` : ''}.`
+                      : 'Marked undone. Finance should wait for HR completion.'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Chip
+                  label={previewReview?.status === 'done' ? 'Done' : 'Undone'}
+                  size="small"
+                  sx={{
+                    fontWeight: 700,
+                    color: previewReview?.status === 'done' ? 'var(--color-success)' : 'var(--color-warning)',
+                    bgcolor: previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                    border: `1px solid ${previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                  }}
+                />
+                {isHRorAdmin && (
+                  <Button
+                    variant="contained"
+                    disabled={updatePreviewStatusMutation.isLoading}
+                    onClick={() => updatePreviewStatusMutation.mutate(previewReview?.status === 'done' ? 'undone' : 'done')}
+                    sx={{
+                      background: previewReview?.status === 'done' ? 'var(--color-warning)' : 'var(--color-primary)',
+                      borderRadius: 'var(--radius-control)',
+                      textTransform: 'none',
+                    }}
+                  >
+                    {previewReview?.status === 'done' ? 'Mark Undone' : 'Mark Done'}
+                  </Button>
+                )}
+              </Box>
+            </Box>
+
+            {isFinance && previewReview?.status === 'done' && (
+              <Box sx={{ mb: 2, p: 1.5, borderRadius: 'var(--radius-control)', bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.22)', color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>
+                HR has marked this preview sheet as done. Please review and add remarks if corrections are needed.
+              </Box>
+            )}
+
+            <Grid container spacing={2} alignItems="flex-start">
+              <Grid item xs={12} md={9}>
+                <TextField
+                  label="Finance Remarks"
+                  placeholder="Comment any mistake or correction needed in this sheet..."
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  maxRows={6}
+                  value={financeRemarksDraft}
+                  onChange={(e) => setFinanceRemarksDraft(e.target.value)}
+                  disabled={!isFinance && !isAdmin}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  disabled={(!isFinance && !isAdmin) || updateFinanceRemarksMutation.isLoading}
+                  onClick={() => updateFinanceRemarksMutation.mutate()}
+                  sx={{
+                    mt: { xs: 0, md: 1 },
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                  }}
+                >
+                  Save Remarks
+                </Button>
+              </Grid>
+            </Grid>
+
+            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid var(--color-border)' }}>
+              <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mb: 1 }}>
+                Sheet Activity Logs
+              </Typography>
+              {previewReview?.logs && previewReview.logs.length > 0 ? (
+                <Box sx={{ display: 'grid', gap: 1 }}>
+                  {[...previewReview.logs].reverse().map((log, index) => (
+                    <Box
+                      key={`${log.created_at}-${index}`}
+                      sx={{
+                        p: 1.25,
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-control)',
+                        bgcolor: 'var(--color-surface)',
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                        {previewLogText(log)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                        {new Date(log.created_at).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  No activity logs yet.
+                </Typography>
+              )}
+            </Box>
+          </Paper>
 
           <Box
             sx={{
@@ -2480,6 +2718,16 @@ const Employees: React.FC = () => {
                             }
                             label="PF"
                             sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            label="PF No. / UAN"
+                            fullWidth
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.pf_uan}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, pf_uan: e.target.value })}
+                            sx={inputStyles}
                           />
                         </Grid>
                       </Grid>
@@ -3206,6 +3454,17 @@ const Employees: React.FC = () => {
                     }
                     label="PF Deduction"
                     sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="PF No. / UAN"
+                    fullWidth
+                    value={formData.pf_uan}
+                    onChange={(e) => setFormData({ ...formData, pf_uan: e.target.value })}
+                    error={!!formErrors.pf_uan}
+                    helperText={formErrors.pf_uan}
+                    sx={inputStyles}
                   />
                 </Grid>
 

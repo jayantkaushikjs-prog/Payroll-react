@@ -79,6 +79,14 @@ const App: React.FC = () => {
                     }
                   />
                   <Route
+                    path="preview-sheet"
+                    element={
+                      <RoleProtectedRoute requiredPermissions={[Permission.VIEW_EMPLOYEE, Permission.MANAGE_SALARY_STRUCTURES]} requireAll={false}>
+                        <Employees previewOnly />
+                      </RoleProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="financial-summary"
                     element={
                       <RoleProtectedRoute requiredPermission={Permission.VIEW_EMPLOYEE}>
