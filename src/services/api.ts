@@ -61,7 +61,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('payroll_refresh_token');
       if (!refreshToken) {
         isRefreshing = false;
-        // No refresh token, trigger logout / redirect
+        // No refresh token, trigger ut / redirect
         window.dispatchEvent(new Event('auth-expired'));
         return Promise.reject(error);
       }

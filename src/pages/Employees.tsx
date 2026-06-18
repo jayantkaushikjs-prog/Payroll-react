@@ -569,23 +569,23 @@ const Employees: React.FC = () => {
     }
   }, [employees, selectedConsoleEmp]);
 
-  // HR Console update mutation
-  const saveConsoleMutation = useMutation(
-    async ({ id, data }: { id: number; data: any }) => {
-      const res = await api.put(`/employees/${id}`, data);
-      return res.data;
-    },
-    {
-      onSuccess: (updatedEmp) => {
-        queryClient.invalidateQueries(['employees']);
-        showToast('HR global inputs saved successfully!', 'success');
-        setSelectedConsoleEmp(null);
-      },
-      onError: (err: any) => {
-        showToast(err.response?.data?.message || 'Failed to update HR inputs', 'error');
-      },
-    }
-  );
+  // // HR Console update mutation
+  // const saveConsoleMutation = useMutation(
+  //   async ({ id, data }: { id: number; data: any }) => {
+  //     const res = await api.put(`/employees/${id}`, data);
+  //     return res.data;
+  //   },
+  //   {
+  //     onSuccess: (updatedEmp) => {
+  //       queryClient.invalidateQueries(['employees']);
+  //       showToast('HR global inputs saved successfully!', 'success');
+  //       setSelectedConsoleEmp(null);
+  //     },
+  //     onError: (err: any) => {
+  //       showToast(err.response?.data?.message || 'Failed to update HR inputs', 'error');
+  //     },
+  //   }
+  // );
 
   // Effect to load employee details when profileEmpId is selected
   useEffect(() => {
@@ -1205,7 +1205,7 @@ const Employees: React.FC = () => {
             }}
           >
             <Tab label="Employee Directory" />
-            <Tab label="HR Global Console" />
+            {/* <Tab label="HR Global Console" /> */}
             <Tab label="Preview" />
             <Tab label="Manage Options" />
           </Tabs>
@@ -1459,322 +1459,322 @@ const Employees: React.FC = () => {
           </Paper>
         </>
       ) : currentMainTab === 1 ? (
-        /* HR Global Console View */
-        <Box className="animate-fade-in">
-          <Paper
-            sx={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-card)',
-              p: 4,
-              mb: 4,
-            }}
-          >
-            <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
-              Employee Search & Selector
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
-              Select an employee to modify their operational, salary, lifecycle, and leave adjustments globally.
-            </Typography>
-            <Autocomplete
-              options={activeEmployees}
-              getOptionLabel={(emp) => `${emp.employee_code} - ${emp.name}`}
-              value={selectedConsoleEmp}
-              onChange={(_, newValue) => setSelectedConsoleEmp(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Select Employee"
-                  placeholder="Search by code or name..."
-                  sx={inputStyles}
-                />
-              )}
-              ListboxProps={{ sx: dropdownListStyles }}
-            />
-          </Paper>
+      //   /* HR Global Console View */
+      //   <Box className="animate-fade-in">
+      //     <Paper
+      //       sx={{
+      //         background: 'var(--color-surface)',
+      //         border: '1px solid var(--color-border)',
+      //         borderRadius: 'var(--radius-card)',
+      //         p: 4,
+      //         mb: 4,
+      //       }}
+      //     >
+      //       <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+      //         Employee Search & Selector
+      //       </Typography>
+      //       <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+      //         Select an employee to modify their operational, salary, lifecycle, and leave adjustments globally.
+      //       </Typography>
+      //       <Autocomplete
+      //         options={activeEmployees}
+      //         getOptionLabel={(emp) => `${emp.employee_code} - ${emp.name}`}
+      //         value={selectedConsoleEmp}
+      //         onChange={(_, newValue) => setSelectedConsoleEmp(newValue)}
+      //         renderInput={(params) => (
+      //           <TextField
+      //             {...params}
+      //             label="Select Employee"
+      //             placeholder="Search by code or name..."
+      //             sx={inputStyles}
+      //           />
+      //         )}
+      //         ListboxProps={{ sx: dropdownListStyles }}
+      //       />
+      //     </Paper>
 
-          {!selectedConsoleEmp ? (
-            <Paper
-              sx={{
-                p: 6,
-                textAlign: 'center',
-                border: '1px dashed var(--color-border)',
-                background: 'var(--color-surface)',
-                borderRadius: 'var(--radius-card)',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              <PeopleIcon sx={{ fontSize: 56, color: 'var(--color-text-muted)', mb: 2 }} />
-              <Typography variant="h6" fontFamily="Outfit" fontWeight={600} gutterBottom sx={{ color: 'var(--color-text-primary)' }}>
-                No Employee Selected
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', maxW: '400px', mx: 'auto' }}>
-                Search for an employee using the selector above to manage their global inputs, including attendance, deductions, appraisals, relieving dates, and exceptions.
-              </Typography>
-            </Paper>
-          ) : (
-            <Paper
-              sx={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-card)',
-                p: 4,
-              }}
-            >
-              <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 4 }}>
-                <Tabs
-                  value={currentSubTab}
-                  onChange={(_, newValue) => setCurrentSubTab(newValue)}
-                  sx={{
-                    '& .MuiTab-root': {
-                      textTransform: 'none',
-                      fontWeight: 700,
-                      fontFamily: 'Outfit',
-                      fontSize: '1rem',
-                      color: 'var(--color-text-secondary)',
-                      pb: 1.5,
-                      '&.Mui-selected': {
-                        color: 'var(--color-primary-hover)',
-                      },
-                    },
-                    '& .MuiTabs-indicator': {
-                      backgroundColor: 'var(--color-primary)',
-                      height: 3,
-                      borderRadius: '3px 3px 0 0',
-                    },
-                  }}
-                >
-                  <Tab label="1st Tab: Attendance & Monthly Operations" />
-                  <Tab label="2nd Tab: Lifecycle & Joinings/Relieving" />
-                </Tabs>
-              </Box>
+      //     {!selectedConsoleEmp ? (
+      //       <Paper
+      //         sx={{
+      //           p: 6,
+      //           textAlign: 'center',
+      //           border: '1px dashed var(--color-border)',
+      //           background: 'var(--color-surface)',
+      //           borderRadius: 'var(--radius-card)',
+      //           color: 'var(--color-text-secondary)',
+      //         }}
+      //       >
+      //         <PeopleIcon sx={{ fontSize: 56, color: 'var(--color-text-muted)', mb: 2 }} />
+      //         <Typography variant="h6" fontFamily="Outfit" fontWeight={600} gutterBottom sx={{ color: 'var(--color-text-primary)' }}>
+      //           No Employee Selected
+      //         </Typography>
+      //         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', maxW: '400px', mx: 'auto' }}>
+      //           Search for an employee using the selector above to manage their global inputs, including attendance, deductions, appraisals, relieving dates, and exceptions.
+      //         </Typography>
+      //       </Paper>
+      //     ) : (
+      //       <Paper
+      //         sx={{
+      //           background: 'var(--color-surface)',
+      //           border: '1px solid var(--color-border)',
+      //           borderRadius: 'var(--radius-card)',
+      //           p: 4,
+      //         }}
+      //       >
+      //         <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 4 }}>
+      //           <Tabs
+      //             value={currentSubTab}
+      //             onChange={(_, newValue) => setCurrentSubTab(newValue)}
+      //             sx={{
+      //               '& .MuiTab-root': {
+      //                 textTransform: 'none',
+      //                 fontWeight: 700,
+      //                 fontFamily: 'Outfit',
+      //                 fontSize: '1rem',
+      //                 color: 'var(--color-text-secondary)',
+      //                 pb: 1.5,
+      //                 '&.Mui-selected': {
+      //                   color: 'var(--color-primary-hover)',
+      //                 },
+      //               },
+      //               '& .MuiTabs-indicator': {
+      //                 backgroundColor: 'var(--color-primary)',
+      //                 height: 3,
+      //                 borderRadius: '3px 3px 0 0',
+      //               },
+      //             }}
+      //           >
+      //             <Tab label="1st Tab: Attendance & Monthly Operations" />
+      //             <Tab label="2nd Tab: Lifecycle & Joinings/Relieving" />
+      //           </Tabs>
+      //         </Box>
 
-              {currentSubTab === 0 ? (
-                /* Sub Tab 1: Operational Adjustments */
-                <Box className="animate-fade-in">
-                  <Grid container spacing={3.5}>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Employee Code"
-                        fullWidth
-                        disabled
-                        value={consoleFormData.employee_code}
-                        sx={inputStyles}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Employee Name"
-                        fullWidth
-                        disabled
-                        value={consoleFormData.name}
-                        sx={inputStyles}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="No Of day Present"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.no_of_days_present}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, no_of_days_present: Number(e.target.value) })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0, max: 31 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Deduction (Absent)"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.deduction_absent === 0 ? '' : consoleFormData.deduction_absent}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, deduction_absent: parseFloat(e.target.value) || 0 })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Appraisal"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.appraisal === 0 ? '' : consoleFormData.appraisal}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, appraisal: parseFloat(e.target.value) || 0 })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Appraisal Effective Date"
-                        type="date"
-                        fullWidth
-                        value={consoleFormData.appraisal_effective_date}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, appraisal_effective_date: e.target.value })
-                        }
-                        sx={inputStyles}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Leave Encashment"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.leave_encashment === 0 ? '' : consoleFormData.leave_encashment}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, leave_encashment: parseFloat(e.target.value) || 0 })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Late Arrival Deduction (depends on days, not on numbers)"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.late_arrival_deduction === 0 ? '' : consoleFormData.late_arrival_deduction}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Damages Recovery"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.damages_recovery === 0 ? '' : consoleFormData.damages_recovery}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, damages_recovery: parseFloat(e.target.value) || 0 })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Bonus / Incentives"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.bonus_incentives === 0 ? '' : consoleFormData.bonus_incentives}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, bonus_incentives: parseFloat(e.target.value) || 0 })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Other Deductions"
-                        type="number"
-                        fullWidth
-                        value={consoleFormData.other_deductions === 0 ? '' : consoleFormData.other_deductions}
-                        onChange={(e) =>
-                          setConsoleFormData({ ...consoleFormData, other_deductions: parseFloat(e.target.value) || 0 })
-                        }
-                        sx={inputStyles}
-                        inputProps={{ min: 0 }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Remarks"
-                        fullWidth
-                        multiline
-                        minRows={2}
-                        maxRows={10}
-                        value={consoleFormData.remarks}
-                        onChange={(e) => setConsoleFormData({ ...consoleFormData, remarks: e.target.value })}
-                        sx={inputStyles}
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
-              ) : (
-                /* Sub Tab 2: Lifecycle Adjustments */
-                <Box className="animate-fade-in">
-                  <Grid container spacing={3.5}>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Joinings (Joining Date)"
-                        type="date"
-                        fullWidth
-                        InputLabelProps={{ shrink: true }}
-                        value={consoleFormData.joining_date}
-                        onChange={(e) => setConsoleFormData({ ...consoleFormData, joining_date: e.target.value })}
-                        sx={inputStyles}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Relieving (Relieving Date)"
-                        type="date"
-                        fullWidth
-                        InputLabelProps={{ shrink: true }}
-                        value={consoleFormData.relieving_date || ''}
-                        onChange={(e) => setConsoleFormData({ ...consoleFormData, relieving_date: e.target.value })}
-                        sx={inputStyles}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Other Inputs (Maternity, Career Break, Extra Info, etc.)"
-                        fullWidth
-                        multiline
-                        rows={5}
-                        placeholder="Enter extra information, exceptions, career breaks, etc."
-                        value={consoleFormData.other_inputs}
-                        onChange={(e) => setConsoleFormData({ ...consoleFormData, other_inputs: e.target.value })}
-                        sx={inputStyles}
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
-              )}
+      //         {currentSubTab === 0 ? (
+      //           /* Sub Tab 1: Operational Adjustments */
+      //           <Box className="animate-fade-in">
+      //             <Grid container spacing={3.5}>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Employee Code"
+      //                   fullWidth
+      //                   disabled
+      //                   value={consoleFormData.employee_code}
+      //                   sx={inputStyles}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Employee Name"
+      //                   fullWidth
+      //                   disabled
+      //                   value={consoleFormData.name}
+      //                   sx={inputStyles}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="No Of day Present"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.no_of_days_present}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, no_of_days_present: Number(e.target.value) })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0, max: 31 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Deduction (Absent)"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.deduction_absent === 0 ? '' : consoleFormData.deduction_absent}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, deduction_absent: parseFloat(e.target.value) || 0 })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Appraisal"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.appraisal === 0 ? '' : consoleFormData.appraisal}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, appraisal: parseFloat(e.target.value) || 0 })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Appraisal Effective Date"
+      //                   type="date"
+      //                   fullWidth
+      //                   value={consoleFormData.appraisal_effective_date}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, appraisal_effective_date: e.target.value })
+      //                   }
+      //                   sx={inputStyles}
+      //                   InputLabelProps={{ shrink: true }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Leave Encashment"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.leave_encashment === 0 ? '' : consoleFormData.leave_encashment}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, leave_encashment: parseFloat(e.target.value) || 0 })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Late Arrival Deduction (depends on days, not on numbers)"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.late_arrival_deduction === 0 ? '' : consoleFormData.late_arrival_deduction}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Damages Recovery"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.damages_recovery === 0 ? '' : consoleFormData.damages_recovery}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, damages_recovery: parseFloat(e.target.value) || 0 })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Bonus / Incentives"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.bonus_incentives === 0 ? '' : consoleFormData.bonus_incentives}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, bonus_incentives: parseFloat(e.target.value) || 0 })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Other Deductions"
+      //                   type="number"
+      //                   fullWidth
+      //                   value={consoleFormData.other_deductions === 0 ? '' : consoleFormData.other_deductions}
+      //                   onChange={(e) =>
+      //                     setConsoleFormData({ ...consoleFormData, other_deductions: parseFloat(e.target.value) || 0 })
+      //                   }
+      //                   sx={inputStyles}
+      //                   inputProps={{ min: 0 }}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12}>
+      //                 <TextField
+      //                   label="Remarks"
+      //                   fullWidth
+      //                   multiline
+      //                   minRows={2}
+      //                   maxRows={10}
+      //                   value={consoleFormData.remarks}
+      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, remarks: e.target.value })}
+      //                   sx={inputStyles}
+      //                 />
+      //               </Grid>
+      //             </Grid>
+      //           </Box>
+      //         ) : (
+      //           /* Sub Tab 2: Lifecycle Adjustments */
+      //           <Box className="animate-fade-in">
+      //             <Grid container spacing={3.5}>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Joinings (Joining Date)"
+      //                   type="date"
+      //                   fullWidth
+      //                   InputLabelProps={{ shrink: true }}
+      //                   value={consoleFormData.joining_date}
+      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, joining_date: e.target.value })}
+      //                   sx={inputStyles}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12} md={6}>
+      //                 <TextField
+      //                   label="Relieving (Relieving Date)"
+      //                   type="date"
+      //                   fullWidth
+      //                   InputLabelProps={{ shrink: true }}
+      //                   value={consoleFormData.relieving_date || ''}
+      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, relieving_date: e.target.value })}
+      //                   sx={inputStyles}
+      //                 />
+      //               </Grid>
+      //               <Grid item xs={12}>
+      //                 <TextField
+      //                   label="Other Inputs (Maternity, Career Break, Extra Info, etc.)"
+      //                   fullWidth
+      //                   multiline
+      //                   rows={5}
+      //                   placeholder="Enter extra information, exceptions, career breaks, etc."
+      //                   value={consoleFormData.other_inputs}
+      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, other_inputs: e.target.value })}
+      //                   sx={inputStyles}
+      //                 />
+      //               </Grid>
+      //             </Grid>
+      //           </Box>
+      //         )}
 
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 5 }}>
-                <Button
-                  variant="contained"
-                  onClick={handleSaveConsoleData}
-                  disabled={saveConsoleMutation.isLoading}
-                  sx={{
-                    background: 'var(--color-primary)',
-                    boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-                    borderRadius: 'var(--radius-control)',
-                    px: 5,
-                    py: 1.4,
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    transition: 'all 160ms ease',
-                    '&:hover': {
-                      background: 'var(--color-primary-hover)',
-                      boxShadow: '0 12px 24px rgba(99, 102, 241, 0.28)',
-                      transform: 'translateY(-1px)',
-                    },
-                    '&:active': {
-                      transform: 'translateY(1px)',
-                    },
-                  }}
-                >
-                  {saveConsoleMutation.isLoading ? 'Saving...' : 'Save Inputs Globally'}
-                </Button>
-              </Box>
-            </Paper>
-          )}
-        </Box>
-      ) : currentMainTab === 2 ? (
+      //         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 5 }}>
+      //           <Button
+      //             variant="contained"
+      //             onClick={handleSaveConsoleData}
+      //             disabled={saveConsoleMutation.isLoading}
+      //             sx={{
+      //               background: 'var(--color-primary)',
+      //               boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+      //               borderRadius: 'var(--radius-control)',
+      //               px: 5,
+      //               py: 1.4,
+      //               fontWeight: 700,
+      //               textTransform: 'none',
+      //               transition: 'all 160ms ease',
+      //               '&:hover': {
+      //                 background: 'var(--color-primary-hover)',
+      //                 boxShadow: '0 12px 24px rgba(99, 102, 241, 0.28)',
+      //                 transform: 'translateY(-1px)',
+      //               },
+      //               '&:active': {
+      //                 transform: 'translateY(1px)',
+      //               },
+      //             }}
+      //           >
+      //             {saveConsoleMutation.isLoading ? 'Saving...' : 'Save Inputs Globally'}
+      //           </Button>
+      //         </Box>
+      //       </Paper>
+      //     )}
+      //   </Box>
+      // ) : currentMainTab === 2 ? (
         /* HR Inputs Preview View */
         <Paper
           className="animate-fade-in"
