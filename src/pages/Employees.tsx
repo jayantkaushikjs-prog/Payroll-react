@@ -326,6 +326,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [currentSubTab, setCurrentSubTab] = useState(0);
   const [previewTagFilters, setPreviewTagFilters] = useState<PreviewTagFilter[]>([]);
   const [previewMonth, setPreviewMonth] = useState(getCurrentMonthValue);
+  const [previewLogPage, setPreviewLogPage] = useState(0);
+  const [previewLogRowsPerPage, setPreviewLogRowsPerPage] = useState(5);
   const [selectedConsoleEmp, setSelectedConsoleEmp] = useState<Employee | null>(null);
   const [consoleFormData, setConsoleFormData] = useState<{
     employee_code: string;
@@ -387,6 +389,10 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   useEffect(() => {
     setFinanceRemarksDraft(previewReview?.finance_remarks || '');
   }, [previewReview?.finance_remarks]);
+
+  useEffect(() => {
+    setPreviewLogPage(0);
+  }, [previewMonth, previewReview?.logs?.length]);
 
   useEffect(() => {
     if (!isFinance || previewReview?.status !== 'done') return;
@@ -1268,6 +1274,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     return String(value);
   };
   const previewAmount = (value?: number) => Number(value || 0) > 0 ? Number(value).toLocaleString('en-IN') : '-';
+  const previewLogs = [...(previewReview?.logs || [])].reverse();
+  const paginatedPreviewLogs = previewLogs.slice(
+    previewLogPage * previewLogRowsPerPage,
+    previewLogPage * previewLogRowsPerPage + previewLogRowsPerPage,
+  );
   const previewLogText = (log: NonNullable<PreviewReview['logs']>[number]) => {
     if (log.action === 'status_changed') {
       return `Status changed from ${log.from || '-'} to ${log.to || '-'}`;
@@ -2004,26 +2015,51 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mb: 1 }}>
                 Sheet Activity Logs
               </Typography>
-              {previewReview?.logs && previewReview.logs.length > 0 ? (
-                <Box sx={{ display: 'grid', gap: 1 }}>
-                  {[...previewReview.logs].reverse().map((log, index) => (
-                    <Box
-                      key={`${log.created_at}-${index}`}
-                      sx={{
-                        p: 1.25,
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-control)',
-                        bgcolor: 'var(--color-surface)',
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
-                        {previewLogText(log)}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                        {new Date(log.created_at).toLocaleString()}
-                      </Typography>
-                    </Box>
-                  ))}
+              {previewLogs.length > 0 ? (
+                <Box>
+                  <Box sx={{ display: 'grid', gap: 1 }}>
+                    {paginatedPreviewLogs.map((log, index) => (
+                      <Box
+                        key={`${log.created_at}-${previewLogPage}-${index}`}
+                        sx={{
+                          p: 1.25,
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-control)',
+                          bgcolor: 'var(--color-surface)',
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                          {previewLogText(log)}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                          {new Date(log.created_at).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                  <TablePagination
+                    component="div"
+                    count={previewLogs.length}
+                    page={previewLogPage}
+                    rowsPerPage={previewLogRowsPerPage}
+                    rowsPerPageOptions={[5, 10, 25]}
+                    onPageChange={(_, nextPage) => setPreviewLogPage(nextPage)}
+                    onRowsPerPageChange={(event) => {
+                      setPreviewLogRowsPerPage(parseInt(event.target.value, 10));
+                      setPreviewLogPage(0);
+                    }}
+                    sx={{
+                      color: 'var(--color-text-primary)',
+                      borderTop: '1px solid var(--color-border)',
+                      mt: 1,
+                      '& .MuiTablePagination-actions': {
+                        color: 'var(--color-text-primary)',
+                      },
+                      '& .MuiTablePagination-select': {
+                        color: 'var(--color-text-primary)',
+                      },
+                    }}
+                  />
                 </Box>
               ) : (
                 <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
