@@ -70,7 +70,7 @@ const SalaryStructures: React.FC = () => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [openRevisionDialog, setOpenRevisionDialog] = useState(false);
   const [openHistoryDialog, setOpenHistoryDialog] = useState(false);
