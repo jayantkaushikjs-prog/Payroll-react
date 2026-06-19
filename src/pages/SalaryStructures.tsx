@@ -217,7 +217,7 @@ const SalaryStructures: React.FC = () => {
     if (!selectedEmp) return;
 
     // Validate required fields
-    const nextErrors = { ctc: '', effective_from: '' };
+    const nextErrors = { ctc: '', basic_percent: '', hra_percent: '', effective_from: '' };
     let isValid = true;
 
     if (formData.ctc === '' || Number(formData.ctc) <= 0) {
