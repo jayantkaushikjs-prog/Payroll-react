@@ -336,7 +336,7 @@ const SalaryStructures: React.FC = () => {
     const hra = Number((basic_salary * 0.40).toFixed(2));
 
     const pfApplies = selectedEmp ? selectedEmp.pf_deduction !== false : true;
-    const esiApplies = basic_salary < 21000;
+    const esiApplies = basic_salary <= 21000;
 
     const employer_pf = pfApplies ? Number(Math.min(basic_salary * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
     const employer_esi = esiApplies ? Number((basic_salary * esiEmployerRate).toFixed(2)) : 0;

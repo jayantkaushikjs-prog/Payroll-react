@@ -56,7 +56,7 @@ const PayrollCalculator: React.FC = () => {
     const hra = Number((basic * 0.4).toFixed(2));
 
     const pfApplicable = includePf;
-    const esiApplicable = basic < 21000;
+    const esiApplicable = basic <= 21000;
 
     // Employer side (benefits)
     const employerPf = pfApplicable ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
