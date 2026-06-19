@@ -756,7 +756,7 @@ const SalaryStructures: React.FC = () => {
                     <Card sx={{ bgcolor: 'rgba(16, 185, 129, 0.04)', border: '1px dashed rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
                       <CardContent sx={{ py: '12px !important', px: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="body2" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>
-                          Calculated Gross from Remaining 50%
+                          Gross Salary
                         </Typography>
                         <Typography variant="h5" sx={{ color: 'var(--color-success)', fontWeight: 700, fontFamily: 'Outfit' }}>
                           {formatCurrency(calculations.gross_salary)}
