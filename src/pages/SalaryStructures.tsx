@@ -216,39 +216,22 @@ const SalaryStructures: React.FC = () => {
     e.preventDefault();
     if (!selectedEmp) return;
 
-    const nextErrors = {
-      ctc: '',
-      basic_percent: '',
-      hra_percent: '',
-      effective_from: '',
-    };
+    // Validate required fields
+    const nextErrors = { ctc: '', effective_from: '' };
     let isValid = true;
 
-    if (formData.ctc === '') {
-      nextErrors.ctc = 'CTC amount is required';
-      isValid = false;
-    } else if (Number(formData.ctc) <= 0) {
-      nextErrors.ctc = 'CTC must be greater than 0';
-      isValid = false;
-    }
-    if (formData.basic_percent === '') {
-      nextErrors.basic_percent = 'Basic percentage is required';
-      isValid = false;
-    } else if (Number(formData.basic_percent) <= 0 || Number(formData.basic_percent) > 100) {
-      nextErrors.basic_percent = 'Basic % must be between 1 and 100';
-      isValid = false;
-    }
-    if (formData.hra_percent === '') {
-      nextErrors.hra_percent = 'HRA percentage is required';
-      isValid = false;
-    } else if (Number(formData.hra_percent) <= 0 || Number(formData.hra_percent) > 100) {
-      nextErrors.hra_percent = 'HRA % must be between 1 and 100';
+    if (formData.ctc === '' || Number(formData.ctc) <= 0) {
+      nextErrors.ctc = 'CTC amount is required and must be greater than 0';
       isValid = false;
     }
     if (!formData.effective_from) {
       nextErrors.effective_from = 'Effective starting date is required';
       isValid = false;
     }
+
+    // Compute defaults for disabled percentage fields
+    const basic_percent = formData.basic_percent || 50;
+    const hra_percent = formData.hra_percent || 40;
 
     setFormErrors(nextErrors);
 
@@ -262,8 +245,8 @@ const SalaryStructures: React.FC = () => {
     revisionMutation.mutate({
       employee_id: selectedEmp.id,
       ctc: Number(submittedCtc.toFixed(2)),
-      basic_percent: Number(formData.basic_percent),
-      hra_percent: Number(formData.hra_percent),
+      basic_percent,
+      hra_percent,
       effective_from: formData.effective_from,
     });
   };
@@ -340,31 +323,27 @@ const SalaryStructures: React.FC = () => {
     if (formData.ctc_type === 'annual') {
       ctc = ctc / 12;
     }
-    const basicRatio = 0.50;
-    const hraRatio = 0.40;
 
-    let employer_pf = 0;
-    let employer_esi = 0;
-    const basic_salary = basicRatio * ctc;
-    const pfApplies = basic_salary <= 15000 || (selectedEmp && selectedEmp.pf_deduction !== false);
+    const activeSetting = [...pfList]
+      .sort((a, b) => b.effective_date.localeCompare(a.effective_date))
+      .find(s => !formData.effective_from || s.effective_date <= formData.effective_from);
 
-    if (pfApplies) {
-      const activeSetting = [...pfList]
-        .sort((a, b) => b.effective_date.localeCompare(a.effective_date))
-        .find(s => !formData.effective_from || s.effective_date <= formData.effective_from);
+    const pfEmployerRate = activeSetting ? Number(activeSetting.employer_contribution_rate) / 100 : 0.12;
+    const esiEmployerRate = activeSetting ? Number(activeSetting.esi_contribution_rate) / 100 : 0.0325;
+    const maxPfCap = activeSetting ? Number(activeSetting.max_pf_cap || 1800) : 1800;
 
-      const rate = activeSetting ? Number(activeSetting.employer_contribution_rate) / 100 : 0.12;
-      employer_pf = Math.min(basic_salary * rate, 1800);
-    }
+    const basic_salary = Number((ctc * 0.50).toFixed(2));
+    const hra = Number((basic_salary * 0.40).toFixed(2));
 
-    if (basic_salary < 21000) {
-      employer_esi = basic_salary * 0.0325;
-    }
+    const pfApplies = selectedEmp ? selectedEmp.pf_deduction !== false : true;
+    const esiApplies = basic_salary < 21000;
 
-    const hra = hraRatio * basic_salary;
-    const gross_salary = ctc - basic_salary - employer_pf - employer_esi;
+    const employer_pf = pfApplies ? Number(Math.min(basic_salary * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
+    const employer_esi = esiApplies ? Number((basic_salary * esiEmployerRate).toFixed(2)) : 0;
+
+    const gross_salary = Number((ctc - employer_pf - employer_esi).toFixed(2));
     const special_allowance = 0;
-    const other_allowance = Math.max(0, basic_salary - hra);
+    const other_allowance = Math.max(0, Number((gross_salary - basic_salary - hra).toFixed(2)));
 
     return {
       gross_salary,

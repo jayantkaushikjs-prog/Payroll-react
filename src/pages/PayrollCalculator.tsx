@@ -19,6 +19,7 @@ import {
   ToggleButtonGroup,
   FormControlLabel,
   Switch,
+  Button,
 } from '@mui/material';
 import { formatCurrency } from '../constants/currency';
 
@@ -26,6 +27,7 @@ const PayrollCalculator: React.FC = () => {
   const [ctcInput, setCtcInput] = useState<string>('');
   const [viewPeriod, setViewPeriod] = useState<'monthly' | 'annually'>('monthly');
   const [includePf, setIncludePf] = useState<boolean>(true);
+  const [calcTrigger, setCalcTrigger] = useState<number>(0);
 
   // Fetch all PF Settings for dynamic rates
   const { data: pfList = [] } = useQuery(['pfSettings'], async () => {
@@ -38,6 +40,64 @@ const PayrollCalculator: React.FC = () => {
         curr.effective_date > latest.effective_date ? curr : latest
       , pfList[0])
     : null;
+
+  /**
+   * Compute payroll components based on CTC.
+   * @param ctc - Cost To Company (monthly) amount.
+   * @param includePf - Whether PF should be considered.
+   * @param settings - PF/ESI configuration; defaults to empty object.
+   * @returns An object containing all calculated salary components.
+   */
+  const calculateSalary = (ctc: number, includePf: boolean, settings: any = {}) => {
+    const pfEmployerRate = (Number(settings?.employer_contribution_rate) || 12) / 100;
+    const pfEmployeeRate = (Number(settings?.employee_contribution_rate) || 12) / 100;
+    const esiEmployerRate = (Number(settings?.esi_contribution_rate) || 3.25) / 100;
+    const esiEmployeeRate = (Number(settings?.esi_employee_contribution_rate) || 0.75) / 100;
+    const professionalTax = Number(settings?.professional_tax !== undefined ? settings.professional_tax : 200);
+    const maxPfCap = Number(settings?.max_pf_cap || 1800);
+
+    // Basic and HRA (fixed percentages)
+    const basic = Number((ctc * 0.5).toFixed(2));
+    const hra = Number((basic * 0.4).toFixed(2));
+
+    const pfApplicable = includePf;
+    const esiApplicable = basic < 21000;
+
+    // Employer side (benefits)
+    const employerPf = pfApplicable ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
+    const employerEsi = esiApplicable ? Number((basic * esiEmployerRate).toFixed(2)) : 0;
+
+    // Employee side (deductions)
+    const employeePf = pfApplicable ? Number(Math.min(basic * pfEmployeeRate, maxPfCap).toFixed(2)) : 0;
+    const employeeEsi = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0;
+
+    // Gross = CTC - employee PF - employer ESI
+    // Gross Salary = CTC minus employee PF and employer ESI (benefits)
+    const gross = Number((ctc - employeePf - employerEsi).toFixed(2));
+
+    // Other allowance is whatever remains after basic & HRA
+    const othersAllowance = Math.max(0, Number((gross - basic - hra).toFixed(2)));
+
+    const appliedPt = gross > 15000 ? professionalTax : 0;
+    const totalDeductions = Number((employeePf + employeeEsi + appliedPt).toFixed(2));
+    const net = Number((gross - totalDeductions).toFixed(2));
+
+    return {
+      basic,
+      hra,
+      othersAllowance,
+      grossSalary: gross,
+      pfContribution: employerPf,
+      esiContribution: employerEsi,
+      ctc: ctc,
+      employeePf,
+      employeeEsi,
+      professionalTax: appliedPt,
+      totalDeductions,
+      netSalary: net,
+    };
+  };
+
 
   const calculated = useMemo(() => {
     let inputCtc = Number(ctcInput);
@@ -61,54 +121,9 @@ const PayrollCalculator: React.FC = () => {
 
     const monthlyCtc = inputCtc;
 
-    // Rates from settings or defaults
-    const pfEmployerRate = (Number(latestSettings?.employer_contribution_rate) || 12) / 100;
-    const pfEmployeeRate = (Number(latestSettings?.employee_contribution_rate) || 12) / 100;
-    const esiEmployerRate = (Number(latestSettings?.esi_contribution_rate) || 3.25) / 100;
-    const esiEmployeeRate = (Number(latestSettings?.esi_employee_contribution_rate) || 0.75) / 100;
-    const professionalTax = Number(latestSettings?.professional_tax !== undefined ? latestSettings.professional_tax : 200);
-    const maxPfCap = Number(latestSettings?.max_pf_cap || 1800);
-
-    // Calculate Basic and HRA based on CTC backwards
-    // For standard structure: Basic is 50% of CTC
-    const basic = Number((monthlyCtc * 0.5).toFixed(2));
-    const hra = Number((basic * 0.4).toFixed(2));
-
-    const pfApplicable = includePf;
-    const esiApplicable = basic < 21000;
-
-    const pfContribution = pfApplicable ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
-    const esiContribution = esiApplicable ? Number((basic * esiEmployerRate).toFixed(2)) : 0;
-
-    // Gross Salary = CTC - Employer Benefits
-    const grossSalary = Number((monthlyCtc - pfContribution - esiContribution).toFixed(2));
-    
-    const othersAllowance = Math.max(0, Number((grossSalary - basic - hra).toFixed(2)));
-
-    // Deductions
-    const employeePf = pfApplicable ? Number(Math.min(basic * pfEmployeeRate, maxPfCap).toFixed(2)) : 0;
-    const employeeEsi = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0;
-
-    const appliedPt = grossSalary > 15000 ? professionalTax : 0;
-    
-    const totalDeductions = Number((employeePf + employeeEsi + appliedPt).toFixed(2));
-    const netSalary = Number((grossSalary - totalDeductions).toFixed(2));
-
-    return {
-      basic,
-      hra,
-      othersAllowance,
-      grossSalary,
-      pfContribution,
-      esiContribution,
-      ctc: monthlyCtc,
-      employeePf,
-      employeeEsi,
-      professionalTax: appliedPt,
-      totalDeductions,
-      netSalary,
-    };
-  }, [ctcInput, viewPeriod, latestSettings, includePf]);
+    // Use the helper to compute all payroll components
+    return calculateSalary(monthlyCtc, includePf, latestSettings);
+  }, [ctcInput, viewPeriod, latestSettings, includePf, calcTrigger]);
 
   // Helper function to convert values based on view period
   const formatForView = (value: number) => {
@@ -186,6 +201,11 @@ const PayrollCalculator: React.FC = () => {
                   }
                 }}
               />
+              <Box sx={{ mt: 2, textAlign: 'right' }}>
+                <Button variant="contained" color="primary" onClick={() => setCalcTrigger(prev => prev + 1)}>
+                  Generate Payroll
+                </Button>
+              </Box>
             </Box>
             <Box>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Include PF?</Typography>
