@@ -72,7 +72,7 @@ const PayrollCalculator: React.FC = () => {
     // Other allowance is whatever remains after basic & HRA
     const othersAllowance = Math.max(0, Number((gross - basic - hra).toFixed(2)));
 
-    const appliedPt = gross > 15000 ? professionalTax : 0;
+    const appliedPt = ctc <= 250000 ? 0 : professionalTax;
     const totalDeductions = Number((employeePf + employeeEsi + appliedPt).toFixed(2));
     const net = Number((gross - totalDeductions).toFixed(2));
 
