@@ -7,7 +7,6 @@ import {
   CardContent,
   Typography,
   TextField,
-  Divider,
   Paper,
   Table,
   TableBody,
@@ -15,8 +14,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  ToggleButton,
-  ToggleButtonGroup,
   FormControlLabel,
   Switch,
   Button,
@@ -25,9 +22,7 @@ import { formatCurrency } from '../constants/currency';
 
 const PayrollCalculator: React.FC = () => {
   const [ctcInput, setCtcInput] = useState<string>('');
-  const [viewPeriod, setViewPeriod] = useState<'monthly' | 'annually'>('monthly');
   const [includePf, setIncludePf] = useState<boolean>(true);
-  const [calcTrigger, setCalcTrigger] = useState<number>(0);
 
   // Fetch all PF Settings for dynamic rates
   const { data: pfList = [] } = useQuery(['pfSettings'], async () => {
@@ -72,7 +67,6 @@ const PayrollCalculator: React.FC = () => {
     const employeeEsi = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0;
 
     // Gross = CTC - employee PF - employer ESI
-    // Gross Salary = CTC minus employee PF and employer ESI (benefits)
     const gross = Number((ctc - employeePf - employerEsi).toFixed(2));
 
     // Other allowance is whatever remains after basic & HRA
@@ -98,10 +92,9 @@ const PayrollCalculator: React.FC = () => {
     };
   };
 
-
   const calculated = useMemo(() => {
     let inputCtc = Number(ctcInput);
-    
+
     if (!Number.isFinite(inputCtc) || inputCtc <= 0) {
       return {
         basic: 0,
@@ -120,27 +113,30 @@ const PayrollCalculator: React.FC = () => {
     }
 
     const monthlyCtc = inputCtc;
-
-    // Use the helper to compute all payroll components
     return calculateSalary(monthlyCtc, includePf, latestSettings);
-  }, [ctcInput, viewPeriod, latestSettings, includePf, calcTrigger]);
+  }, [ctcInput, latestSettings, includePf]);
 
-  // Helper function to convert values based on view period
-  const formatForView = (value: number) => {
-    if (viewPeriod === 'annually') {
-      return value * 12;
-    }
-    return value;
-  };
+  // Section header row spanning all 3 columns
+  const sectionRow = (label: string) => (
+    <TableRow>
+      <TableCell colSpan={3} sx={{ fontWeight: 700, color: 'text.secondary', backgroundColor: 'rgba(255,255,255,0.03)' }}>
+        {label}
+      </TableCell>
+    </TableRow>
+  );
 
-  const handlePeriodChange = (
-    event: React.MouseEvent<HTMLElement>,
-    newPeriod: 'monthly' | 'annually',
-  ) => {
-    if (newPeriod !== null) {
-      setViewPeriod(newPeriod);
-    }
-  };
+  // Data row: component name, monthly value, annual value
+  const dataRow = (label: string, monthlyValue: number, bold = false) => (
+    <TableRow>
+      <TableCell sx={{ fontWeight: bold ? 700 : 400 }}>{label}</TableCell>
+      <TableCell align="right" sx={{ fontWeight: bold ? 700 : 400 }}>
+        {formatCurrency(monthlyValue)}
+      </TableCell>
+      <TableCell align="right" sx={{ fontWeight: bold ? 700 : 400 }}>
+        {formatCurrency(monthlyValue * 12)}
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <Box sx={{ p: 4, maxWidth: '980px', margin: '0 auto' }}>
@@ -149,40 +145,14 @@ const PayrollCalculator: React.FC = () => {
           Payroll Calculator
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.75 }}>
-          Enter the CTC and choose the period to see the exact breakdown.
+          Enter the monthly CTC to see the exact breakdown.
         </Typography>
       </Box>
 
       <Card className="glass-card">
         <CardContent sx={{ p: 0 }}>
-          <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--color-border)' }}>
-            <Box>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>View Period</Typography>
-              <ToggleButtonGroup
-                value={viewPeriod}
-                exclusive
-                onChange={handlePeriodChange}
-                size="small"
-                sx={{
-                  backgroundColor: 'var(--color-surface)',
-                  '& .MuiToggleButton-root': {
-                    color: 'var(--color-text-secondary)',
-                    borderColor: 'var(--color-border)',
-                    '&.Mui-selected': {
-                      backgroundColor: 'var(--color-primary)',
-                      color: 'white',
-                      '&:hover': {
-                        backgroundColor: 'var(--color-primary-hover)',
-                      }
-                    }
-                  }
-                }}
-              >
-                <ToggleButton value="monthly">Monthly</ToggleButton>
-                <ToggleButton value="annually">Annually</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-            <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', backgroundColor: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--color-border)' }}>
+            <Box sx={{ flex: 1, minWidth: 200 }}>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
                 Monthly CTC
               </Typography>
@@ -201,105 +171,63 @@ const PayrollCalculator: React.FC = () => {
                   }
                 }}
               />
-              <Box sx={{ mt: 2, textAlign: 'right' }}>
-                <Button variant="contained" color="primary" onClick={() => setCalcTrigger(prev => prev + 1)}>
-                  Generate Payroll
-                </Button>
-              </Box>
             </Box>
-            <Box>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Include PF?</Typography>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 3 }}>
               <FormControlLabel
                 control={
                   <Switch
                     checked={includePf}
                     onChange={(e) => setIncludePf(e.target.checked)}
                     color="primary"
+                    size="small"
                   />
                 }
-                label={includePf ? "Yes" : "No"}
+                label={
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Include PF
+                  </Typography>
+                }
               />
             </Box>
-          </Box>
+            </Box>
+
           <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 0, overflow: 'hidden' }}>
             <Table size="medium">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Component</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>Amount</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>Monthly (₹)</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>Annual (₹)</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                <TableRow>
-                  <TableCell colSpan={2} sx={{ fontWeight: 700, color: 'text.secondary', backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                    Earnings
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Basic Salary</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.basic))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>House Rent Allowance (HRA)</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.hra))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Others Allowance</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.othersAllowance))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Gross Salary (A)</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {formatCurrency(formatForView(calculated.grossSalary))}
-                  </TableCell>
-                </TableRow>
+                {sectionRow('Earnings')}
+                {dataRow('Basic Salary', calculated.basic)}
+                {dataRow('House Rent Allowance (HRA)', calculated.hra)}
+                {dataRow('Others Allowance', calculated.othersAllowance)}
+                {dataRow('Gross Salary (A)', calculated.grossSalary, true)}
 
-                <TableRow>
-                  <TableCell colSpan={2} sx={{ fontWeight: 700, color: 'text.secondary', backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                    Benefits
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>PF Contribution</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.pfContribution))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>ESI Contribution</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.esiContribution))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Total Cost To Company (CTC)</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{formatCurrency(formatForView(calculated.ctc))}</TableCell>
-                </TableRow>
+                {sectionRow('Benefits')}
+                {dataRow('PF Contribution', calculated.pfContribution)}
+                {dataRow('ESI Contribution', calculated.esiContribution)}
+                {dataRow('Total Cost To Company (CTC)', calculated.ctc, true)}
 
-                <TableRow>
-                  <TableCell colSpan={2} sx={{ fontWeight: 700, color: 'text.secondary', backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                    Deductions
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Employee PF Contribution</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.employeePf))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Employee ESI Contribution</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.employeeEsi))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Professional Tax</TableCell>
-                  <TableCell align="right">{formatCurrency(formatForView(calculated.professionalTax))}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Total Deductions (B)</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{formatCurrency(formatForView(calculated.totalDeductions))}</TableCell>
-                </TableRow>
+                {sectionRow('Deductions')}
+                {dataRow('Employee PF Contribution', calculated.employeePf)}
+                {dataRow('Employee ESI Contribution', calculated.employeeEsi)}
+                {dataRow('Professional Tax', calculated.professionalTax)}
+                {dataRow('Total Deductions (B)', calculated.totalDeductions, true)}
+
                 <TableRow>
                   <TableCell sx={{ fontWeight: 800 }}>Net Salary (A - B)</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 800, color: 'var(--color-primary)' }}>
-                    {formatCurrency(formatForView(calculated.netSalary))}
+                    {formatCurrency(calculated.netSalary)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800, color: 'var(--color-primary)' }}>
+                    {formatCurrency(calculated.netSalary * 12)}
                   </TableCell>
                 </TableRow>
-
               </TableBody>
             </Table>
           </TableContainer>
