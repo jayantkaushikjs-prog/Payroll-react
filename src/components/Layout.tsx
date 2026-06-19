@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Role, Permission } from '../constants/permissions';
@@ -30,6 +30,7 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Badge,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -140,6 +141,43 @@ const Layout: React.FC = () => {
     const res = await api.get('/employees');
     return res.data.filter((emp: any) => emp.active_status !== false);
   });
+
+  const isHRorAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.HR);
+  const isFinance = user && user.role === Role.FINANCE;
+  const currentMonthValue = new Date().toISOString().slice(0, 7);
+
+  const { data: previewNotifData } = useQuery(
+    ['hrPreviewReview-notif', currentMonthValue],
+    async () => {
+      const res = await api.get(`/employees/preview-review?month=${currentMonthValue}`);
+      return res.data;
+    },
+    { enabled: Boolean(isHRorAdmin || isFinance), refetchInterval: 30000 }
+  );
+
+  const previewSheetHasDot = (() => {
+    if (!previewNotifData) return false;
+    if (isFinance && previewNotifData.status === 'done' && previewNotifData.hr_marked_done_at) {
+      const key = `preview-notif-finance-${previewNotifData.month}-${previewNotifData.hr_marked_done_at}`;
+      return !localStorage.getItem(key);
+    }
+    if (isHRorAdmin && previewNotifData.finance_remarks_updated_at) {
+      const key = `preview-notif-hr-${previewNotifData.month}-${previewNotifData.finance_remarks_updated_at}`;
+      return !localStorage.getItem(key);
+    }
+    return false;
+  })();
+
+  // Clear dot when visiting preview sheet
+  useEffect(() => {
+    if (location.pathname !== '/preview-sheet' || !previewNotifData) return;
+    if (isFinance && previewNotifData.hr_marked_done_at) {
+      localStorage.setItem(`preview-notif-finance-${previewNotifData.month}-${previewNotifData.hr_marked_done_at}`, 'true');
+    }
+    if (isHRorAdmin && previewNotifData.finance_remarks_updated_at) {
+      localStorage.setItem(`preview-notif-hr-${previewNotifData.month}-${previewNotifData.finance_remarks_updated_at}`, 'true');
+    }
+  }, [location.pathname, previewNotifData, isFinance, isHRorAdmin]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -325,7 +363,9 @@ const Layout: React.FC = () => {
                     transition: 'color 160ms ease',
                   }}
                 >
-                  {item.icon}
+                  {item.path === '/preview-sheet' && previewSheetHasDot ? (
+                    <Badge variant="dot" color="error">{item.icon}</Badge>
+                  ) : item.icon}
                 </ListItemIcon>
                 <ListItemText
                   primary={item.text}

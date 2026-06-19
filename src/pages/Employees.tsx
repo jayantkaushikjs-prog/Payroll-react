@@ -118,6 +118,7 @@ interface PreviewReview {
   }>;
   hr_marked_done_at?: string | null;
   hr_marked_undone_at?: string | null;
+  finance_remarks_updated_at?: string | null;
 }
 
 const getCurrentMonthValue = () => {
@@ -2085,15 +2086,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             </TableContainer>
           )}
 
-          <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid var(--color-border)' }}>
-            <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)' }}>
-              Edited Employee Inputs Preview
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-              Employees with non-default HR operation or lifecycle inputs appear here.
-            </Typography>
-          </Box>
-
           <Paper
             elevation={0}
             sx={{
@@ -2118,16 +2110,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <Chip
-                  label={previewReview?.status === 'done' ? 'Done' : 'Undone'}
-                  size="small"
-                  sx={{
-                    fontWeight: 700,
-                    color: previewReview?.status === 'done' ? 'var(--color-success)' : 'var(--color-warning)',
-                    bgcolor: previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                    border: `1px solid ${previewReview?.status === 'done' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-                  }}
-                />
                 {isHRorAdmin && (
                   <Button
                     variant="contained"
@@ -2142,61 +2124,71 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                     {previewReview?.status === 'done' ? 'Mark Undone' : 'Mark Done'}
                   </Button>
                 )}
+                {isFinance && previewReview?.status === 'done' && (
+                  <Button
+                    variant="contained"
+                    disabled={updatePreviewStatusMutation.isLoading}
+                    onClick={() => updatePreviewStatusMutation.mutate('undone')}
+                    sx={{
+                      background: 'var(--color-warning)',
+                      borderRadius: 'var(--radius-control)',
+                      textTransform: 'none',
+                    }}
+                  >
+                    Mark Undone
+                  </Button>
+                )}
               </Box>
             </Box>
 
-            {isFinance && previewReview?.status === 'done' && (
-              <Box sx={{ mb: 2, p: 1.5, borderRadius: 'var(--radius-control)', bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.22)', color: 'var(--color-success)', fontSize: '0.875rem', fontWeight: 600 }}>
-                HR has marked this preview sheet as done. Please review and add remarks if corrections are needed.
-              </Box>
+            {isFinance && previewReview?.status === 'undone' && previewReview?.hr_marked_done_at && (
+              <>
+                <Box sx={{ mb: 2, p: 1.5, borderRadius: 'var(--radius-control)', bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.22)', color: 'var(--color-warning)', fontSize: '0.875rem', fontWeight: 600 }}>
+                  You have marked this sheet as undone. Add your remarks for HR to review and correct.
+                </Box>
+                <Grid container spacing={2} alignItems="flex-start">
+                  <Grid item xs={12} md={9}>
+                    <TextField
+                      label="Finance Remarks"
+                      placeholder="Comment any mistake or correction needed in this sheet..."
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      maxRows={6}
+                      value={financeRemarksDraft}
+                      onChange={(e) => setFinanceRemarksDraft(e.target.value)}
+                      sx={inputStyles}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Button
+                      variant="outlined"
+                      disabled={updateFinanceRemarksMutation.isLoading}
+                      onClick={() => updateFinanceRemarksMutation.mutate()}
+                      sx={{
+                        mt: { xs: 0, md: 1 },
+                        px: 2.5,
+                        py: 1,
+                        minWidth: '120px',
+                        borderColor: 'var(--color-primary)',
+                        color: 'var(--color-primary)',
+                        borderRadius: 'var(--radius-control)',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        '&:hover:not(:disabled)': {
+                          borderColor: 'var(--color-primary-hover)',
+                          color: 'var(--color-primary-hover)',
+                          bgcolor: 'rgba(59, 130, 246, 0.04)',
+                        },
+                      }}
+                    >
+                      Save Remarks
+                    </Button>
+                  </Grid>
+                </Grid>
+              </>
             )}
-
-            <Grid container spacing={2} alignItems="flex-start">
-              <Grid item xs={12} md={9}>
-                <TextField
-                  label="Finance Remarks"
-                  placeholder="Comment any mistake or correction needed in this sheet..."
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  maxRows={6}
-                  value={financeRemarksDraft}
-                  onChange={(e) => setFinanceRemarksDraft(e.target.value)}
-                  disabled={!isFinance && !isAdmin}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Button
-                  variant="outlined"
-                  disabled={(!isFinance && !isAdmin) || updateFinanceRemarksMutation.isLoading}
-                  onClick={() => updateFinanceRemarksMutation.mutate()}
-                  sx={{
-                    mt: { xs: 0, md: 1 },
-                    px: 2.5,
-                    py: 1,
-                    minWidth: '120px',
-                    borderColor: 'var(--color-primary)',
-                    color: 'var(--color-primary)',
-                    borderRadius: 'var(--radius-control)',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                    '&:hover:not(:disabled)': {
-                      borderColor: 'var(--color-primary-hover)',
-                      color: 'var(--color-primary-hover)',
-                      bgcolor: 'rgba(59, 130, 246, 0.04)',
-                    },
-                    '&:disabled': {
-                      borderColor: 'var(--color-border)',
-                      color: 'var(--color-text-secondary)',
-                    },
-                  }}
-                >
-                  Save Remarks
-                </Button>
-              </Grid>
-            </Grid>
 
             <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid var(--color-border)' }}>
               <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mb: 1 }}>
