@@ -8,31 +8,21 @@ import {
   TextField,
   Typography,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Grid,
   CircularProgress,
-  IconButton,
-  Tooltip,
+  Chip,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-} from '@mui/icons-material';
+import { Save as SaveIcon } from '@mui/icons-material';
 
 interface PFSettingsRecord {
   id: number;
   employee_contribution_rate: number;
   employer_contribution_rate: number;
+  esi_contribution_rate: number;
+  esi_employee_contribution_rate: number;
+  professional_tax: number;
+  max_pf_cap: number;
   effective_date: string;
 }
 
@@ -40,14 +30,6 @@ const PFSettings: React.FC = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [openDialog, setOpenDialog] = useState(false);
-
-  // Form State
-  const [formData, setFormData] = useState({
-    employee_contribution_rate: 12.0,
-    employer_contribution_rate: 12.0,
-    effective_date: '',
-  });
 
   const isFinanceOrAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
 
@@ -57,244 +39,297 @@ const PFSettings: React.FC = () => {
     return res.data;
   });
 
-  // Create mutation
-  const createMutation = useMutation(
-    async (payload: any) => {
+  // Get the latest (most recent by effective_date) settings row
+  const latestSettings: PFSettingsRecord | null = pfList.length > 0
+    ? pfList.reduce((latest: PFSettingsRecord, curr: PFSettingsRecord) =>
+        curr.effective_date > latest.effective_date ? curr : latest
+      , pfList[0])
+    : null;
+
+  // Editable inline state
+  const [pfEmployeeRate, setPfEmployeeRate] = useState<number | ''>(latestSettings?.employee_contribution_rate ?? 12);
+  const [pfEmployerRate, setPfEmployerRate] = useState<number | ''>(latestSettings?.employer_contribution_rate ?? 12);
+  const [esiEmployeeRate, setEsiEmployeeRate] = useState<number | ''>(latestSettings?.esi_employee_contribution_rate !== undefined ? Number(latestSettings.esi_employee_contribution_rate) : 0.75);
+  const [esiEmployerRate, setEsiEmployerRate] = useState<number | ''>(latestSettings?.esi_contribution_rate !== undefined ? Number(latestSettings.esi_contribution_rate) : 3.25);
+  const [professionalTax, setProfessionalTax] = useState<number | ''>(latestSettings?.professional_tax !== undefined ? Number(latestSettings.professional_tax) : 200);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Sync state when data loads
+  React.useEffect(() => {
+    if (pfList.length > 0 && !loaded) {
+      setPfEmployeeRate(Number(latestSettings?.employee_contribution_rate ?? 12));
+      setPfEmployerRate(Number(latestSettings?.employer_contribution_rate ?? 12));
+      setEsiEmployeeRate(latestSettings?.esi_employee_contribution_rate !== undefined ? Number(latestSettings.esi_employee_contribution_rate) : 0.75);
+      setEsiEmployerRate(latestSettings?.esi_contribution_rate !== undefined ? Number(latestSettings.esi_contribution_rate) : 3.25);
+      setProfessionalTax(latestSettings?.professional_tax !== undefined ? Number(latestSettings.professional_tax) : 200);
+      setLoaded(true);
+    }
+  }, [pfList, latestSettings, loaded]);
+
+  // Update mutation
+  const updateMutation = useMutation(
+    async (payload: {
+      employee_contribution_rate: number;
+      employer_contribution_rate: number;
+      esi_contribution_rate: number;
+      esi_employee_contribution_rate: number;
+      professional_tax: number;
+      effective_date: string;
+    }) => {
+      if (latestSettings) {
+        const res = await api.put(`/pf/${latestSettings.id}`, payload);
+        return res.data;
+      }
       const res = await api.post('/pf', payload);
       return res.data;
     },
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['pfSettings']);
-        showToast('PF Settings configuration saved!', 'success');
-        setOpenDialog(false);
+        showToast('Settings saved successfully!', 'success');
+        setIsEditing(false);
       },
       onError: (err: any) => {
-        showToast(err.response?.data?.message || 'Failed to save PF configuration', 'error');
+        showToast(err.response?.data?.message || 'Failed to save settings', 'error');
       },
     }
   );
 
-  // Delete mutation
-  const deleteMutation = useMutation(
-    async (id: number) => {
-      await api.delete(`/pf/${id}`);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['pfSettings']);
-        showToast('PF configuration removed.', 'success');
-      },
-      onError: (err: any) => {
-        showToast(err.response?.data?.message || 'Failed to delete configuration', 'error');
-      },
-    }
-  );
-
-  const handleOpenAdd = () => {
-    setFormData({
-      employee_contribution_rate: 12.0,
-      employer_contribution_rate: 12.0,
+  const handleSave = () => {
+    updateMutation.mutate({
+      employee_contribution_rate: Number(pfEmployeeRate) || 0,
+      employer_contribution_rate: Number(pfEmployerRate) || 0,
+      esi_contribution_rate: Number(esiEmployerRate) || 0,
+      esi_employee_contribution_rate: Number(esiEmployeeRate) || 0,
+      professional_tax: Number(professionalTax) || 0,
       effective_date: new Date().toISOString().split('T')[0],
     });
-    setOpenDialog(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate({
-      employee_contribution_rate: Number(formData.employee_contribution_rate),
-      employer_contribution_rate: Number(formData.employer_contribution_rate),
-      effective_date: formData.effective_date,
-    });
-  };
-
-  const handleDelete = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this PF configuration?')) {
-      deleteMutation.mutate(id);
-    }
-  };
+  const renderField = (
+    label: string,
+    value: number | '',
+    onChange: (val: number | '') => void,
+    suffix: string,
+    color: string,
+    bgColor: string,
+    disabled: boolean
+  ) => (
+    <Grid item xs={12}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Chip
+          label={label}
+          size="small"
+          sx={{
+            fontWeight: 700,
+            height: 28,
+            fontSize: '0.8rem',
+            color: color,
+            bgcolor: bgColor,
+            border: `1px solid ${color}40`,
+            width: 220,
+            justifyContent: 'flex-start'
+          }}
+        />
+        {isEditing || !latestSettings ? (
+          <TextField
+            type="number"
+            size="small"
+            value={value}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onChange(raw === '' ? '' : parseFloat(raw));
+            }}
+            inputProps={{ step: suffix === '%' ? 0.1 : 1, min: 0 }}
+            disabled={disabled}
+            sx={{
+              width: 100,
+              '& .MuiOutlinedInput-root': {
+                color: 'var(--color-text-primary)',
+                borderRadius: 'var(--radius-control)',
+                '& fieldset': { borderColor: 'var(--color-border)' },
+                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+              },
+            }}
+          />
+        ) : (
+          <Typography
+            variant="h6"
+            fontWeight={700}
+            sx={{ color: 'var(--color-text-primary)', cursor: disabled ? 'default' : 'pointer', width: 100 }}
+            onClick={() => !disabled && setIsEditing(true)}
+          >
+            {suffix === '₹' ? `₹${value}` : `${value}%`}
+          </Typography>
+        )}
+      </Box>
+    </Grid>
+  );
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box>
           <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-            Provident Fund (PF) Configuration
+            PF, ESI & Tax Configuration
           </Typography>
           <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-            Configure default employee and employer contribution percentages.
+            Configure default PF, ESI, and Professional Tax rates/amounts.
           </Typography>
         </Box>
-        {isFinanceOrAdmin && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAdd}
-            sx={{
-              background: 'var(--color-primary)',
-              boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-              borderRadius: 'var(--radius-control)',
-              textTransform: 'none',
-            }}
-          >
-            Configure Rates
-          </Button>
-        )}
       </Box>
 
-      {/* Settings History Table */}
-      <Paper
-        sx={{
-          background: 'var(--color-surface)',
-          
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-card)',
-          overflow: 'hidden',
-          p: 3,
-        }}
-      >
-        <TableContainer>
-          <Table>
-            <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-              <TableRow>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Effective Starting Date</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employee Contribution Rate</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer Contribution Rate</TableCell>
-                {isFinanceOrAdmin && <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                    <CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} />
-                  </TableCell>
-                </TableRow>
-              ) : pfList.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
-                    No PF settings configured. Default rates (12% employee / 12% employer) will be applied.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pfList.map((rec: PFSettingsRecord) => (
-                  <TableRow key={rec.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' }, borderColor: 'rgba(255, 255, 255, 0.05)' }}>
-                    <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{rec.effective_date}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{rec.employee_contribution_rate}%</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{rec.employer_contribution_rate}%</TableCell>
-                    {isFinanceOrAdmin && (
-                      <TableCell align="right">
-                        <Tooltip title="Delete Settings">
-                          <IconButton onClick={() => handleDelete(rec.id)} sx={{ color: 'var(--color-error)' }}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
-
-      {/* Configure dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: 'var(--color-surface)',
-            backgroundImage: 'none',
-            color: 'var(--color-text-primary)',
-            borderRadius: 'var(--radius-card)',
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} />
+        </Box>
+      ) : (
+        <Paper
+          sx={{
+            background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
-          },
-        }}
-      >
-        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
-          New PF Configuration
-        </DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent sx={{ py: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  label="Employee Contribution Rate (%)"
-                  type="number"
-                  fullWidth
-                  required
-                  inputProps={{ step: 0.1, min: 0, max: 100 }}
-                  value={formData.employee_contribution_rate}
-                  onChange={(e) => setFormData({ ...formData, employee_contribution_rate: parseFloat(e.target.value) || 0 })}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Employer Contribution Rate (%)"
-                  type="number"
-                  fullWidth
-                  required
-                  inputProps={{ step: 0.1, min: 0, max: 100 }}
-                  value={formData.employer_contribution_rate}
-                  onChange={(e) => setFormData({ ...formData, employer_contribution_rate: parseFloat(e.target.value) || 0 })}
-                  sx={inputStyles}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Effective Starting Date"
-                  type="date"
-                  fullWidth
-                  required
-                  value={formData.effective_date}
-                  onChange={(e) => setFormData({ ...formData, effective_date: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                  sx={inputStyles}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <Button onClick={() => setOpenDialog(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              sx={{
-                background: 'var(--color-primary)',
-                borderRadius: 'var(--radius-control)',
-                px: 3,
-                textTransform: 'none',
-              }}
-            >
-              Save Configuration
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+            borderRadius: 'var(--radius-card)',
+            p: 4,
+            maxWidth: 600,
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight={600} fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+            Statutory Rates & Deductions
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+            Settings apply globally to all employees for payroll calculations.
+          </Typography>
 
+          <Grid container spacing={3}>
+            {renderField('PF Employer Benefit', pfEmployerRate, setPfEmployerRate, '%', 'var(--color-primary-hover)', 'rgba(59, 130, 246, 0.12)', !isFinanceOrAdmin)}
+            {renderField('PF Employee Contribution', pfEmployeeRate, setPfEmployeeRate, '%', 'var(--color-primary-hover)', 'rgba(59, 130, 246, 0.12)', !isFinanceOrAdmin)}
+            {renderField('ESI Employer Benefit', esiEmployerRate, setEsiEmployerRate, '%', 'var(--color-success)', 'rgba(16, 185, 129, 0.12)', !isFinanceOrAdmin)}
+            {renderField('ESI Employee Contribution', esiEmployeeRate, setEsiEmployeeRate, '%', 'var(--color-success)', 'rgba(16, 185, 129, 0.12)', !isFinanceOrAdmin)}
+            {renderField('Professional Tax Amount', professionalTax, setProfessionalTax, '₹', 'var(--color-warning)', 'rgba(245, 158, 11, 0.12)', !isFinanceOrAdmin)}
 
+            {isFinanceOrAdmin && (isEditing || !latestSettings) && (
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', gap: 1.5, mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<SaveIcon />}
+                    onClick={handleSave}
+                    disabled={updateMutation.isLoading}
+                    sx={{
+                      background: 'var(--color-primary)',
+                      borderRadius: 'var(--radius-control)',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {updateMutation.isLoading ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setIsEditing(false);
+                      if (latestSettings) {
+                        setPfEmployeeRate(Number(latestSettings.employee_contribution_rate));
+                        setPfEmployerRate(Number(latestSettings.employer_contribution_rate));
+                        setEsiEmployeeRate(Number(latestSettings.esi_employee_contribution_rate || 0.75));
+                        setEsiEmployerRate(Number(latestSettings.esi_contribution_rate || 3.25));
+                        setProfessionalTax(Number(latestSettings.professional_tax || 200));
+                      }
+                    }}
+                    sx={{
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text-secondary)',
+                      borderRadius: 'var(--radius-control)',
+                      textTransform: 'none',
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
+              </Grid>
+            )}
+
+            {isFinanceOrAdmin && !isEditing && latestSettings && (
+              <Grid item xs={12}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setIsEditing(true)}
+                  sx={{
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Edit Rates
+                </Button>
+              </Grid>
+            )}
+          </Grid>
+        </Paper>
+      )}
+
+      {/* History table */}
+      {pfList.length > 0 && (
+        <Paper
+          sx={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            overflow: 'hidden',
+            p: 3,
+            mt: 3,
+          }}
+        >
+          <Typography variant="subtitle2" fontWeight={600} sx={{ color: 'var(--color-text-secondary)', mb: 2 }}>
+            Rate Change History
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {pfList.map((rec: PFSettingsRecord) => (
+              <Box
+                key={rec.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  p: 1.5,
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-control)',
+                  bgcolor: 'var(--color-surface-subtle)',
+                  flexWrap: 'wrap'
+                }}
+              >
+                <Chip
+                  label={rec.effective_date}
+                  size="small"
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-primary)',
+                    bgcolor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}
+                />
+                <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                  PF (Employer: {rec.employer_contribution_rate}%, Employee: {rec.employee_contribution_rate}%)
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  ESI (Employer: {rec.esi_contribution_rate}%, Employee: {rec.esi_employee_contribution_rate}%)
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                  PT: ₹{rec.professional_tax}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
     </Box>
   );
-};
-
-const inputStyles = {
-  '& .MuiOutlinedInput-root': {
-    color: 'var(--color-text-primary)',
-    borderRadius: 'var(--radius-control)',
-    '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-    '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-  },
-  '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
-  '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
 };
 
 export default PFSettings;

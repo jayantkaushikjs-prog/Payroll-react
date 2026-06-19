@@ -83,6 +83,7 @@ interface Employee {
   active_status: boolean;
   pf_deduction?: boolean;
   pf_uan?: string | null;
+  esi_deduction?: boolean;
   tax_deduction?: boolean;
   relieving_date?: string | null;
   other_inputs?: string | null;
@@ -2167,16 +2168,29 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               </Grid>
               <Grid item xs={12} md={3}>
                 <Button
-                  fullWidth
                   variant="outlined"
                   disabled={(!isFinance && !isAdmin) || updateFinanceRemarksMutation.isLoading}
                   onClick={() => updateFinanceRemarksMutation.mutate()}
                   sx={{
                     mt: { xs: 0, md: 1 },
-                    borderColor: 'var(--color-border)',
-                    color: 'var(--color-text-primary)',
+                    px: 2.5,
+                    py: 1,
+                    minWidth: '120px',
+                    borderColor: 'var(--color-primary)',
+                    color: 'var(--color-primary)',
                     borderRadius: 'var(--radius-control)',
                     textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    '&:hover:not(:disabled)': {
+                      borderColor: 'var(--color-primary-hover)',
+                      color: 'var(--color-primary-hover)',
+                      bgcolor: 'rgba(59, 130, 246, 0.04)',
+                    },
+                    '&:disabled': {
+                      borderColor: 'var(--color-border)',
+                      color: 'var(--color-text-secondary)',
+                    },
                   }}
                 >
                   Save Remarks
