@@ -322,9 +322,25 @@ const Expenses: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   const getExpensesForCurrentMonth = () => {
+    const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
+    const endOfMonth = new Date(currentYear, currentMonth, 0);
+
     return expenses.filter((e: Expense) => {
       const expDate = new Date(e.date);
-      return (expDate.getMonth() + 1) === currentMonth && expDate.getFullYear() === currentYear;
+      const isCurrentMonth = (expDate.getMonth() + 1) === currentMonth && expDate.getFullYear() === currentYear;
+
+      if (e.frequency === 'monthly') {
+        const effectiveStartDate = e.startDate ? new Date(e.startDate) : expDate;
+        if (effectiveStartDate > endOfMonth) return false;
+        
+        if (e.endDate) {
+          const endDate = new Date(e.endDate);
+          if (endDate < startOfMonth) return false;
+        }
+        return true;
+      }
+      
+      return isCurrentMonth;
     });
   };
 

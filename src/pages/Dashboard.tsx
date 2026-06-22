@@ -200,7 +200,7 @@ const Dashboard: React.FC = () => {
     ...(isSuperAdmin ? [
       { label: 'Employees', icon: <ActiveEmployeesIcon />, permission: Permission.VIEW_EMPLOYEE, path: '/employees' },
       { label: 'Salary Structures', icon: <SalaryIcon />, permission: Permission.MANAGE_SALARY_STRUCTURES, path: '/salaries' },
-      { label: 'Non-Payable Days', icon: <NonPayableIcon />, permission: Permission.MANAGE_NON_PAYABLE_DAYS, path: '/non-payable-days' },
+      // { label: 'Non-Payable Days', icon: <NonPayableIcon />, permission: Permission.MANAGE_NON_PAYABLE_DAYS, path: '/non-payable-days' },
       { label: 'PF Settings', icon: <PfIcon />, permission: Permission.MANAGE_PF_SETTINGS, path: '/pf' },
       { label: 'Tax Slabs', icon: <TaxIcon />, permission: Permission.MANAGE_TAX_SLABS, path: '/tax' },
       { label: 'Payroll', icon: <PayrollIcon />, permission: Permission.VIEW_PAYROLL, path: '/payroll' },

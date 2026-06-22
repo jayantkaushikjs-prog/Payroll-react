@@ -221,12 +221,12 @@ const Layout: React.FC = () => {
       path: '/salaries',
       permissions: [Permission.MANAGE_SALARY_STRUCTURES],
     },
-    {
-      text: 'Non Payable Days',
-      icon: <AbsentIcon />,
-      path: '/non-payable-days',
-      permissions: [Permission.MANAGE_NON_PAYABLE_DAYS],
-    },
+    // {
+    //   text: 'Non Payable Days',
+    //   icon: <AbsentIcon />,
+    //   path: '/non-payable-days',
+    //   permissions: [Permission.MANAGE_NON_PAYABLE_DAYS],
+    // },
     {
       text: 'PF Settings',
       icon: <PFIcon />,

@@ -63,6 +63,7 @@ import {
   Visibility as ViewIcon,
   People as PeopleIcon,
   HelpOutline as HelpOutlineIcon,
+  Sync as SyncIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -383,6 +384,19 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     async () => {
       const res = await api.get(`/employees/preview-review?month=${previewMonth}`);
       return res.data as PreviewReview;
+    },
+    { enabled: canViewPreview && Boolean(previewMonth) }
+  );
+
+  const previewMonthObj = new Date(`${previewMonth}-01`);
+  const previewM = previewMonthObj.getMonth() + 1;
+  const previewY = previewMonthObj.getFullYear();
+
+  const { data: nonPayableDays = [] } = useQuery(
+    ['nonPayableDays', previewM, previewY],
+    async () => {
+      const res = await api.get(`/non-payable-days/filter?month=${previewM}&year=${previewY}`);
+      return res.data;
     },
     { enabled: canViewPreview && Boolean(previewMonth) }
   );
@@ -1715,7 +1729,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       //               </Grid>
       //               <Grid item xs={12} md={6}>
       //                 <TextField
-      //                   label="Deduction (Absent)"
+      //                   label="Non Payable Days (Absent)"
       //                   type="number"
       //                   fullWidth
       //                   value={consoleFormData.deduction_absent === 0 ? '' : consoleFormData.deduction_absent}
@@ -1987,15 +2001,35 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               />
             
             </Box>
-            <TextField
-              type="month"
-              label="Filter by edit/relieving month"
-              value={previewMonth}
-              onChange={(e) => setPreviewMonth(e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{ ...inputStyles, minWidth: 190 }}
-            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                type="month"
+                label="Filter by edit/relieving month"
+                value={previewMonth}
+                onChange={(e) => setPreviewMonth(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ ...inputStyles, minWidth: 190 }}
+              />
+              <IconButton
+                onClick={() => {
+                  queryClient.invalidateQueries(['employees']);
+                  queryClient.invalidateQueries(['nonPayableDays', previewM, previewY]);
+                }}
+                sx={{
+                  color: 'var(--color-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-control)',
+                  bgcolor: 'var(--color-surface-subtle)',
+                  '&:hover': {
+                    bgcolor: 'var(--color-row-hover)',
+                  }
+                }}
+                title="Refresh Preview Data"
+              >
+                <SyncIcon />
+              </IconButton>
+            </Box>
           </Box>
 
           {isLoading ? (
@@ -2017,7 +2051,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       'Employee Name',
                       'Tags',
                       'No Of day Present',
-                      'Deduction (Absent)',
+                      'Non Payable Days (Absent)',
                       'Appraisal',
                       'Bonus / Incentives',
                       'Leave Encashment',
@@ -2069,11 +2103,18 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Box>
                       </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? 30)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.deduction_absent)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>
+                        {(() => {
+                          const npd = nonPayableDays.find((n: any) => n.employee?.id === emp.id || n.employee_id === emp.id)?.days || 0;
+                          const consoleAbsent = Number(emp.deduction_absent) || 0;
+                          const totalAbsent = npd + consoleAbsent;
+                          return totalAbsent > 0 ? `${totalAbsent} days` : '—';
+                        })()}
+                      </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.appraisal)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.leave_encashment)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.late_arrival_deduction)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.late_arrival_deduction ? `${emp.late_arrival_deduction} days` : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.damages_recovery)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.other_deductions)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 260 }}>
@@ -2629,7 +2670,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Grid>
                         <Grid item xs={6}>
                           <TextField
-                            label="Deduction (Absent)"
+                            label="Non Payable Days (Absent)"
                             type="number"
                             fullWidth
                             disabled={!isHRorAdmin}
