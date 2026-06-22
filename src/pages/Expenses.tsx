@@ -51,6 +51,8 @@ import {
   Public as MarketingIcon,
   HelpOutline as OtherIcon,
   Shield as PfIcon,
+  HealthAndSafety as EsiIcon,
+  Sync as SyncIcon,
 } from '@mui/icons-material';
 
 interface Expense {
@@ -65,6 +67,9 @@ interface Expense {
   description?: string;
   created_at: string;
 }
+
+// Helper: pseudo-expenses from payroll have negative IDs
+const isDynamicExpense = (exp: Expense) => exp.id < 0;
 
 const cardSx = {
   background: 'var(--color-surface)',
@@ -85,6 +90,8 @@ const Expenses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [frequencyFilter, setFrequencyFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState<string>(String(new Date().getMonth() + 1));
+  const [yearFilter, setYearFilter] = useState<string>(String(new Date().getFullYear()));
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [excludeSalaries, setExcludeSalaries] = useState(false);
@@ -106,10 +113,18 @@ const Expenses: React.FC = () => {
   });
 
   // Fetch all expenses
-  const { data: expenses = [], isLoading } = useQuery(['expenses', excludeSalaries], async () => {
-    const res = await api.get(`/expenses?excludeSalaries=${excludeSalaries}`);
-    return res.data;
-  });
+  const { data: expenses = [], isLoading } = useQuery(
+    ['expenses', excludeSalaries, monthFilter, yearFilter],
+    async () => {
+      const params = new URLSearchParams();
+      params.append('excludeSalaries', excludeSalaries.toString());
+      if (monthFilter !== 'all') params.append('month', monthFilter);
+      if (yearFilter !== 'all') params.append('year', yearFilter);
+      
+      const res = await api.get(`/expenses?${params.toString()}`);
+      return res.data;
+    }
+  );
 
   // Manage Categories States
   const [openCategoriesDialog, setOpenCategoriesDialog] = useState(false);
@@ -317,17 +332,20 @@ const Expenses: React.FC = () => {
     showToast('Expenses exported successfully!', 'success');
   };
 
-  // Helper calculation for Stats (Current Month)
+  // Helper calculation for Stats (Current Month or Selected Month)
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
-  const getExpensesForCurrentMonth = () => {
-    const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
-    const endOfMonth = new Date(currentYear, currentMonth, 0);
+  const effectiveMonth = monthFilter === 'all' ? currentMonth : Number(monthFilter);
+  const effectiveYear = yearFilter === 'all' ? currentYear : Number(yearFilter);
+
+  const getExpensesForEffectiveMonth = () => {
+    const startOfMonth = new Date(effectiveYear, effectiveMonth - 1, 1);
+    const endOfMonth = new Date(effectiveYear, effectiveMonth, 0);
 
     return expenses.filter((e: Expense) => {
       const expDate = new Date(e.date);
-      const isCurrentMonth = (expDate.getMonth() + 1) === currentMonth && expDate.getFullYear() === currentYear;
+      const isEffectiveMonth = (expDate.getMonth() + 1) === effectiveMonth && expDate.getFullYear() === effectiveYear;
 
       if (e.frequency === 'monthly') {
         const effectiveStartDate = e.startDate ? new Date(e.startDate) : expDate;
@@ -340,21 +358,21 @@ const Expenses: React.FC = () => {
         return true;
       }
       
-      return isCurrentMonth;
+      return isEffectiveMonth;
     });
   };
 
-  const currentMonthExpenses = getExpensesForCurrentMonth();
-  const totalCMExpenses = currentMonthExpenses.reduce((sum: number, e: Expense) => sum + Number(e.amount), 0);
+  const effectiveMonthExpenses = getExpensesForEffectiveMonth();
+  const totalCMExpenses = effectiveMonthExpenses.reduce((sum: number, e: Expense) => sum + Number(e.amount), 0);
   
   const getCMExpensesByCategory = (cat: string) => {
-    return currentMonthExpenses
+    return effectiveMonthExpenses
       .filter((e: Expense) => e.category === cat)
       .reduce((sum: number, e: Expense) => sum + Number(e.amount), 0);
   };
 
   const getCMExpensesByFrequency = (freq: string) => {
-    return currentMonthExpenses
+    return effectiveMonthExpenses
       .filter((e: Expense) => e.frequency === freq)
       .reduce((sum: number, e: Expense) => sum + Number(e.amount), 0);
   };
@@ -366,7 +384,30 @@ const Expenses: React.FC = () => {
       (exp.description && exp.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || exp.category === categoryFilter;
     const matchesFrequency = frequencyFilter === 'all' || exp.frequency === frequencyFilter;
-    return matchesSearch && matchesCategory && matchesFrequency;
+    
+    let matchesDate = true;
+    if (monthFilter !== 'all' && yearFilter !== 'all') {
+      const filterMonth = Number(monthFilter);
+      const filterYear = Number(yearFilter);
+      const startOfFilterMonth = new Date(filterYear, filterMonth - 1, 1);
+      const endOfFilterMonth = new Date(filterYear, filterMonth, 0);
+
+      const expDate = new Date(exp.date);
+
+      if (exp.frequency === 'monthly') {
+        const effectiveStartDate = exp.startDate ? new Date(exp.startDate) : expDate;
+        if (effectiveStartDate > endOfFilterMonth) {
+          matchesDate = false;
+        } else if (exp.endDate) {
+          const endDateObj = new Date(exp.endDate);
+          if (endDateObj < startOfFilterMonth) matchesDate = false;
+        }
+      } else {
+        matchesDate = (expDate.getMonth() + 1) === filterMonth && expDate.getFullYear() === filterYear;
+      }
+    }
+
+    return matchesSearch && matchesCategory && matchesFrequency && matchesDate;
   });
 
   // Pagination Logic
@@ -377,6 +418,7 @@ const Expenses: React.FC = () => {
       case 'rent': return 'Rent';
       case 'salary': return 'Salary';
       case 'pf': return 'Employer PF';
+      case 'esi': return 'Employer ESI';
       case 'utilities': return 'Utilities';
       case 'marketing': return 'Marketing';
       case 'one-time': return 'One-Time';
@@ -389,6 +431,7 @@ const Expenses: React.FC = () => {
       case 'rent': return { color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)', label: 'Rent' }; // Emerald
       case 'salary': return { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.25)', label: 'Salary' }; // Blue
       case 'pf': return { color: '#6366f1', bg: 'rgba(99, 102, 241, 0.08)', border: 'rgba(99, 102, 241, 0.25)', label: 'Employer PF' }; // Indigo
+      case 'esi': return { color: '#14b8a6', bg: 'rgba(20, 184, 166, 0.08)', border: 'rgba(20, 184, 166, 0.25)', label: 'Employer ESI' }; // Teal
       case 'utilities': return { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.25)', label: 'Utilities' }; // Amber
       case 'marketing': return { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.08)', border: 'rgba(139, 92, 246, 0.25)', label: 'Marketing' }; // Purple
       case 'one-time': return { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.25)', label: 'One-Time' }; // Red
@@ -407,6 +450,7 @@ const Expenses: React.FC = () => {
       case 'rent': return <RentIcon />;
       case 'salary': return <SalaryIcon />;
       case 'pf': return <PfIcon />;
+      case 'esi': return <EsiIcon />;
       case 'utilities': return <UtilitiesIcon />;
       case 'marketing': return <MarketingIcon />;
       case 'one-time': return <OneTimeIcon />;
@@ -426,7 +470,27 @@ const Expenses: React.FC = () => {
             Track and manage company expenditures, recurring monthly fees, and one-time purchases.
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <Tooltip title="Refresh expenses (re-fetch payroll data)">
+            <IconButton
+              onClick={() => {
+                queryClient.invalidateQueries(['expenses']);
+                queryClient.invalidateQueries(['dashboardData']);
+                showToast('Expenses refreshed!', 'success');
+              }}
+              sx={{
+                color: 'var(--color-primary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-control)',
+                '&:hover': {
+                  borderColor: 'var(--color-primary)',
+                  bgcolor: 'rgba(99, 102, 241, 0.08)',
+                },
+              }}
+            >
+              <SyncIcon />
+            </IconButton>
+          </Tooltip>
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
@@ -510,6 +574,14 @@ const Expenses: React.FC = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
+            label="Employer ESI"
+            value={formatCurrency(getCMExpensesByCategory('esi'))}
+            icon={<EsiIcon />}
+            color="#14b8a6"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
             label="Office Rent"
             value={formatCurrency(getCMExpensesByCategory('rent'))}
             icon={<RentIcon />}
@@ -545,7 +617,7 @@ const Expenses: React.FC = () => {
       {/* Filter panel */}
       <Paper sx={{ ...cardSx, p: 3, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               placeholder="Search expenses by title or description..."
@@ -557,7 +629,43 @@ const Expenses: React.FC = () => {
               sx={inputStyles}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={6} sm={3} md={2}>
+            <FormControl fullWidth sx={selectStyles}>
+              <InputLabel id="month-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Month</InputLabel>
+              <Select
+                labelId="month-filter-label"
+                value={monthFilter}
+                label="Month"
+                onChange={(e) => { setMonthFilter(e.target.value); setPage(0); }}
+              >
+                <MenuItem value="all">All Months</MenuItem>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <MenuItem key={i + 1} value={String(i + 1)}>
+                    {new Date(0, i).toLocaleString('default', { month: 'short' })}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={6} sm={3} md={2}>
+            <FormControl fullWidth sx={selectStyles}>
+              <InputLabel id="year-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
+              <Select
+                labelId="year-filter-label"
+                value={yearFilter}
+                label="Year"
+                onChange={(e) => { setYearFilter(e.target.value); setPage(0); }}
+              >
+                <MenuItem value="all">All Years</MenuItem>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <MenuItem key={currentYear - i} value={String(currentYear - i)}>
+                    {currentYear - i}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={6} sm={3} md={2}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="category-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Category</InputLabel>
               <Select
@@ -575,7 +683,7 @@ const Expenses: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={6} sm={3} md={2}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="frequency-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Frequency</InputLabel>
               <Select
@@ -590,7 +698,7 @@ const Expenses: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={12} md={3}>
+          <Grid item xs={12} sm={12} md={12}>
             <FormControlLabel
               control={
                 <Switch
@@ -602,7 +710,7 @@ const Expenses: React.FC = () => {
                   color="primary"
                 />
               }
-              label="Include Salary Expenses"
+              label="Include Salary / PF / ESI"
               sx={{ color: 'var(--color-text-primary)' }}
             />
           </Grid>
@@ -689,18 +797,33 @@ const Expenses: React.FC = () => {
                       </TableCell>
                       {isFinanceOrAdmin && (
                         <TableCell align="right">
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
-                            <Tooltip title="Edit Expense">
-                              <IconButton onClick={() => handleOpenEdit(exp)} sx={{ color: 'var(--color-primary)' }}>
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Delete Expense">
-                              <IconButton onClick={() => handleDelete(exp.id)} sx={{ color: 'var(--color-error)' }}>
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
+                          {isDynamicExpense(exp) ? (
+                            <Chip
+                              label="Auto"
+                              size="small"
+                              sx={{
+                                bgcolor: 'rgba(99, 102, 241, 0.08)',
+                                color: 'var(--color-primary)',
+                                border: '1px solid rgba(99, 102, 241, 0.2)',
+                                fontWeight: 600,
+                                fontSize: '0.7rem',
+                                borderRadius: '8px',
+                              }}
+                            />
+                          ) : (
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                              <Tooltip title="Edit Expense">
+                                <IconButton onClick={() => handleOpenEdit(exp)} sx={{ color: 'var(--color-primary)' }}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Delete Expense">
+                                <IconButton onClick={() => handleDelete(exp.id)} sx={{ color: 'var(--color-error)' }}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          )}
                         </TableCell>
                       )}
                     </TableRow>

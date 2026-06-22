@@ -191,7 +191,7 @@ const Dashboard: React.FC = () => {
         icon: <PfIcon />, 
         color: 'var(--color-accent)', 
         format: 'currency' as const,
-        tooltip: (d: DashboardData) => `Total provident fund (PF) contribution deducted from employee salaries (${formatCurrency(d.stats.pfContributions || 0)}).`
+        tooltip: (d: DashboardData) => `Total provident fund (PF) contribution and ESI contribution deducted/added for employees (${formatCurrency(d.stats.pfContributions || 0)} PF + ${formatCurrency(d.stats.esiContributions || 0)} ESI).`
       },
     ] : []),
   ];
@@ -426,6 +426,7 @@ const Dashboard: React.FC = () => {
                     <Legend iconType="circle" />
                     <Line type="monotone" dataKey="pf" name="PF" stroke="var(--color-accent)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                     <Line type="monotone" dataKey="tax" name="Tax" stroke="var(--color-warning)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="esi" name="ESI" stroke="var(--color-success)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartPanel>
@@ -508,7 +509,7 @@ const Dashboard: React.FC = () => {
               </ChartPanel>
             </Grid>
 
-            <Grid item xs={12} lg={isSuperAdmin ? 8 : 7}>
+            {/* <Grid item xs={12} lg={isSuperAdmin ? 8 : 7}>
               <SummaryPanel
                 title="Salary Processing & Deductions Summary"
                 rows={[
@@ -520,7 +521,7 @@ const Dashboard: React.FC = () => {
                   ['Total ESI Deductions', formatCurrency(data.summaries.taxPfEsi?.esi || 0)],
                 ]}
               />
-            </Grid>
+            </Grid> */}
           </>
         )}
 
@@ -529,9 +530,9 @@ const Dashboard: React.FC = () => {
           <ActivityPanel activities={data.activities} />
         </Grid>
 
-        <Grid item xs={12} lg={4}>
+        {/* <Grid item xs={12} lg={4}>
           <QuickActions actions={actions} onNavigate={navigate} />
-        </Grid>
+        </Grid> */}
       </Grid>
     </Box>
   );
