@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { formatCurrency as formatInr } from '../constants/currency';
@@ -142,17 +143,11 @@ const TaxSlabs: React.FC = () => {
     return formatInr(val);
   };
 
+  const actionsNode = document.getElementById('compliance-actions');
+
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-            Tax Slabs Configuration
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-            Configure progressive income tax brackets for salary calculations.
-          </Typography>
-        </Box>
+      {actionsNode && createPortal(
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {years.length > 0 && (
             <FormControl sx={{ minWidth: 150 }}>
@@ -189,8 +184,9 @@ const TaxSlabs: React.FC = () => {
               Add Bracket
             </Button>
           )}
-        </Box>
-      </Box>
+        </Box>,
+        actionsNode
+      )}
 
       {/* Active Rules Card */}
       <Paper

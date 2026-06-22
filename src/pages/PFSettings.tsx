@@ -170,19 +170,7 @@ const PFSettings: React.FC = () => {
   );
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-            PF, ESI & Tax Configuration
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-            Configure default PF, ESI, and Professional Tax rates/amounts.
-          </Typography>
-        </Box>
-      </Box>
-
-      {isLoading ? (
+    <Box>      {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} />
         </Box>

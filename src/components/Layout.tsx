@@ -228,16 +228,11 @@ const Layout: React.FC = () => {
     //   permissions: [Permission.MANAGE_NON_PAYABLE_DAYS],
     // },
     {
-      text: 'PF Settings',
+      text: 'Compliance Settings',
       icon: <PFIcon />,
-      path: '/pf',
-      permissions: [Permission.MANAGE_PF_SETTINGS],
-    },
-    {
-      text: 'Tax Slabs',
-      icon: <TaxIcon />,
-      path: '/tax',
-      permissions: [Permission.MANAGE_TAX_SLABS],
+      path: '/compliance',
+      permissions: [Permission.MANAGE_PF_SETTINGS, Permission.MANAGE_TAX_SLABS],
+      requireAny: true,
     },
     {
       text: 'Advances',
@@ -267,11 +262,7 @@ const Layout: React.FC = () => {
       permissions: [Permission.VIEW_PAYROLL_REPORTS, Permission.VIEW_HR_REPORTS, Permission.VIEW_FINANCIAL_DASHBOARDS],
       requireAny: true,
     },
-    {
-      text: 'Payroll Calculator',
-      icon: <TrendIcon />,
-      path: '/calculator',
-    },
+
     {
       text: 'User Management',
       icon: <AdminIcon />,
@@ -379,6 +370,41 @@ const Layout: React.FC = () => {
       <Divider sx={{ borderColor: 'var(--color-border)' }} />
       <Box sx={{ p: 2 }}>
         <List disablePadding>
+          <ListItem disablePadding sx={{ mb: 0.5 }}>
+            <ListItemButton
+              onClick={() => { navigate('/calculator'); setMobileOpen(false); }}
+              sx={{
+                borderRadius: 'var(--radius-control)',
+                backgroundColor: location.pathname === '/calculator' ? 'rgba(99, 102, 241, 0.14)' : 'transparent',
+                color: location.pathname === '/calculator' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                border: location.pathname === '/calculator' ? '1px solid rgba(99, 102, 241, 0.26)' : '1px solid transparent',
+                position: 'relative',
+                '&:hover': {
+                  backgroundColor: location.pathname === '/calculator' ? 'rgba(99, 102, 241, 0.18)' : 'var(--color-surface-subtle)',
+                  color: 'var(--color-text-primary)',
+                  '& .MuiListItemIcon-root': {
+                    color: location.pathname === '/calculator' ? 'var(--color-primary-hover)' : 'var(--color-text-primary)',
+                  },
+                },
+                '&::before': location.pathname === '/calculator' ? {
+                  content: '""',
+                  position: 'absolute',
+                  left: -6,
+                  top: 10,
+                  bottom: 10,
+                  width: 3,
+                  borderRadius: 999,
+                  backgroundColor: 'var(--color-primary)',
+                } : undefined,
+                transition: 'background-color 160ms ease, border-color 160ms ease, color 160ms ease',
+              }}
+            >
+              <ListItemIcon sx={{ color: location.pathname === '/calculator' ? 'var(--color-primary-hover)' : 'var(--color-text-muted)', minWidth: '40px', transition: 'color 160ms ease' }}>
+                <TrendIcon />
+              </ListItemIcon>
+              <ListItemText primary="Payroll Calculator" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: location.pathname === '/calculator' ? 600 : 500 }} />
+            </ListItemButton>
+          </ListItem>
           <ListItem disablePadding>
             <ListItemButton
               onClick={logout}

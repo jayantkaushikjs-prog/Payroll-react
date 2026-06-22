@@ -232,7 +232,7 @@ const PayrollCalculator: React.FC = () => {
               <TextField value={otherDeductions} onChange={(e) => setOtherDeductions(e.target.value)} type="number" placeholder="Amt" variant="outlined" size="small" fullWidth />
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, width: '100%' }}>
+            <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -243,10 +243,11 @@ const PayrollCalculator: React.FC = () => {
                   />
                 }
                 label={
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
                     Include PF
                   </Typography>
                 }
+                sx={{ m: 0 }}
               />
             </Box>
             </Box>

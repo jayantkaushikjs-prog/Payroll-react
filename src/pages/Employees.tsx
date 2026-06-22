@@ -401,6 +401,17 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     { enabled: canViewPreview && Boolean(previewMonth) }
   );
 
+  const { data: previewPayrolls = [] } = useQuery(
+    ['payroll', previewM, previewY],
+    async () => {
+      const res = await api.get(`/payroll?month=${previewM}&year=${previewY}`);
+      return res.data;
+    },
+    { enabled: canViewPreview && Boolean(previewMonth) }
+  );
+  
+  const isPreviewMonthDisbursed = previewPayrolls.length > 0 && previewPayrolls.every((p: any) => p.status === 'disbursed');
+
   const [financeRemarksDraft, setFinanceRemarksDraft] = useState('');
 
   useEffect(() => {
@@ -524,6 +535,43 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   // Profile Details Dialog State
   const [openProfileDialog, setOpenProfileDialog] = useState(false);
   const [profileDialogTab, setProfileDialogTab] = useState(0);
+
+  // Preview Sheet Edit Dialog State
+  const [openPreviewEditDialog, setOpenPreviewEditDialog] = useState(false);
+  const [previewEditEmp, setPreviewEditEmp] = useState<Employee | null>(null);
+  const [previewEditFormData, setPreviewEditFormData] = useState<{
+    employee_code: string;
+    name: string;
+    no_of_days_present: number;
+    deduction_absent: string | number;
+    appraisal: string | number;
+    appraisal_effective_date: string;
+    leave_encashment: string | number;
+    late_arrival_deduction: string | number;
+    damages_recovery: string | number;
+    bonus_incentives: string | number;
+    other_deductions: string | number;
+    remarks: string;
+    joining_date: string;
+    relieving_date: string;
+    other_inputs: string;
+  }>({
+    employee_code: '',
+    name: '',
+    no_of_days_present: 30,
+    deduction_absent: '',
+    appraisal: '',
+    appraisal_effective_date: '',
+    leave_encashment: '',
+    late_arrival_deduction: '',
+    damages_recovery: '',
+    bonus_incentives: '',
+    other_deductions: '',
+    remarks: '',
+    joining_date: '',
+    relieving_date: '',
+    other_inputs: '',
+  });
 
   const [profileEmpId, setProfileEmpId] = useState<number | ''>('');
   const currentYear = new Date().getFullYear();
@@ -765,6 +813,39 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       id: selectedConsoleEmp.id,
       data: payload,
     });
+  };
+
+  const handleSavePreviewEdit = () => {
+    if (!previewEditEmp) return;
+
+    const daysPresent = Number(previewEditFormData.no_of_days_present);
+    if (isNaN(daysPresent) || daysPresent < 0 || daysPresent > 31) {
+      showToast('Days present must be a valid number between 0 and 31', 'error');
+      return;
+    }
+
+    const payload = {
+      no_of_days_present: daysPresent,
+      deduction_absent: Number(previewEditFormData.deduction_absent) || 0,
+      appraisal: Number(previewEditFormData.appraisal) || 0,
+      appraisal_effective_date: previewEditFormData.appraisal_effective_date || null,
+      leave_encashment: Number(previewEditFormData.leave_encashment) || 0,
+      late_arrival_deduction: Number(previewEditFormData.late_arrival_deduction) || 0,
+      damages_recovery: Number(previewEditFormData.damages_recovery) || 0,
+      bonus_incentives: Number(previewEditFormData.bonus_incentives) || 0,
+      other_deductions: Number(previewEditFormData.other_deductions) || 0,
+      remarks: previewEditFormData.remarks || null,
+    };
+
+    saveConsoleMutation.mutate(
+      { id: previewEditEmp.id, data: payload },
+      {
+        onSuccess: () => {
+          setOpenPreviewEditDialog(false);
+          setPreviewEditEmp(null);
+        },
+      }
+    );
   };
 
 
@@ -1320,19 +1401,21 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box>
-          <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-            Employees
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
-            Manage employee directory profiles, bank configuration, and annual financial summaries.
-          </Typography>
+      {!previewOnly && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box>
+            <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+              Employees
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+              Manage employee directory profiles and annual financial summaries.
+            </Typography>
+          </Box>
         </Box>
-      </Box>
+      )}
 
       {canViewPreview && !previewOnly && (
-        <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: 1, borderColor: 'var(--color-border)', mb: 3 }}>
           <Tabs
             value={currentMainTab}
             onChange={(_, newValue) => setCurrentMainTab(newValue)}
@@ -1353,55 +1436,28 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             }}
           >
             {isHRorAdmin && <Tab label="Employee Directory" />}
-            {/* <Tab label="HR Global Console" /> */}
-            <Tab label="Preview" />
             {isHRorAdmin && <Tab label="Manage Options" />}
           </Tabs>
-        </Box>
-      )}
-
-      {(!previewOnly && ((!isHRorAdmin && !isFinance) || (isHRorAdmin && currentMainTab === 0))) ? (
-        <>
-          {/* Employee Directory View */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
-            <input
-              type="file"
-              accept=".csv"
-              id="import-csv-file-input"
-              style={{ display: 'none' }}
-              onChange={handleImportCsv}
-            />
-            {isHRorAdmin && (
-              <>
-                <Button
-                  variant="outlined"
-                  startIcon={<DownloadIcon />}
-                  onClick={handleDownloadSampleCsv}
-                  sx={{
-                    borderColor: 'var(--color-border)',
-                    color: 'var(--color-text-secondary)',
-                    textTransform: 'none',
-                    borderRadius: 'var(--radius-control)',
-                    '&:hover': {
-                      borderColor: 'var(--color-border-strong)',
-                      bgcolor: 'var(--color-surface-subtle)',
-                      color: 'var(--color-text-primary)',
-                    },
-                  }}
-                >
-                  Sample CSV
-                </Button>
-                <label htmlFor="import-csv-file-input">
+          {currentMainTab === 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pb: 0.5 }}>
+              <input
+                type="file"
+                accept=".csv"
+                id="import-csv-file-input"
+                style={{ display: 'none' }}
+                onChange={handleImportCsv}
+              />
+              {isHRorAdmin && (
+                <>
                   <Button
-                    component="span"
                     variant="outlined"
-                    startIcon={<UploadIcon />}
+                    startIcon={<DownloadIcon />}
+                    onClick={handleDownloadSampleCsv}
                     sx={{
                       borderColor: 'var(--color-border)',
                       color: 'var(--color-text-secondary)',
                       textTransform: 'none',
                       borderRadius: 'var(--radius-control)',
-                      cursor: 'pointer',
                       '&:hover': {
                         borderColor: 'var(--color-border-strong)',
                         bgcolor: 'var(--color-surface-subtle)',
@@ -1409,45 +1465,95 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       },
                     }}
                   >
-                    Import CSV
+                    Sample CSV
                   </Button>
-                </label>
-              </>
-            )}
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={handleExportCsv}
-              sx={{
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text-secondary)',
-                textTransform: 'none',
-                borderRadius: 'var(--radius-control)',
-                '&:hover': {
-                  borderColor: 'var(--color-border-strong)',
-                  bgcolor: 'var(--color-surface-subtle)',
-                  color: 'var(--color-text-primary)',
-                },
-              }}
-            >
-              Export CSV
-            </Button>
-            {isHRorAdmin && (
+                  <label htmlFor="import-csv-file-input">
+                    <Button
+                      component="span"
+                      variant="outlined"
+                      startIcon={<UploadIcon />}
+                      sx={{
+                        borderColor: 'var(--color-border)',
+                        color: 'var(--color-text-secondary)',
+                        textTransform: 'none',
+                        borderRadius: 'var(--radius-control)',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          borderColor: 'var(--color-border-strong)',
+                          bgcolor: 'var(--color-surface-subtle)',
+                          color: 'var(--color-text-primary)',
+                        },
+                      }}
+                    >
+                      Import CSV
+                    </Button>
+                  </label>
+                </>
+              )}
               <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleOpenAddDialog}
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleExportCsv}
                 sx={{
-                  background: 'var(--color-primary)',
-                  boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-                  borderRadius: 'var(--radius-control)',
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text-secondary)',
                   textTransform: 'none',
+                  borderRadius: 'var(--radius-control)',
+                  '&:hover': {
+                    borderColor: 'var(--color-border-strong)',
+                    bgcolor: 'var(--color-surface-subtle)',
+                    color: 'var(--color-text-primary)',
+                  },
                 }}
               >
-                Add Employee
+                Export CSV
               </Button>
-            )}
-          </Box>
+              {isHRorAdmin && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenAddDialog}
+                  sx={{
+                    background: 'var(--color-primary)',
+                    boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                  }}
+                >
+                  Add Employee
+                </Button>
+              )}
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {!canViewPreview && !previewOnly && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportCsv}
+            sx={{
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text-secondary)',
+              textTransform: 'none',
+              borderRadius: 'var(--radius-control)',
+              '&:hover': {
+                borderColor: 'var(--color-border-strong)',
+                bgcolor: 'var(--color-surface-subtle)',
+                color: 'var(--color-text-primary)',
+              },
+            }}
+          >
+            Export CSV
+          </Button>
+        </Box>
+      )}
+
+      {(!previewOnly && ((!isHRorAdmin && !isFinance) || (isHRorAdmin && currentMainTab === 0))) ? (
+        <>
+          {/* Employee Directory View */}
 
           {/* Filter and Table */}
           <Paper
@@ -1606,7 +1712,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           )}
           </Paper>
         </>
-      ) : previewOnly || currentMainTab === 1 || isFinance ? (
+      ) : previewOnly || isFinance ? (
       //   /* HR Global Console View */
       //   <Box className="animate-fade-in">
       //     <Paper
@@ -1924,8 +2030,18 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       //   </Box>
       // ) : currentMainTab === 2 ? (
         /* HR Inputs Preview View */
+        <Box className="animate-fade-in">
+          {/* Title & Description */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+              Monthly Payroll Preview Sheet
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+              Review and manage per-employee HR inputs for the selected month — including attendance, deductions, bonuses, appraisals, and remarks — before payroll is finalized and handed off to Finance.
+            </Typography>
+          </Box>
+
         <Paper
-          className="animate-fade-in"
           sx={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -2006,15 +2122,54 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               />
             
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {isHRorAdmin && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => {
+                    // Open add dialog pre-filled with defaults for a new preview record
+                    setPreviewEditEmp(null);
+                    setPreviewEditFormData({
+                      employee_code: '',
+                      name: '',
+                      no_of_days_present: 30,
+                      deduction_absent: '',
+                      appraisal: '',
+                      appraisal_effective_date: '',
+                      leave_encashment: '',
+                      late_arrival_deduction: '',
+                      damages_recovery: '',
+                      bonus_incentives: '',
+                      other_deductions: '',
+                      remarks: '',
+                      joining_date: '',
+                      relieving_date: '',
+                      other_inputs: '',
+                    });
+                    setOpenPreviewEditDialog(true);
+                  }}
+                  sx={{
+                    background: 'var(--color-primary)',
+                    boxShadow: '0 4px 12px rgba(99,102,241,0.22)',
+                    borderRadius: 'var(--radius-control)',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                  }}
+                  disabled={isPreviewMonthDisbursed}
+                >
+                  {isPreviewMonthDisbursed ? 'Locked (Disbursed)' : 'Add Record'}
+                </Button>
+              )}
               <TextField
                 type="month"
-                label="Filter by edit/relieving month"
+                label="Month"
                 value={previewMonth}
                 onChange={(e) => setPreviewMonth(e.target.value)}
                 size="small"
                 InputLabelProps={{ shrink: true }}
-                sx={{ ...inputStyles, minWidth: 190 }}
+                sx={{ ...inputStyles, minWidth: 170 }}
               />
               <IconButton
                 onClick={() => {
@@ -2047,28 +2202,30 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             </Box>
           ) : (
             <TableContainer>
-              <Table sx={{ minWidth: 1500 }}>
+              <Table sx={{ minWidth: 1600 }}>
                 <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-                  
                   <TableRow>
                     {[
                       'Employee Code',
                       'Employee Name',
-                      'Tags',
-                      'No Of day Present',
-                      'Non Payable Days (Absent)',
-                      'Appraisal',
-                      'Bonus / Incentives',
-                      'Leave Encashment',
-                      'Late Arrival Deduction (depends on days, not on numbers)',
-                      'Damages Recovery',
-                      'Other Deductions',
+                      'Status',
+                      'Days Present',
+                      'Non-Payable Days',
+                      'Appraisal (₹)',
+                      'Bonus / Incentives (₹)',
+                      'Leave Encashment (₹)',
+                      'Late Arrival (days)',
+                      'Damages Recovery (₹)',
+                      'Other Deductions (₹)',
                       'Remarks',
                     ].map((header) => (
-                      <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, verticalAlign: 'top' }}>
+                      <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                         {header}
                       </TableCell>
                     ))}
+                    {isHRorAdmin && (
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -2083,14 +2240,12 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                     >
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.employee_code}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
-                      <TableCell sx={{ minWidth: 140 }}>
-                        <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-                          {(() => {
-                            const tag = getPreviewTag(emp, previewMonth);
-                            const meta = getPreviewTagMeta(tag);
-                            return (
+                      <TableCell sx={{ minWidth: 110 }}>
+                        {(() => {
+                          const tag = getPreviewTag(emp, previewMonth);
+                          const meta = getPreviewTagMeta(tag);
+                          return (
                             <Chip
-                              key={tag}
                               label={meta.label}
                               size="small"
                               sx={{
@@ -2103,9 +2258,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 border: `1px solid ${meta.border}`,
                               }}
                             />
-                            );
-                          })()}
-                        </Box>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? 30)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>
@@ -2122,9 +2276,45 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.late_arrival_deduction ? `${emp.late_arrival_deduction} days` : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.damages_recovery)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.other_deductions)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 260 }}>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 240 }}>
                         <PreviewRemarks remarks={emp.remarks} />
                       </TableCell>
+                      {isHRorAdmin && (
+                        <TableCell>
+                          <Tooltip title={isPreviewMonthDisbursed ? 'Locked (Payroll Disbursed)' : 'Edit HR Inputs'}>
+                            <span>
+                            <IconButton
+                              size="small"
+                              disabled={isPreviewMonthDisbursed}
+                              onClick={() => {
+                                setPreviewEditEmp(emp);
+                                setPreviewEditFormData({
+                                  employee_code: emp.employee_code,
+                                  name: emp.name,
+                                  no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
+                                  deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
+                                  appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+                                  appraisal_effective_date: emp.appraisal_effective_date || '',
+                                  leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
+                                  late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
+                                  damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
+                                  bonus_incentives: emp.bonus_incentives ? Number(emp.bonus_incentives) : '',
+                                  other_deductions: emp.other_deductions ? Number(emp.other_deductions) : '',
+                                  remarks: emp.remarks || '',
+                                  joining_date: emp.joining_date || '',
+                                  relieving_date: emp.relieving_date || '',
+                                  other_inputs: emp.other_inputs || '',
+                                });
+                                setOpenPreviewEditDialog(true);
+                              }}
+                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -2159,7 +2349,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                 {isHRorAdmin && (
                   <Button
                     variant="contained"
-                    disabled={updatePreviewStatusMutation.isLoading}
+                    disabled={updatePreviewStatusMutation.isLoading || isPreviewMonthDisbursed}
                     onClick={() => updatePreviewStatusMutation.mutate(previewReview?.status === 'done' ? 'undone' : 'done')}
                     sx={{
                       background: previewReview?.status === 'done' ? 'var(--color-warning)' : 'var(--color-primary)',
@@ -2173,7 +2363,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                 {isFinance && previewReview?.status === 'done' && (
                   <Button
                     variant="contained"
-                    disabled={updatePreviewStatusMutation.isLoading}
+                    disabled={updatePreviewStatusMutation.isLoading || isPreviewMonthDisbursed}
                     onClick={() => updatePreviewStatusMutation.mutate('undone')}
                     sx={{
                       background: 'var(--color-warning)',
@@ -2209,7 +2399,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   <Grid item xs={12} md={3}>
                     <Button
                       variant="outlined"
-                      disabled={updateFinanceRemarksMutation.isLoading}
+                      disabled={updateFinanceRemarksMutation.isLoading || isPreviewMonthDisbursed}
                       onClick={() => updateFinanceRemarksMutation.mutate()}
                       sx={{
                         mt: { xs: 0, md: 1 },
@@ -2301,6 +2491,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             </Box>
           </Paper>
         </Paper>
+        </Box>
       ) : (
         /* Manage Options View */
         <Grid
@@ -2660,128 +2851,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           />
                         </Grid>
                         
-                        {/* Tracker Fields */}
-                        <Grid item xs={6}>
-                          <TextField
-                            label="No Of day Present"
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.no_of_days_present}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, no_of_days_present: Number(e.target.value) })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0, max: 31 }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Non Payable Days (Absent)"
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.deduction_absent === 0 ? '' : profileFormData.deduction_absent}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, deduction_absent: parseFloat(e.target.value) || 0 })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0 }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Appraisal"
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.appraisal === 0 ? '' : profileFormData.appraisal}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, appraisal: parseFloat(e.target.value) || 0 })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0 }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Appraisal Effective Date"
-                            type="date"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.appraisal_effective_date}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, appraisal_effective_date: e.target.value })}
-                            sx={inputStyles}
-                            InputLabelProps={{ shrink: true }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Leave Encashment"
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.leave_encashment === 0 ? '' : profileFormData.leave_encashment}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, leave_encashment: parseFloat(e.target.value) || 0 })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0 }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Late Arrival Ded."
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.late_arrival_deduction === 0 ? '' : profileFormData.late_arrival_deduction}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0 }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Damages Recovery"
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.damages_recovery === 0 ? '' : profileFormData.damages_recovery}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, damages_recovery: parseFloat(e.target.value) || 0 })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0 }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Bonus / Incentives"
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.bonus_incentives === 0 ? '' : profileFormData.bonus_incentives}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, bonus_incentives: parseFloat(e.target.value) || 0 })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0 }}
-                          />
-                        </Grid>
-                        <Grid item xs={6}>
-                          <TextField
-                            label="Other Deductions"
-                            type="number"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.other_deductions === 0 ? '' : profileFormData.other_deductions}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, other_deductions: parseFloat(e.target.value) || 0 })}
-                            sx={inputStyles}
-                            inputProps={{ min: 0 }}
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <TextField
-                            label="Remarks"
-                            fullWidth
-                            multiline
-                            minRows={2}
-                            maxRows={10}
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.remarks}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, remarks: e.target.value })}
-                            sx={inputStyles}
-                          />
-                        </Grid>
 
                         <Grid item xs={12} sm={6}>
                           <FormControlLabel
@@ -2950,123 +3019,109 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   </Paper>
                 ) : (
                   <Box>
-                    {/* View Mode Switcher Header */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
                       <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>
                         Financial Summary
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                        {/* Export Tenure Data Section */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                            Export Tenure:
+                          </Typography>
+                          <FormControl size="small" sx={{ minWidth: 90 }}>
+                            <Select
+                              value={exportStartYear}
+                              onChange={(e) => setExportStartYear(Number(e.target.value))}
+                              sx={{
+                                color: 'var(--color-text-primary)',
+                                height: '32px',
+                                borderRadius: 'var(--radius-control)',
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                              }}
+                            >
+                              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                                <MenuItem key={y} value={y}>{y}</MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                            to
+                          </Typography>
+                          <FormControl size="small" sx={{ minWidth: 90 }}>
+                            <Select
+                              value={exportEndYear}
+                              onChange={(e) => setExportEndYear(Number(e.target.value))}
+                              sx={{
+                                color: 'var(--color-text-primary)',
+                                height: '32px',
+                                borderRadius: 'var(--radius-control)',
+                                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
+                              }}
+                            >
+                              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
+                                <MenuItem key={y} value={y}>{y}</MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                        {/* Annual/Monthly Toggle */}
+                        <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
+                          <Button
+                            size="small"
+                            onClick={() => setProfileViewMode('annual')}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              px: 2,
+                              py: 0.4,
+                              borderRadius: 'calc(var(--radius-control) - 2px)',
+                              color: profileViewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)',
+                              background: profileViewMode === 'annual' ? 'var(--color-primary)' : 'transparent',
+                              '&:hover': {
+                                background: profileViewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
+                              }
+                            }}
+                          >
+                            Annual
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => setProfileViewMode('monthly')}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              px: 2,
+                              py: 0.4,
+                              borderRadius: 'calc(var(--radius-control) - 2px)',
+                              color: profileViewMode === 'monthly' ? '#fff' : 'var(--color-text-secondary)',
+                              background: profileViewMode === 'monthly' ? 'var(--color-primary)' : 'transparent',
+                              '&:hover': {
+                                background: profileViewMode === 'monthly' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
+                              }
+                            }}
+                          >
+                            Monthly
+                          </Button>
+                        </Box>
                         <Button
+                          variant="contained"
                           size="small"
-                          onClick={() => setProfileViewMode('annual')}
+                          onClick={handleExportFinancials}
+                          startIcon={<DownloadIcon />}
                           sx={{
                             textTransform: 'none',
                             fontWeight: 600,
-                            px: 2,
-                            py: 0.4,
-                            borderRadius: 'calc(var(--radius-control) - 2px)',
-                            color: profileViewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)',
-                            background: profileViewMode === 'annual' ? 'var(--color-primary)' : 'transparent',
-                            '&:hover': {
-                              background: profileViewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
-                            }
+                            height: '34px',
+                            borderRadius: 'var(--radius-control)',
+                            background: 'var(--color-primary)',
+                            '&:hover': { background: 'var(--color-primary-hover)' },
                           }}
                         >
-                          Annual
-                        </Button>
-                        <Button
-                          size="small"
-                          onClick={() => setProfileViewMode('monthly')}
-                          sx={{
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            px: 2,
-                            py: 0.4,
-                            borderRadius: 'calc(var(--radius-control) - 2px)',
-                            color: profileViewMode === 'monthly' ? '#fff' : 'var(--color-text-secondary)',
-                            background: profileViewMode === 'monthly' ? 'var(--color-primary)' : 'transparent',
-                            '&:hover': {
-                              background: profileViewMode === 'monthly' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
-                            }
-                          }}
-                        >
-                          Monthly
+                          Export CSV
                         </Button>
                       </Box>
                     </Box>
-
-                     {/* Export Tenure Data Section */}
-                     <Box
-                       sx={{
-                         p: 2,
-                         mb: 3,
-                         background: 'rgba(255, 255, 255, 0.02)',
-                         border: '1px solid var(--color-border)',
-                         borderRadius: 'var(--radius-control)',
-                         display: 'flex',
-                         flexWrap: 'wrap',
-                         alignItems: 'center',
-                         justifyContent: 'space-between',
-                         gap: 2,
-                       }}
-                     >
-                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                           Export Tenure:
-                         </Typography>
-                         <FormControl size="small" sx={{ minWidth: 100 }}>
-                           <Select
-                             value={exportStartYear}
-                             onChange={(e) => setExportStartYear(Number(e.target.value))}
-                             sx={{
-                               color: 'var(--color-text-primary)',
-                               height: '34px',
-                               borderRadius: 'var(--radius-control)',
-                               '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                             }}
-                           >
-                             {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                               <MenuItem key={y} value={y}>{y}</MenuItem>
-                             ))}
-                           </Select>
-                         </FormControl>
-                         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                           to
-                         </Typography>
-                         <FormControl size="small" sx={{ minWidth: 100 }}>
-                           <Select
-                             value={exportEndYear}
-                             onChange={(e) => setExportEndYear(Number(e.target.value))}
-                             sx={{
-                               color: 'var(--color-text-primary)',
-                               height: '34px',
-                               borderRadius: 'var(--radius-control)',
-                               '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                             }}
-                           >
-                             {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                               <MenuItem key={y} value={y}>{y}</MenuItem>
-                             ))}
-                           </Select>
-                         </FormControl>
-                       </Box>
-                       <Button
-                         variant="contained"
-                         size="small"
-                         onClick={handleExportFinancials}
-                         startIcon={<DownloadIcon />}
-                         sx={{
-                           textTransform: 'none',
-                           fontWeight: 600,
-                           height: '34px',
-                           borderRadius: 'var(--radius-control)',
-                           background: 'var(--color-primary)',
-                           '&:hover': { background: 'var(--color-primary-hover)' },
-                         }}
-                       >
-                         Export CSV
-                       </Button>
-                     </Box>
 
                     <Grid container spacing={3}>
                       {/* Top Stats */}
@@ -3359,6 +3414,205 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
           <Button onClick={() => setOpenProfileDialog(false)} variant="outlined" sx={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)', textTransform: 'none' }}>
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Preview Sheet Edit/Add Dialog */}
+      <Dialog
+        open={openPreviewEditDialog}
+        onClose={() => { setOpenPreviewEditDialog(false); setPreviewEditEmp(null); }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            boxShadow: 'var(--shadow-card)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 2 }}>
+          {previewEditEmp
+            ? `Edit HR Inputs — ${previewEditEmp.employee_code} · ${previewEditEmp.name}`
+            : 'Add Employee HR Inputs'}
+          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5, fontWeight: 400, fontSize: '0.82rem' }}>
+            {previewEditEmp
+              ? 'Update attendance, deductions, bonuses, and remarks for this employee\'s payroll month.'
+              : 'Select an employee below and fill in their monthly HR inputs.'}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          <Grid container spacing={2.5}>
+            {!previewEditEmp && (
+              <Grid item xs={12}>
+                <Autocomplete
+                  options={activeEmployees}
+                  getOptionLabel={(emp: Employee) => `${emp.employee_code} – ${emp.name}`}
+                  onChange={(_, emp: Employee | null) => {
+                    if (emp) {
+                      setPreviewEditEmp(emp);
+                      setPreviewEditFormData({
+                        employee_code: emp.employee_code,
+                        name: emp.name,
+                        no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
+                        deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
+                        appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+                        appraisal_effective_date: emp.appraisal_effective_date || '',
+                        leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
+                        late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
+                        damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
+                        bonus_incentives: emp.bonus_incentives ? Number(emp.bonus_incentives) : '',
+                        other_deductions: emp.other_deductions ? Number(emp.other_deductions) : '',
+                        remarks: emp.remarks || '',
+                        joining_date: emp.joining_date || '',
+                        relieving_date: emp.relieving_date || '',
+                        other_inputs: emp.other_inputs || '',
+                      });
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Select Employee" placeholder="Search by code or name…" sx={inputStyles} />
+                  )}
+                  ListboxProps={{ sx: dropdownListStyles }}
+                />
+              </Grid>
+            )}
+            <Grid item xs={6}>
+              <TextField
+                label="No. of Days Present"
+                type="number"
+                fullWidth
+                value={previewEditFormData.no_of_days_present}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, no_of_days_present: Number(e.target.value) })}
+                sx={inputStyles}
+                inputProps={{ min: 0, max: 31 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Non-Payable Days (Absent)"
+                type="number"
+                fullWidth
+                value={previewEditFormData.deduction_absent === 0 ? '' : previewEditFormData.deduction_absent}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, deduction_absent: parseFloat(e.target.value) || 0 })}
+                sx={inputStyles}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Appraisal (₹)"
+                type="number"
+                fullWidth
+                value={previewEditFormData.appraisal === 0 ? '' : previewEditFormData.appraisal}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, appraisal: parseFloat(e.target.value) || 0 })}
+                sx={inputStyles}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Appraisal Effective Date"
+                type="date"
+                fullWidth
+                value={previewEditFormData.appraisal_effective_date}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, appraisal_effective_date: e.target.value })}
+                sx={inputStyles}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Bonus / Incentives (₹)"
+                type="number"
+                fullWidth
+                value={previewEditFormData.bonus_incentives === 0 ? '' : previewEditFormData.bonus_incentives}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, bonus_incentives: parseFloat(e.target.value) || 0 })}
+                sx={inputStyles}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Leave Encashment (₹)"
+                type="number"
+                fullWidth
+                value={previewEditFormData.leave_encashment === 0 ? '' : previewEditFormData.leave_encashment}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, leave_encashment: parseFloat(e.target.value) || 0 })}
+                sx={inputStyles}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Late Arrival (no. of days)"
+                type="number"
+                fullWidth
+                value={previewEditFormData.late_arrival_deduction === 0 ? '' : previewEditFormData.late_arrival_deduction}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })}
+                sx={inputStyles}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Damages Recovery (₹)"
+                type="number"
+                fullWidth
+                value={previewEditFormData.damages_recovery === 0 ? '' : previewEditFormData.damages_recovery}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, damages_recovery: parseFloat(e.target.value) || 0 })}
+                sx={inputStyles}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Other Deductions (₹)"
+                type="number"
+                fullWidth
+                value={previewEditFormData.other_deductions === 0 ? '' : previewEditFormData.other_deductions}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, other_deductions: parseFloat(e.target.value) || 0 })}
+                sx={inputStyles}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Remarks"
+                fullWidth
+                multiline
+                minRows={2}
+                maxRows={6}
+                value={previewEditFormData.remarks}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, remarks: e.target.value })}
+                sx={inputStyles}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, borderTop: '1px solid rgba(255,255,255,0.08)', gap: 1 }}>
+          <Button
+            onClick={() => { setOpenPreviewEditDialog(false); setPreviewEditEmp(null); }}
+            variant="outlined"
+            sx={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)', textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!previewEditEmp || saveConsoleMutation.isLoading || isPreviewMonthDisbursed}
+            onClick={handleSavePreviewEdit}
+            sx={{
+              background: 'var(--color-primary)',
+              boxShadow: '0 4px 12px rgba(99,102,241,0.22)',
+              borderRadius: 'var(--radius-control)',
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {saveConsoleMutation.isLoading ? 'Saving…' : 'Save Inputs'}
           </Button>
         </DialogActions>
       </Dialog>

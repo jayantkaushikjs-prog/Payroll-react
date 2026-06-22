@@ -17,8 +17,7 @@ import Employees from './pages/Employees';
 import FinancialSummary from './pages/FinancialSummary';
 import SalaryStructures from './pages/SalaryStructures';
 import NonPayableDays from './pages/NonPayableDays';
-import PFSettings from './pages/PFSettings';
-import TaxSlabs from './pages/TaxSlabs';
+import ComplianceSettings from './pages/ComplianceSettings';
 import Advances from './pages/Advances';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
@@ -111,18 +110,10 @@ const App: React.FC = () => {
                     }
                   />
                   <Route
-                    path="pf"
+                    path="compliance"
                     element={
-                      <RoleProtectedRoute requiredPermission={Permission.MANAGE_PF_SETTINGS}>
-                        <PFSettings />
-                      </RoleProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="tax"
-                    element={
-                      <RoleProtectedRoute requiredPermission={Permission.MANAGE_TAX_SLABS}>
-                        <TaxSlabs />
+                      <RoleProtectedRoute requiredPermissions={[Permission.MANAGE_PF_SETTINGS, Permission.MANAGE_TAX_SLABS]} requireAll={false}>
+                        <ComplianceSettings />
                       </RoleProtectedRoute>
                     }
                   />

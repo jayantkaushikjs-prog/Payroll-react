@@ -616,8 +616,8 @@ const Expenses: React.FC = () => {
 
       {/* Filter panel */}
       <Paper sx={{ ...cardSx, p: 3, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ flex: '1 1 250px' }}>
             <TextField
               fullWidth
               placeholder="Search expenses by title or description..."
@@ -628,8 +628,8 @@ const Expenses: React.FC = () => {
               }}
               sx={inputStyles}
             />
-          </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          </Box>
+          <Box sx={{ flex: '1 1 120px' }}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="month-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Month</InputLabel>
               <Select
@@ -646,8 +646,8 @@ const Expenses: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          </Box>
+          <Box sx={{ flex: '1 1 120px' }}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="year-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
               <Select
@@ -664,8 +664,8 @@ const Expenses: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          </Box>
+          <Box sx={{ flex: '1 1 150px' }}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="category-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Category</InputLabel>
               <Select
@@ -682,8 +682,8 @@ const Expenses: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          </Box>
+          <Box sx={{ flex: '1 1 150px' }}>
             <FormControl fullWidth sx={selectStyles}>
               <InputLabel id="frequency-filter-label" sx={{ color: 'var(--color-text-secondary)' }}>Frequency</InputLabel>
               <Select
@@ -697,8 +697,8 @@ const Expenses: React.FC = () => {
                 <MenuItem value="one-time">One-Time Only</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={12} md={12}>
+          </Box>
+          <Box sx={{ flex: '0 0 auto' }}>
             <FormControlLabel
               control={
                 <Switch
@@ -711,10 +711,10 @@ const Expenses: React.FC = () => {
                 />
               }
               label="Include Salary / PF / ESI"
-              sx={{ color: 'var(--color-text-primary)' }}
+              sx={{ color: 'var(--color-text-primary)', whiteSpace: 'nowrap', m: 0 }}
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Paper>
 
       {/* Expense Listing Table */}
