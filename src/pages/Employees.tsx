@@ -1233,15 +1233,20 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     Boolean(emp.other_inputs?.trim());
 
   const previewEmployees = activeEmployees
-    .filter((emp: Employee) => hasHrPreviewInput(emp) || isEditedInMonth(emp, previewMonth))
+    .filter((emp: Employee) => {
+      // Always include employees with actual HR-relevant inputs
+      if (hasHrPreviewInput(emp)) return true;
+      // Always include employees with a special employment status this month
+      if (isRelievingInMonth(emp, previewMonth)) return true;
+      if (isOnNoticeInMonth(emp, previewMonth)) return true;
+      if (isNewEmployee(emp, previewMonth)) return true;
+      return false;
+    })
     .filter((emp: Employee) => {
       if (previewTagFilters.length === 0) return true;
       return previewTagFilters.includes(getPreviewTag(emp, previewMonth));
-    })
-    .filter((emp: Employee) => {
-      if (!previewMonth) return true;
-      return isEditedInMonth(emp, previewMonth) || isRelievingInMonth(emp, previewMonth) || isOnNoticeInMonth(emp, previewMonth);
     });
+
 
   const togglePreviewTagFilter = (filter: PreviewTagFilter) => {
     setPreviewTagFilters((current) =>
@@ -3207,10 +3212,21 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer PF</Typography>
                                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                   {profileViewMode === 'annual'
-                                    ? formatCurrency((profileSummary.structure.ctc - profileSummary.structure.gross_salary) * 12)
-                                    : formatCurrency(profileSummary.structure.ctc - profileSummary.structure.gross_salary)}
+                                    ? formatCurrency((profileSummary.structure.employer_pf ?? (profileSummary.structure.ctc - profileSummary.structure.gross_salary)) * 12)
+                                    : formatCurrency(profileSummary.structure.employer_pf ?? (profileSummary.structure.ctc - profileSummary.structure.gross_salary))}
                                 </Typography>
                               </Grid>
+
+                              {(profileSummary.structure.employer_esi ?? 0) > 0 && (
+                                <Grid item xs={6} sm={3}>
+                                  <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer ESI</Typography>
+                                  <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                                    {profileViewMode === 'annual'
+                                      ? formatCurrency(profileSummary.structure.employer_esi * 12)
+                                      : formatCurrency(profileSummary.structure.employer_esi)}
+                                  </Typography>
+                                </Grid>
+                              )}
 
                               {profileSummary.structure.special_allowance > 0 && (
                                 <Grid item xs={6} sm={3}>
