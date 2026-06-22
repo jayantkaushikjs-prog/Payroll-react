@@ -232,18 +232,25 @@ const Payroll: React.FC = () => {
           <Table sx={{ minWidth: 900 }}>
             <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
               <TableRow>
-                {['Emp Code','Name','Dept','Basic','HRA','Others','Gross (A)','Absence Ded.','PF (B)','Tax/TDS (B)','Advance Rec. (B)','Net (A−B)','Status'].map(h => (
-                  <TableCell key={h} align={['Basic','HRA','Others','Gross (A)','Absence Ded.','PF (B)','Tax/TDS (B)','Advance Rec. (B)','Net (A−B)'].includes(h) ? 'right' : h === 'Status' ? 'center' : 'left'} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>
+                {['Emp Code','Name','Dept','Basic','HRA','Others','Bonus','Encash','Gross (A)','Absent','Late Ded','PF','ESI','PT','Tax/TDS','Damages','Other Ded','Advance Rec.','Net (A−B)','Status'].map(h => (
+                  <TableCell key={h} align={['Basic','HRA','Others','Bonus','Encash','Gross (A)','Absent','Late Ded','PF','ESI','PT','Tax/TDS','Damages','Other Ded','Advance Rec.','Net (A−B)'].includes(h) ? 'right' : h === 'Status' ? 'center' : 'left'} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
-              {isLoading ? <TableRow><TableCell colSpan={13} align="center" sx={{ py: 5 }}><CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} /></TableCell></TableRow>
-              : payrolls.length === 0 ? <TableRow><TableCell colSpan={13} align="center" sx={{ py: 5, color: 'var(--color-text-muted)' }}>No payroll data. {canEdit && 'Click "Generate Payroll" to start.'}</TableCell></TableRow>
+              {isLoading ? <TableRow><TableCell colSpan={20} align="center" sx={{ py: 5 }}><CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} /></TableCell></TableRow>
+              : payrolls.length === 0 ? <TableRow><TableCell colSpan={20} align="center" sx={{ py: 5, color: 'var(--color-text-muted)' }}>No payroll data. {canEdit && 'Click "Generate Payroll" to start.'}</TableCell></TableRow>
               : payrolls.map((pr: any) => {
                 const basic = Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0);
                 const hra = Number(pr.tax_breakdown_json?.hra ?? (basic * 0.4).toFixed(2));
                 const others = Number(pr.tax_breakdown_json?.othersAllowance ?? Math.max(0, Number(pr.gross_salary) - basic - hra));
+                const bonus = Number(pr.tax_breakdown_json?.bonus ?? 0);
+                const encash = Number(pr.tax_breakdown_json?.leaveEncashment ?? 0);
+                const employeeEsi = Number(pr.tax_breakdown_json?.employeeEsi ?? 0);
+                const pt = Number(pr.tax_breakdown_json?.professionalTax ?? 0);
+                const lateDed = Number(pr.tax_breakdown_json?.lateArrivalDeduction ?? 0);
+                const damages = Number(pr.tax_breakdown_json?.damages ?? 0);
+                const otherDed = Number(pr.tax_breakdown_json?.otherDeductions ?? 0);
                 return (
                 <TableRow key={pr.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' } }}>
                   <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{pr.employee?.employee_code}</TableCell>
@@ -252,6 +259,8 @@ const Payroll: React.FC = () => {
                   <TableCell align="right" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(basic)}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hra)}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-text-secondary)' }}>{others > 0 ? formatCurrency(others) : '—'}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-success)' }}>{bonus > 0 ? formatCurrency(bonus) : '—'}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-success)' }}>{encash > 0 ? formatCurrency(encash) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-info)', fontWeight: 600 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                       {formatCurrency(pr.gross_salary)}
@@ -261,7 +270,10 @@ const Payroll: React.FC = () => {
                     </Box>
                   </TableCell>
                   <TableCell align="right" sx={{ color: pr.non_payable_deduction > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{pr.non_payable_deduction > 0 ? `-${formatCurrency(pr.non_payable_deduction)}` : '—'}</TableCell>
+                  <TableCell align="right" sx={{ color: lateDed > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{lateDed > 0 ? `-${formatCurrency(lateDed)}` : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{formatCurrency(pr.pf_deduction)}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{employeeEsi > 0 ? formatCurrency(employeeEsi) : '—'}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{pt > 0 ? formatCurrency(pt) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-warning)' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                       {formatCurrency(pr.tax_deduction)}
@@ -270,11 +282,13 @@ const Payroll: React.FC = () => {
                       </Tooltip>
                     </Box>
                   </TableCell>
+                  <TableCell align="right" sx={{ color: damages > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{damages > 0 ? `-${formatCurrency(damages)}` : '—'}</TableCell>
+                  <TableCell align="right" sx={{ color: otherDed > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{otherDed > 0 ? `-${formatCurrency(otherDed)}` : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: pr.advance_recovery > 0 ? '#fb923c' : 'var(--color-text-muted)' }}>{pr.advance_recovery > 0 ? formatCurrency(pr.advance_recovery) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-success)', fontWeight: 700 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                       {formatCurrency(pr.net_salary)}
-                      <Tooltip title={`Net = Gross (${formatCurrency(pr.gross_salary)}) − PF (${formatCurrency(pr.pf_deduction)}) − Tax (${formatCurrency(pr.tax_deduction)}) − Absence (${formatCurrency(pr.non_payable_deduction)}) − Advance (${formatCurrency(pr.advance_recovery)})`} arrow>
+                      <Tooltip title={`Net = Total Earnings (${formatCurrency(Number(pr.gross_salary) + bonus + encash)}) − Total Deductions`} arrow>
                         <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}><HelpOutlineIcon /></IconButton>
                       </Tooltip>
                     </Box>

@@ -23,6 +23,12 @@ import { formatCurrency } from '../constants/currency';
 const PayrollCalculator: React.FC = () => {
   const [ctcInput, setCtcInput] = useState<string>('');
   const [includePf, setIncludePf] = useState<boolean>(true);
+  const [bonus, setBonus] = useState<string>('');
+  const [leaveEncashment, setLeaveEncashment] = useState<string>('');
+  const [lateArrivals, setLateArrivals] = useState<string>('');
+  const [damages, setDamages] = useState<string>('');
+  const [otherDeductions, setOtherDeductions] = useState<string>('');
+  const [appraisal, setAppraisal] = useState<string>('');
 
   // Fetch all PF Settings for dynamic rates
   const { data: pfList = [] } = useQuery(['pfSettings'], async () => {
@@ -43,7 +49,7 @@ const PayrollCalculator: React.FC = () => {
    * @param settings - PF/ESI configuration; defaults to empty object.
    * @returns An object containing all calculated salary components.
    */
-  const calculateSalary = (ctc: number, includePf: boolean, settings: any = {}) => {
+  const calculateSalary = (ctcValue: number, includePf: boolean, settings: any = {}, extra: any) => {
     const pfEmployerRate = (Number(settings?.employer_contribution_rate) || 12) / 100;
     const pfEmployeeRate = (Number(settings?.employee_contribution_rate) || 12) / 100;
     const esiEmployerRate = (Number(settings?.esi_contribution_rate) || 3.25) / 100;
@@ -51,6 +57,8 @@ const PayrollCalculator: React.FC = () => {
     const professionalTax = Number(settings?.professional_tax !== undefined ? settings.professional_tax : 200);
     const maxPfCap = Number(settings?.max_pf_cap || 1800);
 
+    const ctc = ctcValue + extra.appraisal;
+    
     // Basic and HRA (fixed percentages)
     const basic = Number((ctc * 0.5).toFixed(2));
     const hra = Number((basic * 0.4).toFixed(2));
@@ -66,27 +74,40 @@ const PayrollCalculator: React.FC = () => {
     const employeePf = pfApplicable ? Number(Math.min(basic * pfEmployeeRate, maxPfCap).toFixed(2)) : 0;
     const employeeEsi = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0;
 
-    // Gross = CTC - employee PF - employer ESI
-    const gross = Number((ctc - employeePf - employerEsi).toFixed(2));
+    // Gross = CTC - employer PF - employer ESI
+    const gross = Number((ctc - employerPf - employerEsi).toFixed(2));
 
     // Other allowance is whatever remains after basic & HRA
     const othersAllowance = Math.max(0, Number((gross - basic - hra).toFixed(2)));
 
+    // New Deductions
+    const daysInMonth = 30;
+    const lateAbsentDays = Math.floor(extra.lateArrivals / 3) * 0.5;
+    const lateArrivalDeductionAmount = Number(((gross / daysInMonth) * lateAbsentDays).toFixed(2));
+
     const appliedPt = ctc <= 250000 ? 0 : professionalTax;
-    const totalDeductions = Number((employeePf + employeeEsi + appliedPt).toFixed(2));
-    const net = Number((gross - totalDeductions).toFixed(2));
+    const totalDeductions = Number((employeePf + employeeEsi + appliedPt + lateArrivalDeductionAmount + extra.damages + extra.otherDeductions).toFixed(2));
+    
+    const totalEarnings = Number((gross + extra.bonus + extra.leaveEncashment).toFixed(2));
+    const net = Number((totalEarnings - totalDeductions).toFixed(2));
 
     return {
       basic,
       hra,
       othersAllowance,
       grossSalary: gross,
+      bonus: extra.bonus,
+      leaveEncashment: extra.leaveEncashment,
+      totalEarnings,
       pfContribution: employerPf,
       esiContribution: employerEsi,
       ctc: ctc,
       employeePf,
       employeeEsi,
       professionalTax: appliedPt,
+      lateArrivalDeductionAmount,
+      damages: extra.damages,
+      otherDeductions: extra.otherDeductions,
       totalDeductions,
       netSalary: net,
     };
@@ -101,20 +122,33 @@ const PayrollCalculator: React.FC = () => {
         hra: 0,
         othersAllowance: 0,
         grossSalary: 0,
+        bonus: 0,
+        leaveEncashment: 0,
+        totalEarnings: 0,
         pfContribution: 0,
         esiContribution: 0,
         ctc: 0,
         employeePf: 0,
         employeeEsi: 0,
         professionalTax: 0,
+        lateArrivalDeductionAmount: 0,
+        damages: 0,
+        otherDeductions: 0,
         totalDeductions: 0,
         netSalary: 0,
       };
     }
 
     const monthlyCtc = inputCtc;
-    return calculateSalary(monthlyCtc, includePf, latestSettings);
-  }, [ctcInput, latestSettings, includePf]);
+    return calculateSalary(monthlyCtc, includePf, latestSettings, {
+      bonus: Number(bonus) || 0,
+      leaveEncashment: Number(leaveEncashment) || 0,
+      lateArrivals: Number(lateArrivals) || 0,
+      damages: Number(damages) || 0,
+      otherDeductions: Number(otherDeductions) || 0,
+      appraisal: Number(appraisal) || 0,
+    });
+  }, [ctcInput, latestSettings, includePf, bonus, leaveEncashment, lateArrivals, damages, otherDeductions, appraisal]);
 
   // Section header row spanning all 3 columns
   const sectionRow = (label: string) => (
@@ -173,7 +207,32 @@ const PayrollCalculator: React.FC = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 3 }}>
+            <Box sx={{ flex: 1, minWidth: 150 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Appraisal</Typography>
+              <TextField value={appraisal} onChange={(e) => setAppraisal(e.target.value)} type="number" placeholder="Amt" variant="outlined" size="small" fullWidth />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 150 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Bonus/Incentive</Typography>
+              <TextField value={bonus} onChange={(e) => setBonus(e.target.value)} type="number" placeholder="Amt" variant="outlined" size="small" fullWidth />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 150 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Leave Encashment</Typography>
+              <TextField value={leaveEncashment} onChange={(e) => setLeaveEncashment(e.target.value)} type="number" placeholder="Amt" variant="outlined" size="small" fullWidth />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 150 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Late Arrivals (Days)</Typography>
+              <TextField value={lateArrivals} onChange={(e) => setLateArrivals(e.target.value)} type="number" placeholder="Days" variant="outlined" size="small" fullWidth />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 150 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Damages</Typography>
+              <TextField value={damages} onChange={(e) => setDamages(e.target.value)} type="number" placeholder="Amt" variant="outlined" size="small" fullWidth />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 150 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Other Ded.</Typography>
+              <TextField value={otherDeductions} onChange={(e) => setOtherDeductions(e.target.value)} type="number" placeholder="Amt" variant="outlined" size="small" fullWidth />
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, width: '100%' }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -206,7 +265,10 @@ const PayrollCalculator: React.FC = () => {
                 {dataRow('Basic Salary', calculated.basic)}
                 {dataRow('House Rent Allowance (HRA)', calculated.hra)}
                 {dataRow('Others Allowance', calculated.othersAllowance)}
-                {dataRow('Gross Salary (A)', calculated.grossSalary, true)}
+                {dataRow('Gross Salary', calculated.grossSalary)}
+                {dataRow('Bonus / Incentives', calculated.bonus || 0)}
+                {dataRow('Leave Encashment', calculated.leaveEncashment || 0)}
+                {dataRow('Total Earnings (A)', calculated.totalEarnings || 0, true)}
 
                 {sectionRow('Benefits')}
                 {dataRow('PF Contribution', calculated.pfContribution)}
@@ -217,6 +279,9 @@ const PayrollCalculator: React.FC = () => {
                 {dataRow('Employee PF Contribution', calculated.employeePf)}
                 {dataRow('Employee ESI Contribution', calculated.employeeEsi)}
                 {dataRow('Professional Tax', calculated.professionalTax)}
+                {dataRow('Late Arrival Deduction', calculated.lateArrivalDeductionAmount || 0)}
+                {dataRow('Damages Recovery', calculated.damages || 0)}
+                {dataRow('Other Deductions', calculated.otherDeductions || 0)}
                 {dataRow('Total Deductions (B)', calculated.totalDeductions, true)}
 
                 <TableRow>
