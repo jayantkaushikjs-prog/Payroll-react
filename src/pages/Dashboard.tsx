@@ -34,7 +34,6 @@ import {
   Savings as SalaryIcon,
   TrendingUp as TrendIcon,
   Receipt as ExpensesIcon,
-  PendingActions as PendingPayrollIcon,
   HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 import {
@@ -154,7 +153,7 @@ const Dashboard: React.FC = () => {
         icon: <PayrollIcon />, 
         color: 'var(--color-success)', 
         format: 'currency' as const,
-        tooltip: (d: DashboardData) => `Breakdown: Net Salary Disbursed (${formatCurrency(d.stats.currentMonthPayroll || 0)}) + Tax Deducted (${formatCurrency(d.stats.taxDeductions || 0)}) + PF Deducted (${formatCurrency(d.stats.pfContributions || 0)})`
+        tooltip: (d: DashboardData) => `Total net salary disbursed this month. Tax deducted: ${formatCurrency(d.stats.taxDeductions || 0)}, PF deducted: ${formatCurrency(d.stats.pfContributions || 0)}`
       },
       { 
         key: 'totalExpensesThisMonth', 
@@ -168,7 +167,6 @@ const Dashboard: React.FC = () => {
           return 'Breakdown: ' + breakdown.map((b: any) => `${b.category.toUpperCase()}: ${formatCurrency(b.amount)}`).join(' | ');
         }
       },
-      { key: 'pendingPayrollProcessing', label: 'Pending Payroll Processing', icon: <PendingPayrollIcon />, color: 'var(--color-warning)' },
       { 
         key: 'totalAdvancesOutstanding', 
         label: 'Advances Outstanding', 
@@ -261,13 +259,13 @@ const Dashboard: React.FC = () => {
               gridTemplateColumns: {
                 xs: '1fr',
                 sm: 'repeat(2, 1fr)',
-                md: 'repeat(5, 1fr)',
+                md: 'repeat(4, 1fr)',
               },
               gap: 3,
               mb: 3,
             }}
           >
-            {[kpis[0], kpis[1], kpis[2], kpis[5], kpis[6]].filter(Boolean).map((kpi) => (
+            {[kpis[0], kpis[1], kpis[2], kpis[5]].filter(Boolean).map((kpi) => (
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}
@@ -290,7 +288,7 @@ const Dashboard: React.FC = () => {
               mb: 4,
             }}
           >
-            {[kpis[3], kpis[4], kpis[7], kpis[8]].filter(Boolean).map((kpi) => (
+            {[kpis[3], kpis[4], kpis[6], kpis[7]].filter(Boolean).map((kpi) => (
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}

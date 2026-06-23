@@ -115,54 +115,62 @@ const PFSettings: React.FC = () => {
     suffix: string,
     color: string,
     bgColor: string,
-    disabled: boolean
+    disabled: boolean,
+    description?: string
   ) => (
     <Grid item xs={12}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Chip
-          label={label}
-          size="small"
-          sx={{
-            fontWeight: 700,
-            height: 28,
-            fontSize: '0.8rem',
-            color: color,
-            bgcolor: bgColor,
-            border: `1px solid ${color}40`,
-            width: 220,
-            justifyContent: 'flex-start'
-          }}
-        />
-        {isEditing || !latestSettings ? (
-          <TextField
-            type="number"
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Chip
+            label={label}
             size="small"
-            value={value}
-            onChange={(e) => {
-              const raw = e.target.value;
-              onChange(raw === '' ? '' : parseFloat(raw));
-            }}
-            inputProps={{ step: suffix === '%' ? 0.1 : 1, min: 0 }}
-            disabled={disabled}
             sx={{
-              width: 100,
-              '& .MuiOutlinedInput-root': {
-                color: 'var(--color-text-primary)',
-                borderRadius: 'var(--radius-control)',
-                '& fieldset': { borderColor: 'var(--color-border)' },
-                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-              },
+              fontWeight: 700,
+              height: 28,
+              fontSize: '0.8rem',
+              color: color,
+              bgcolor: bgColor,
+              border: `1px solid ${color}40`,
+              width: 220,
+              justifyContent: 'flex-start'
             }}
           />
-        ) : (
-          <Typography
-            variant="h6"
-            fontWeight={700}
-            sx={{ color: 'var(--color-text-primary)', cursor: disabled ? 'default' : 'pointer', width: 100 }}
-            onClick={() => !disabled && setIsEditing(true)}
-          >
-            {suffix === '₹' ? `₹${value}` : `${value}%`}
+          {isEditing || !latestSettings ? (
+            <TextField
+              type="number"
+              size="small"
+              value={value}
+              onChange={(e) => {
+                const raw = e.target.value;
+                onChange(raw === '' ? '' : parseFloat(raw));
+              }}
+              inputProps={{ step: suffix === '%' ? 0.1 : 1, min: 0 }}
+              disabled={disabled}
+              sx={{
+                width: 100,
+                '& .MuiOutlinedInput-root': {
+                  color: 'var(--color-text-primary)',
+                  borderRadius: 'var(--radius-control)',
+                  '& fieldset': { borderColor: 'var(--color-border)' },
+                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
+                },
+              }}
+            />
+          ) : (
+            <Typography
+              variant="h6"
+              fontWeight={700}
+              sx={{ color: 'var(--color-text-primary)', cursor: disabled ? 'default' : 'pointer', width: 100 }}
+              onClick={() => !disabled && setIsEditing(true)}
+            >
+              {suffix === '₹' ? `₹${value}` : `${value}%`}
+            </Typography>
+          )}
+        </Box>
+        {description && (
+          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', ml: '236px' }}>
+            {description}
           </Typography>
         )}
       </Box>
@@ -192,11 +200,11 @@ const PFSettings: React.FC = () => {
           </Typography>
 
           <Grid container spacing={3}>
-            {renderField('PF Employer Benefit', pfEmployerRate, setPfEmployerRate, '%', 'var(--color-primary-hover)', 'rgba(59, 130, 246, 0.12)', !isFinanceOrAdmin)}
-            {renderField('PF Employee Contribution', pfEmployeeRate, setPfEmployeeRate, '%', 'var(--color-primary-hover)', 'rgba(59, 130, 246, 0.12)', !isFinanceOrAdmin)}
-            {renderField('ESI Employer Benefit', esiEmployerRate, setEsiEmployerRate, '%', 'var(--color-success)', 'rgba(16, 185, 129, 0.12)', !isFinanceOrAdmin)}
-            {renderField('ESI Employee Contribution', esiEmployeeRate, setEsiEmployeeRate, '%', 'var(--color-success)', 'rgba(16, 185, 129, 0.12)', !isFinanceOrAdmin)}
-            {renderField('Professional Tax Amount', professionalTax, setProfessionalTax, '₹', 'var(--color-warning)', 'rgba(245, 158, 11, 0.12)', !isFinanceOrAdmin)}
+            {renderField('PF Employer Benefit', pfEmployerRate, setPfEmployerRate, '%', 'var(--color-primary-hover)', 'rgba(59, 130, 246, 0.12)', !isFinanceOrAdmin, 'Calculated on Basic Salary (Max PF Cap of 1800 typically applies)')}
+            {renderField('PF Employee Contribution', pfEmployeeRate, setPfEmployeeRate, '%', 'var(--color-primary-hover)', 'rgba(59, 130, 246, 0.12)', !isFinanceOrAdmin, 'Deducted from Basic Salary (Max PF Cap of 1800 typically applies)')}
+            {renderField('ESI Employer Benefit', esiEmployerRate, setEsiEmployerRate, '%', 'var(--color-success)', 'rgba(16, 185, 129, 0.12)', !isFinanceOrAdmin, 'Applies only when Basic Salary is ≤ ₹21,000')}
+            {renderField('ESI Employee Contribution', esiEmployeeRate, setEsiEmployeeRate, '%', 'var(--color-success)', 'rgba(16, 185, 129, 0.12)', !isFinanceOrAdmin, 'Applies only when Basic Salary is ≤ ₹21,000')}
+            {renderField('Professional Tax Amount', professionalTax, setProfessionalTax, '₹', 'var(--color-warning)', 'rgba(245, 158, 11, 0.12)', !isFinanceOrAdmin, 'Deducted annually/monthly if CTC > ₹250,000')}
 
             {isFinanceOrAdmin && (isEditing || !latestSettings) && (
               <Grid item xs={12}>

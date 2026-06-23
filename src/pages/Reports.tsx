@@ -7,16 +7,12 @@ import {
 import { useToast } from '../context/ToastContext';
 import {
   AccountBalance as BankIcon,
-  Assessment as SummaryIcon,
   Download as DlIcon,
-  EventBusy as NonPayableIcon,
   People as PeopleIcon,
   ReceiptLong as PayrollIcon,
   Savings as AdvancesIcon,
-  Security as PfIcon,
   Timeline as JoiningIcon,
   Wallet as SalaryIcon,
-  Percent as TaxIcon,
 } from '@mui/icons-material';
 import { downloadCsvFile } from '../utils/download';
 
@@ -59,17 +55,14 @@ const Reports: React.FC = () => {
 
   const hrReports = [
     { title: 'Employee Master Data', desc: 'Employee profile roster without finance-sensitive bank or salary data.', icon: <PeopleIcon />, gradient: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-pressed))', url: '/reports/employee-master/csv', file: `employee-master_${today}.csv` },
-    { title: 'Non-Payable Days', desc: 'Monthly non-payable day records by employee.', icon: <NonPayableIcon />, gradient: 'linear-gradient(135deg,var(--color-error),var(--color-error))', url: '/reports/non-payable-days/csv', file: `non-payable-days_${today}.csv` },
     { title: 'Joining/Exit Records', desc: 'Joining dates and active/inactive status records.', icon: <JoiningIcon />, gradient: 'linear-gradient(135deg,var(--color-success),var(--color-success))', url: '/reports/joining-exit/csv', file: `joining-exit-records_${today}.csv` },
+    { title: 'Preview Sheet', desc: 'Monthly HR inputs for all active employees — attendance, deductions, bonuses and remarks.', icon: <PayrollIcon />, gradient: 'linear-gradient(135deg,var(--color-accent),var(--color-accent))', url: `/reports/preview-sheet/csv?month=${mo}&year=${yr}`, file: `preview-sheet_${today}.csv` },
   ];
 
   const financeReports = [
     { title: 'Payroll Register', desc: 'Full payroll breakdown for the selected period.', icon: <PayrollIcon />, gradient: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-pressed))', url: `/reports/payroll/csv?month=${mo}&year=${yr}`, file: `payroll_${today}.csv` },
     { title: 'Bank Transfer Sheet', desc: 'Net salaries mapped to bank accounts for bulk transfer.', icon: <BankIcon />, gradient: 'linear-gradient(135deg,var(--color-success),var(--color-success))', url: `/reports/bank-transfer/csv?month=${mo}&year=${yr}`, file: `bank-transfer_${today}.csv` },
     { title: 'Salary Components', desc: 'Active salary components and gross salary values.', icon: <SalaryIcon />, gradient: 'linear-gradient(135deg,#0ea5e9,#0369a1)', url: '/reports/salary-components/csv', file: `salary-components_${today}.csv` },
-    { title: 'Payroll Summary', desc: 'Payroll cost, PF, and tax summary trends.', icon: <SummaryIcon />, gradient: 'linear-gradient(135deg,#14b8a6,#0f766e)', url: '/reports/payroll-summary/csv', file: `payroll-summary_${today}.csv` },
-    { title: 'PF Report', desc: 'PF deductions per employee for statutory filing.', icon: <PfIcon />, gradient: 'linear-gradient(135deg,var(--color-accent),var(--color-accent))', url: `/reports/pf/csv?month=${mo}&year=${yr}`, file: `pf-report_${today}.csv` },
-    { title: 'Tax Report', desc: 'Income tax deductions for TDS filing.', icon: <TaxIcon />, gradient: 'linear-gradient(135deg,var(--color-warning),var(--color-warning))', url: `/reports/tax/csv?month=${mo}&year=${yr}`, file: `tax-report_${today}.csv` },
     { title: 'Advances Report', desc: 'All advances with recovery status.', icon: <AdvancesIcon />, gradient: 'linear-gradient(135deg,#f97316,#c2410c)', url: '/reports/advances/csv', file: `advances-report_${today}.csv` },
   ];
 

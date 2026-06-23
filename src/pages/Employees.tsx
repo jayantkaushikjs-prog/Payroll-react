@@ -60,10 +60,8 @@ import {
   Download as DownloadIcon,
   Search as SearchIcon,
   Upload as UploadIcon,
-  Visibility as ViewIcon,
   People as PeopleIcon,
   HelpOutline as HelpOutlineIcon,
-  Sync as SyncIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -768,10 +766,23 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const handleProfileFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileEmpId) return;
+
+    const uan = profileFormData.pf_uan.trim();
+    if (uan && !/^\d{12}$/.test(uan)) {
+      showToast('UAN must be exactly 12 digits (numeric only)', 'error');
+      return;
+    }
+    const emp = employees.find((e: any) => e.id === profileEmpId);
+    const basicSalary = (Number(emp?.monthly_ctc) || 0) * 0.5;
+    const pfApplies = profileFormData.pf_deduction || basicSalary <= 15000;
+    if (pfApplies && !uan) {
+      showToast('UAN is required when PF is applicable as Basic is below 15000', 'error');
+      return;
+    }
     
     const payload = {
       ...profileFormData,
-      pf_uan: profileFormData.pf_uan.trim() || undefined,
+      pf_uan: uan || undefined,
       relieving_date: profileFormData.relieving_date || null,
       other_inputs: profileFormData.other_inputs || null,
       remarks: profileFormData.remarks || null,
@@ -930,22 +941,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       },
       onError: (err: any) => {
         handleMutationError(err, 'Failed to update employee');
-      },
-    }
-  );
-
-  // Delete employee mutation
-  const deleteMutation = useMutation(
-    async (id: number) => {
-      await api.delete(`/employees/${id}`);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['employees']);
-        showToast('Employee record removed.', 'success');
-      },
-      onError: (err: any) => {
-        showToast(err.response?.data?.message || 'Failed to delete employee', 'error');
       },
     }
   );
@@ -1166,9 +1161,16 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       isValid = false;
     }
 
-    if (formData.pf_uan && (formData.pf_uan.trim().length < 5 || formData.pf_uan.trim().length > 50)) {
-      nextErrors.pf_uan = 'PF No. / UAN must be between 5 and 50 characters';
+    if (formData.pf_uan && !/^\d{12}$/.test(formData.pf_uan.trim())) {
+      nextErrors.pf_uan = 'UAN must be exactly 12 digits';
       isValid = false;
+    } else {
+      const basicSalary = (Number(formData.monthly_ctc) || 0) * 0.5;
+      const pfApplies = formData.pf_deduction || basicSalary <= 15000;
+      if (pfApplies && !formData.pf_uan.trim()) {
+        nextErrors.pf_uan = 'UAN is required when PF is applicable';
+        isValid = false;
+      }
     }
 
     setFormErrors(nextErrors);
@@ -1193,12 +1195,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       updateMutation.mutate({ id: selectedEmp.id, data: payload });
     } else {
       createMutation.mutate(payload);
-    }
-  };
-
-  const handleDelete = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this employee?')) {
-      deleteMutation.mutate(id);
     }
   };
 
@@ -1288,6 +1284,95 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         }
       } catch (err: any) {
         showToast(err.response?.data?.message || 'Failed to import CSV file.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const previewCsvHeaders = [
+    'Employee Code', 'Days Present',
+    'Appraisal', 'Appraisal Effective Date', 'Bonus / Incentives',
+    'Leave Encashment', 'Late Arrival (days)', 'Damages Recovery',
+    'Other Deductions', 'Remarks',
+  ];
+
+  const handleExportPreviewCsv = () => {
+    const rows = previewEmployees.map((emp: Employee) => [
+      emp.employee_code,
+      emp.no_of_days_present ?? 30,
+      Number(emp.appraisal) || 0,
+      emp.appraisal_effective_date || '',
+      Number(emp.bonus_incentives) || 0,
+      Number(emp.leave_encashment) || 0,
+      Number(emp.late_arrival_deduction) || 0,
+      Number(emp.damages_recovery) || 0,
+      Number(emp.other_deductions) || 0,
+      emp.remarks || '',
+    ]);
+    const csv = [previewCsvHeaders, ...rows].map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `preview_sheet_${previewMonth}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+  };
+
+  const handleDownloadPreviewSampleCsv = () => {
+    const sample = [
+      ['EMP001', '26', '2', '5000', '2026-06-01', '2000', '0', '1', '0', '0', 'Partial month'],
+      ['EMP002', '30', '0', '0', '', '0', '0', '0', '0', '0', ''],
+    ];
+    const csv = [previewCsvHeaders, ...sample].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    link.download = 'sample_preview_sheet.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+  };
+
+  const handleImportPreviewCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.trim().split('\n').slice(1); // skip header
+      let successCount = 0;
+      const errors: string[] = [];
+      for (const line of lines) {
+        const cols = line.split(',').map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+        const [code, daysPresent, absent, appraisal, appraisalDate, bonus, encashment, lateArrival, damages, otherDed, remarks] = cols;
+        const emp = employees.find((em: Employee) => em.employee_code === code);
+        if (!emp) { errors.push(`Employee code not found: ${code}`); continue; }
+        try {
+          await api.put(`/employees/${emp.id}`, {
+            no_of_days_present: Number(daysPresent) || 30,
+            deduction_absent: Number(absent) || 0,
+            appraisal: Number(appraisal) || 0,
+            appraisal_effective_date: appraisalDate || null,
+            bonus_incentives: Number(bonus) || 0,
+            leave_encashment: Number(encashment) || 0,
+            late_arrival_deduction: Number(lateArrival) || 0,
+            damages_recovery: Number(damages) || 0,
+            other_deductions: Number(otherDed) || 0,
+            remarks: remarks || null,
+          });
+          successCount++;
+        } catch {
+          errors.push(`Failed to update: ${code}`);
+        }
+      }
+      queryClient.invalidateQueries(['employees']);
+      if (errors.length > 0) {
+        showToast(`Updated ${successCount} records. ${errors.length} failed (see console).`, 'error');
+        console.warn('Preview import errors:', errors);
+      } else {
+        showToast(`Preview sheet updated for ${successCount} employees!`, 'success');
       }
     };
     reader.readAsText(file);
@@ -1645,17 +1730,21 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           </Box>
                         </TableCell>
                         <TableCell align="right">
-                          <Tooltip title="View Profile & Financials">
-                            <IconButton
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenProfileDialog(emp);
-                              }}
-                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 0.5 }}
-                            >
-                              <ViewIcon />
-                            </IconButton>
-                          </Tooltip>
+                          {isHRorAdmin && emp.active_status && (
+                            <Tooltip title="Mark Inactive">
+                              <IconButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm(`Mark ${emp.name} as inactive?`)) {
+                                    updateMutation.mutate({ id: emp.id, data: { active_status: false } });
+                                  }
+                                }}
+                                sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-warning)' }, mr: 0.5 }}
+                              >
+                                <PeopleIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           <Tooltip title="Edit Details">
                             <IconButton
                               onClick={(e) => {
@@ -1667,19 +1756,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                               <EditIcon />
                             </IconButton>
                           </Tooltip>
-                          {isHRorAdmin && (
-                            <Tooltip title="Delete Employee">
-                              <IconButton
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(emp.id);
-                                }}
-                                sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          )}
+
                         </TableCell>
                       </TableRow>
                     ))}
@@ -2162,6 +2239,32 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   {isPreviewMonthDisbursed ? 'Locked (Disbursed)' : 'Add Record'}
                 </Button>
               )}
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownloadPreviewSampleCsv}
+                sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}
+              >
+                Sample CSV
+              </Button>
+              {isHRorAdmin && (
+                <>
+                  <input type="file" accept=".csv" id="import-preview-csv" style={{ display: 'none' }} onChange={handleImportPreviewCsv} disabled={isPreviewMonthDisbursed} />
+                  <label htmlFor="import-preview-csv">
+                    <Button component="span" variant="outlined" startIcon={<UploadIcon />} disabled={isPreviewMonthDisbursed} sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', cursor: 'pointer', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}>
+                      Import CSV
+                    </Button>
+                  </label>
+                </>
+              )}
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleExportPreviewCsv}
+                sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}
+              >
+                Export CSV
+              </Button>
               <TextField
                 type="month"
                 label="Month"
@@ -2171,24 +2274,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                 InputLabelProps={{ shrink: true }}
                 sx={{ ...inputStyles, minWidth: 170 }}
               />
-              <IconButton
-                onClick={() => {
-                  queryClient.invalidateQueries(['employees']);
-                  queryClient.invalidateQueries(['nonPayableDays', previewM, previewY]);
-                }}
-                sx={{
-                  color: 'var(--color-primary)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-control)',
-                  bgcolor: 'var(--color-surface-subtle)',
-                  '&:hover': {
-                    bgcolor: 'var(--color-row-hover)',
-                  }
-                }}
-                title="Refresh Preview Data"
-              >
-                <SyncIcon />
-              </IconButton>
             </Box>
           </Box>
 
@@ -2671,66 +2756,10 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
           <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
             Employee Profile & Financial Summary
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Button
-              variant="outlined"
-              onClick={(event) => setProfileTenureAnchorEl(event.currentTarget)}
-              sx={{
-                height: 38,
-                borderRadius: 'var(--radius-control)',
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text-primary)',
-                textTransform: 'none',
-                fontWeight: 700,
-                '&:hover': {
-                  borderColor: 'var(--color-primary)',
-                  bgcolor: 'var(--color-surface-subtle)',
-                },
-              }}
-            >
-              Custom
-            </Button>
-            <Menu
-              anchorEl={profileTenureAnchorEl}
-              open={Boolean(profileTenureAnchorEl)}
-              onClose={() => setProfileTenureAnchorEl(null)}
-              PaperProps={{
-                sx: {
-                  mt: 1,
-                  p: 2,
-                  width: 330,
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-card)',
-                },
-              }}
-            >
-              <Box sx={{ display: 'grid', gap: 2 }}>
-                <TextField
-                  type="date"
-                  label="Start Date"
-                  value={profileStartDate}
-                  onChange={(e) => setProfileStartDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
-                  sx={inputStyles}
-                />
-                <TextField
-                  type="date"
-                  label="End Date"
-                  value={profileEndDate}
-                  onChange={(e) => setProfileEndDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
-                  sx={inputStyles}
-                />
-              </Box>
-            </Menu>
-          </Box>
         </DialogTitle>
         <DialogContent sx={{ py: 3 }}>
           {!profileEmpId ? (
@@ -2857,7 +2886,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             control={
                               <Switch
                                 checked={profileFormData.active_status}
-                                disabled={!isHRorAdmin}
+                                disabled={!isHRorAdmin || !profileFormData.active_status}
                                 onChange={(e) => setProfileFormData({ ...profileFormData, active_status: e.target.checked })}
                                 sx={{
                                   '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
@@ -2865,7 +2894,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 }}
                               />
                             }
-                            label="Active"
+                            label={profileFormData.active_status ? 'Active' : 'Inactive (use Mark Inactive button to re-activate)'}
                             sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
                           />
                         </Grid>
@@ -2887,14 +2916,35 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           />
                         </Grid>
                         <Grid item xs={12}>
-                          <TextField
-                            label="PF No. / UAN"
-                            fullWidth
-                            disabled={!isHRorAdmin}
-                            value={profileFormData.pf_uan}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, pf_uan: e.target.value })}
-                            sx={inputStyles}
-                          />
+                          {(() => {
+                            const emp = employees.find((e: any) => e.id === profileEmpId);
+                            const basicSalary = (Number(emp?.monthly_ctc) || 0) * 0.5;
+                            const pfApplies = profileFormData.pf_deduction || basicSalary <= 15000;
+                            const uan = profileFormData.pf_uan.trim();
+                            const uanError = (uan && !/^\d{12}$/.test(uan)) || (pfApplies && !uan);
+                            return (
+                              <TextField
+                                label={`PF No. / UAN${pfApplies ? ' *' : ''}`}
+                                fullWidth
+                                disabled={!isHRorAdmin}
+                                value={profileFormData.pf_uan}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                                  setProfileFormData({ ...profileFormData, pf_uan: val });
+                                }}
+                                error={uanError}
+                                helperText={
+                                  uan && !/^\d{12}$/.test(uan)
+                                    ? 'UAN must be exactly 12 digits'
+                                    : pfApplies && !uan
+                                    ? 'UAN is required when PF is applicable'
+                                    : 'Enter 12-digit UAN' + (pfApplies ? ' (required)' : ' (optional)')
+                                }
+                                inputProps={{ maxLength: 12, inputMode: 'numeric' }}
+                                sx={inputStyles}
+                              />
+                            );
+                          })()}
                         </Grid>
                       </Grid>
                     ) : (
@@ -2967,20 +3017,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             sx={inputStyles}
                           />
                         </Grid>
-
-                        <Grid item xs={12}>
-                          <TextField
-                            label="Other Inputs (Maternity, Career Break, Extra Info, etc.)"
-                            fullWidth
-                            multiline
-                            rows={3}
-                            disabled={!isHRorAdmin}
-                            placeholder="Enter extra lifecycle details, maternity leave dates, career break periods..."
-                            value={profileFormData.other_inputs}
-                            onChange={(e) => setProfileFormData({ ...profileFormData, other_inputs: e.target.value })}
-                            sx={inputStyles}
-                          />
-                        </Grid>
                       </Grid>
                     )}
 
@@ -3023,50 +3059,41 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>
                         Financial Summary
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-                        {/* Export Tenure Data Section */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                            Export Tenure:
-                          </Typography>
-                          <FormControl size="small" sx={{ minWidth: 90 }}>
-                            <Select
-                              value={exportStartYear}
-                              onChange={(e) => setExportStartYear(Number(e.target.value))}
-                              sx={{
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                        {/* Summary Control Group: Custom Range + Annual/Monthly Toggle */}
+                        <Box 
+                          sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 0.5, 
+                            bgcolor: 'var(--color-surface-subtle)', 
+                            p: 0.5, 
+                            borderRadius: 'var(--radius-control)', 
+                            border: '1px solid var(--color-border)' 
+                          }}
+                        >
+                          <Button
+                            size="small"
+                            onClick={(event) => setProfileTenureAnchorEl(event.currentTarget)}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              px: 1.5,
+                              py: 0.4,
+                              minWidth: 'auto',
+                              borderRadius: 'calc(var(--radius-control) - 2px)',
+                              color: 'var(--color-text-secondary)',
+                              '&:hover': {
+                                bgcolor: 'rgba(255, 255, 255, 0.05)',
                                 color: 'var(--color-text-primary)',
-                                height: '32px',
-                                borderRadius: 'var(--radius-control)',
-                                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                              }}
-                            >
-                              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                                <MenuItem key={y} value={y}>{y}</MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                            to
-                          </Typography>
-                          <FormControl size="small" sx={{ minWidth: 90 }}>
-                            <Select
-                              value={exportEndYear}
-                              onChange={(e) => setExportEndYear(Number(e.target.value))}
-                              sx={{
-                                color: 'var(--color-text-primary)',
-                                height: '32px',
-                                borderRadius: 'var(--radius-control)',
-                                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                              }}
-                            >
-                              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                                <MenuItem key={y} value={y}>{y}</MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </Box>
-                        {/* Annual/Monthly Toggle */}
-                        <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
+                              },
+                            }}
+                          >
+                            Custom Range
+                          </Button>
+
+                          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, my: 0.5, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+
                           <Button
                             size="small"
                             onClick={() => setProfileViewMode('annual')}
@@ -3104,6 +3131,45 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             Monthly
                           </Button>
                         </Box>
+
+                        <Menu
+                          anchorEl={profileTenureAnchorEl}
+                          open={Boolean(profileTenureAnchorEl)}
+                          onClose={() => setProfileTenureAnchorEl(null)}
+                          PaperProps={{
+                            sx: {
+                              mt: 1,
+                              p: 2,
+                              width: 330,
+                              background: 'var(--color-surface)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 'var(--radius-card)',
+                              boxShadow: 'var(--shadow-card)',
+                            },
+                          }}
+                        >
+                          <Box sx={{ display: 'grid', gap: 2 }}>
+                            <TextField
+                              type="date"
+                              label="Start Date"
+                              value={profileStartDate}
+                              onChange={(e) => setProfileStartDate(e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                              size="small"
+                              sx={inputStyles}
+                            />
+                            <TextField
+                              type="date"
+                              label="End Date"
+                              value={profileEndDate}
+                              onChange={(e) => setProfileEndDate(e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                              size="small"
+                              sx={inputStyles}
+                            />
+                          </Box>
+                        </Menu>
+
                         <Button
                           variant="contained"
                           size="small"
@@ -3790,6 +3856,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       control={
                         <Switch
                           checked={formData.active_status}
+                          disabled={!formData.active_status}
                           onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
                           sx={{
                             '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
@@ -3797,7 +3864,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           }}
                         />
                       }
-                      label="Active Status"
+                      label={formData.active_status ? 'Active Status' : 'Inactive (cannot re-activate here)'}
                       sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
                     />
                   </Grid>

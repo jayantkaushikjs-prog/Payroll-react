@@ -63,28 +63,30 @@ const PayrollCalculator: React.FC = () => {
     const basic = Number((ctc * 0.5).toFixed(2));
     const hra = Number((basic * 0.4).toFixed(2));
 
-    const pfApplicable = includePf;
-    const esiApplicable = basic <= 21000;
+    // Determine applicability based on user selection and salary thresholds
+    const pfApplicable = includePf; // PF is applied only if the user opts to include PF
+    const esiApplicable = basic <= 21000; // ESI is applicable when Basic Salary is <= 21,000 INR
 
-    // Employer side (benefits)
-    const employerPf = pfApplicable ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
-    const employerEsi = esiApplicable ? Number((basic * esiEmployerRate).toFixed(2)) : 0;
+    // Employer side (benefits) – calculated only when applicable
+    const employerPf = pfApplicable ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0; // Employer PF contribution (capped)
+    const employerEsi = esiApplicable ? Number((basic * esiEmployerRate).toFixed(2)) : 0; // Employer ESI contribution
 
-    // Employee side (deductions)
-    const employeePf = pfApplicable ? Number(Math.min(basic * pfEmployeeRate, maxPfCap).toFixed(2)) : 0;
-    const employeeEsi = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0;
+    // Employee side (deductions) – calculated only when applicable
+    const employeePf = pfApplicable ? Number(Math.min(basic * pfEmployeeRate, maxPfCap).toFixed(2)) : 0; // Employee PF contribution (capped)
+    const employeeEsi = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0; // Employee ESI contribution
 
-    // Gross = CTC - employer PF - employer ESI
+    // Gross salary after subtracting employer contributions
     const gross = Number((ctc - employerPf - employerEsi).toFixed(2));
 
-    // Other allowance is whatever remains after basic & HRA
+    // Other allowance represents the remaining amount after Basic and HRA
     const othersAllowance = Math.max(0, Number((gross - basic - hra).toFixed(2)));
 
-    // New Deductions
+    // New Deductions calculations
     const daysInMonth = 30;
-    const lateAbsentDays = Math.floor(extra.lateArrivals / 3) * 0.5;
+    const lateAbsentDays = Math.floor(extra.lateArrivals / 3) * 0.5; // 0.5 day deduction for every 3 late arrivals
     const lateArrivalDeductionAmount = Number(((gross / daysInMonth) * lateAbsentDays).toFixed(2));
 
+    // Professional Tax is applied only if CTC exceeds 250,000 INR
     const appliedPt = ctc <= 250000 ? 0 : professionalTax;
     const totalDeductions = Number((employeePf + employeeEsi + appliedPt + lateArrivalDeductionAmount + extra.damages + extra.otherDeductions).toFixed(2));
     
