@@ -2,8 +2,8 @@ export const CURRENCY_CONFIG = {
   locale: 'en-IN',
   currency: 'INR',
   symbol: '₹',
-  maximumFractionDigits: 0,
-  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
 } as const;
 
 export const formatCurrency = (value: number | string | null | undefined): string => {

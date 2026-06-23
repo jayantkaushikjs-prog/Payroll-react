@@ -493,7 +493,7 @@ const SalaryStructures: React.FC = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           {current ? formatCurrency(current.ctc) : '—'}
                           {current && (
-                            <Tooltip title={`Breakdown: Gross Salary (${formatCurrency(current.gross_salary)}) + Employer PF (${formatCurrency(current.ctc - current.gross_salary)})`} arrow>
+                            <Tooltip title={`Breakdown: Gross Salary (${formatCurrency(current.gross_salary)}) + Employer Contributions (${formatCurrency(current.ctc - current.gross_salary)})`} arrow>
                               <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}>
                                 <HelpOutlineIcon />
                               </IconButton>

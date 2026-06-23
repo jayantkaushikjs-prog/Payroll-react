@@ -30,6 +30,7 @@ import {
   Divider,
   FormControlLabel,
   Switch,
+  Chip,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -37,6 +38,7 @@ import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
   Edit as EditIcon,
+  HistoryEdu as LogIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -62,6 +64,20 @@ interface EmployeeAdvance {
   is_advance_salary: boolean;
 }
 
+interface AdvanceLog {
+  id: number;
+  employee_id: number;
+  employee: Employee;
+  amount: number;
+  borrowed_date: string;
+  tentative_return_date: string | null;
+  actual_return_date: string | null;
+  notes: string | null;
+  status: 'open' | 'returned' | 'partially_returned';
+  amount_returned: number;
+  created_at: string;
+}
+
 interface SalaryStructure {
   employee?: Employee & { active_status?: boolean };
 }
@@ -73,6 +89,20 @@ const Advances: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedAdvance, setSelectedAdvance] = useState<EmployeeAdvance | null>(null);
+
+  // Advance Log dialog state
+  const [openLogDialog, setOpenLogDialog] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<AdvanceLog | null>(null);
+  const [logForm, setLogForm] = useState({
+    employee_id: '',
+    amount: 0,
+    borrowed_date: new Date().toISOString().split('T')[0],
+    tentative_return_date: '',
+    actual_return_date: '',
+    notes: '',
+    status: 'open' as 'open' | 'returned' | 'partially_returned',
+    amount_returned: 0,
+  });
   const [formErrors, setFormErrors] = useState({
     employee_id: '',
     amount: '',
@@ -112,6 +142,12 @@ const Advances: React.FC = () => {
   // Fetch all advances
   const { data: advances = [], isLoading } = useQuery(['advances'], async () => {
     const res = await api.get('/advances');
+    return res.data;
+  });
+
+  // Fetch advance logs
+  const { data: advanceLogs = [], isLoading: logsLoading } = useQuery(['advance-logs'], async () => {
+    const res = await api.get('/advances/logs');
     return res.data;
   });
 
@@ -211,6 +247,31 @@ const Advances: React.FC = () => {
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to delete advance log', 'error');
       },
+    }
+  );
+
+  // Advance Log mutations
+  const createLogMutation = useMutation(
+    async (payload: any) => { const res = await api.post('/advances/logs', payload); return res.data; },
+    {
+      onSuccess: () => { queryClient.invalidateQueries(['advance-logs']); showToast('Log added!', 'success'); setOpenLogDialog(false); },
+      onError: (err: any) => { showToast(err.response?.data?.message || 'Failed to add log', 'error'); },
+    }
+  );
+
+  const updateLogMutation = useMutation(
+    async ({ id, payload }: { id: number; payload: any }) => { const res = await api.put(`/advances/logs/${id}`, payload); return res.data; },
+    {
+      onSuccess: () => { queryClient.invalidateQueries(['advance-logs']); showToast('Log updated!', 'success'); setOpenLogDialog(false); },
+      onError: (err: any) => { showToast(err.response?.data?.message || 'Failed to update log', 'error'); },
+    }
+  );
+
+  const deleteLogMutation = useMutation(
+    async (id: number) => { await api.delete(`/advances/logs/${id}`); },
+    {
+      onSuccess: () => { queryClient.invalidateQueries(['advance-logs']); showToast('Log deleted.', 'success'); },
+      onError: (err: any) => { showToast(err.response?.data?.message || 'Failed to delete log', 'error'); },
     }
   );
 
@@ -366,6 +427,63 @@ const Advances: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this advance? WARNING: This will revert recoveries.')) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleOpenAddLog = () => {
+    setSelectedLog(null);
+    setLogForm({
+      employee_id: '',
+      amount: 0,
+      borrowed_date: new Date().toISOString().split('T')[0],
+      tentative_return_date: '',
+      actual_return_date: '',
+      notes: '',
+      status: 'open',
+      amount_returned: 0,
+    });
+    setOpenLogDialog(true);
+  };
+
+  const handleOpenEditLog = (log: AdvanceLog) => {
+    setSelectedLog(log);
+    setLogForm({
+      employee_id: String(log.employee_id),
+      amount: Number(log.amount),
+      borrowed_date: log.borrowed_date,
+      tentative_return_date: log.tentative_return_date || '',
+      actual_return_date: log.actual_return_date || '',
+      notes: log.notes || '',
+      status: log.status,
+      amount_returned: Number(log.amount_returned),
+    });
+    setOpenLogDialog(true);
+  };
+
+  const handleSubmitLog = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!logForm.employee_id || Number(logForm.amount) < 1) {
+      showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+    const payload: any = {
+      employee_id: Number(logForm.employee_id),
+      amount: Number(logForm.amount),
+      borrowed_date: logForm.borrowed_date,
+      tentative_return_date: logForm.tentative_return_date || undefined,
+      actual_return_date: logForm.actual_return_date || undefined,
+      notes: logForm.notes || undefined,
+      status: logForm.status,
+      amount_returned: Number(logForm.amount_returned) || 0,
+    };
+    if (selectedLog) {
+      updateLogMutation.mutate({ id: selectedLog.id, payload });
+    } else {
+      createLogMutation.mutate(payload);
+    }
+  };
+
+  const handleDeleteLog = (id: number) => {
+    if (window.confirm('Delete this advance log?')) deleteLogMutation.mutate(id);
   };
 
   const months = [
@@ -753,6 +871,183 @@ const Advances: React.FC = () => {
               }}
             >
               {selectedAdvance ? 'Save Changes' : 'Issue Advance'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* ─── Manual Advance / Borrow Logs ───────────────────────────────────── */}
+      <Box sx={{ mt: 5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <LogIcon sx={{ color: 'var(--color-accent)', fontSize: '1.5rem' }} />
+            <Box>
+              <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+                Manual Borrow / Return Logs
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.3 }}>
+                Track informal cash borrows — date borrowed, expected return, actual return date and notes.
+              </Typography>
+            </Box>
+          </Box>
+          {isFinanceOrAdmin && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenAddLog}
+              sx={{
+                background: 'var(--color-accent)',
+                boxShadow: '0 8px 18px rgba(99,102,241,0.22)',
+                borderRadius: 'var(--radius-control)',
+                textTransform: 'none',
+              }}
+            >
+              Add Log
+            </Button>
+          )}
+        </Box>
+
+        <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', overflow: 'hidden', p: 3 }}>
+          <TableContainer>
+            <Table>
+              <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                <TableRow>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Emp Code</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Amount</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Borrowed Date</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Tentative Return</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Returned Amount</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actual Return</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Notes</TableCell>
+                  {isFinanceOrAdmin && <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {logsLoading ? (
+                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 3 }}><CircularProgress size={28} sx={{ color: 'var(--color-primary)' }} /></TableCell></TableRow>
+                ) : advanceLogs.length === 0 ? (
+                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>No borrow logs recorded yet.</TableCell></TableRow>
+                ) : (
+                  advanceLogs.map((log: AdvanceLog) => {
+                    const statusColor = log.status === 'returned' ? 'var(--color-success)' : log.status === 'partially_returned' ? 'var(--color-warning)' : 'var(--color-error)';
+                    const statusBg = log.status === 'returned' ? 'rgba(16,185,129,0.12)' : log.status === 'partially_returned' ? 'rgba(251,191,36,0.12)' : 'rgba(244,63,94,0.12)';
+                    const statusLabel = log.status === 'returned' ? 'Returned' : log.status === 'partially_returned' ? 'Partial' : 'Open';
+                    return (
+                      <TableRow key={log.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' } }}>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{log.employee?.employee_code}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{log.employee?.name}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(log.amount)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(log.borrowed_date).toLocaleDateString('en-IN')}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)' }}>{log.tentative_return_date ? new Date(log.tentative_return_date).toLocaleDateString('en-IN') : '—'}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-success)' }}>{Number(log.amount_returned) > 0 ? formatCurrency(log.amount_returned) : '—'}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{log.actual_return_date ? new Date(log.actual_return_date).toLocaleDateString('en-IN') : '—'}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'inline-block', px: 1.5, py: 0.4, borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, bgcolor: statusBg, color: statusColor }}>
+                            {statusLabel}
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <Tooltip title={log.notes || ''} arrow>
+                            <span>{log.notes || '—'}</span>
+                          </Tooltip>
+                        </TableCell>
+                        {isFinanceOrAdmin && (
+                          <TableCell align="right">
+                            <Tooltip title="Edit Log"><IconButton onClick={() => handleOpenEditLog(log)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                            <Tooltip title="Delete Log"><IconButton onClick={() => handleDeleteLog(log.id)} sx={{ color: 'var(--color-error)' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </Box>
+
+      {/* ─── Add/Edit Log Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={openLogDialog} onClose={() => setOpenLogDialog(false)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { bgcolor: 'var(--color-surface)', backgroundImage: 'none', color: 'var(--color-text-primary)', borderRadius: 'var(--radius-card)', border: '1px solid var(--color-border)' } }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 2 }}>
+          {selectedLog ? 'Edit Borrow Log' : 'Add Borrow Log'}
+        </DialogTitle>
+        <form onSubmit={handleSubmitLog}>
+          <DialogContent sx={{ py: 3 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <FormControl fullWidth required sx={selectStyles}>
+                  <InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Select Employee</InputLabel>
+                  <Select
+                    value={logForm.employee_id}
+                    label="Select Employee"
+                    disabled={!!selectedLog}
+                    onChange={(e) => setLogForm({ ...logForm, employee_id: e.target.value as string })}
+                  >
+                    {selectedLog ? (
+                      <MenuItem value={selectedLog.employee_id}>{selectedLog.employee?.employee_code} - {selectedLog.employee?.name}</MenuItem>
+                    ) : (
+                      employees.map((e: any) => (<MenuItem key={e.id} value={e.id}>{e.employee_code} - {e.name}</MenuItem>))
+                    )}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Amount Borrowed (₹)" type="number" fullWidth required inputProps={{ min: 1 }}
+                  value={logForm.amount === 0 ? '' : logForm.amount}
+                  onChange={(e) => setLogForm({ ...logForm, amount: parseFloat(e.target.value) || 0 })}
+                  sx={inputStyles} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Borrowed Date" type="date" fullWidth required InputLabelProps={{ shrink: true }}
+                  value={logForm.borrowed_date}
+                  onChange={(e) => setLogForm({ ...logForm, borrowed_date: e.target.value })}
+                  sx={inputStyles} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Tentative Return Date" type="date" fullWidth InputLabelProps={{ shrink: true }}
+                  value={logForm.tentative_return_date}
+                  onChange={(e) => setLogForm({ ...logForm, tentative_return_date: e.target.value })}
+                  sx={inputStyles} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Actual Return Date" type="date" fullWidth InputLabelProps={{ shrink: true }}
+                  value={logForm.actual_return_date}
+                  onChange={(e) => setLogForm({ ...logForm, actual_return_date: e.target.value })}
+                  sx={inputStyles} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField label="Amount Returned (₹)" type="number" fullWidth inputProps={{ min: 0 }}
+                  value={logForm.amount_returned === 0 ? '' : logForm.amount_returned}
+                  onChange={(e) => setLogForm({ ...logForm, amount_returned: parseFloat(e.target.value) || 0 })}
+                  sx={inputStyles} />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth sx={selectStyles}>
+                  <InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Status</InputLabel>
+                  <Select value={logForm.status} label="Status" onChange={(e) => setLogForm({ ...logForm, status: e.target.value as any })}>
+                    <MenuItem value="open">Open</MenuItem>
+                    <MenuItem value="partially_returned">Partially Returned</MenuItem>
+                    <MenuItem value="returned">Returned</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField label="Notes" fullWidth multiline rows={2}
+                  value={logForm.notes}
+                  onChange={(e) => setLogForm({ ...logForm, notes: e.target.value })}
+                  sx={inputStyles} />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <Button onClick={() => setOpenLogDialog(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>Cancel</Button>
+            <Button type="submit" variant="contained" sx={{ background: 'var(--color-accent)', borderRadius: 'var(--radius-control)', px: 3, textTransform: 'none' }}>
+              {selectedLog ? 'Save Changes' : 'Add Log'}
             </Button>
           </DialogActions>
         </form>

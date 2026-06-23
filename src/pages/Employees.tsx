@@ -38,6 +38,7 @@ import {
   Checkbox,
   Chip,
   Menu,
+  Popover,
 } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -580,6 +581,9 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [profileEndDate, setProfileEndDate] = useState<string>(defaultProfileEnd);
   const [profileTenureAnchorEl, setProfileTenureAnchorEl] = useState<null | HTMLElement>(null);
   const [profileViewMode, setProfileViewMode] = useState<'annual' | 'monthly'>('annual');
+  const [tempStartDate, setTempStartDate] = useState<string>(defaultProfileStart);
+  const [tempEndDate, setTempEndDate] = useState<string>(defaultProfileEnd);
+  const [activeRangePreset, setActiveRangePreset] = useState<string>('thisfy');
   const [exportStartYear, setExportStartYear] = useState<number>(new Date().getFullYear() - 1);
   const [exportEndYear, setExportEndYear] = useState<number>(new Date().getFullYear());
   const [profileFormData, setProfileFormData] = useState<{
@@ -3060,87 +3064,44 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         Financial Summary
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                        {/* Summary Control Group: Custom Range + Annual/Monthly Toggle */}
-                        <Box 
-                          sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 0.5, 
-                            bgcolor: 'var(--color-surface-subtle)', 
-                            p: 0.5, 
-                            borderRadius: 'var(--radius-control)', 
-                            border: '1px solid var(--color-border)' 
+
+                        {/* Date Range Picker Button */}
+                        <Button
+                          size="small"
+                          onClick={(e) => {
+                            setTempStartDate(profileStartDate);
+                            setTempEndDate(profileEndDate);
+                            setProfileTenureAnchorEl(e.currentTarget);
+                          }}
+                          endIcon={<span style={{ fontSize: '0.65rem', opacity: 0.6 }}>▼</span>}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: 1.5,
+                            py: 0.6,
+                            fontSize: '0.8rem',
+                            borderRadius: 'var(--radius-control)',
+                            color: 'var(--color-text-secondary)',
+                            border: '1px solid var(--color-border)',
+                            bgcolor: 'var(--color-surface-subtle)',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', color: 'var(--color-text-primary)', borderColor: 'var(--color-border-strong)' },
                           }}
                         >
-                          <Button
-                            size="small"
-                            onClick={(event) => setProfileTenureAnchorEl(event.currentTarget)}
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              px: 1.5,
-                              py: 0.4,
-                              minWidth: 'auto',
-                              borderRadius: 'calc(var(--radius-control) - 2px)',
-                              color: 'var(--color-text-secondary)',
-                              '&:hover': {
-                                bgcolor: 'rgba(255, 255, 255, 0.05)',
-                                color: 'var(--color-text-primary)',
-                              },
-                            }}
-                          >
-                            Custom Range
-                          </Button>
+                          📅 {profileStartDate} → {profileEndDate}
+                        </Button>
 
-                          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, my: 0.5, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-
-                          <Button
-                            size="small"
-                            onClick={() => setProfileViewMode('annual')}
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              px: 2,
-                              py: 0.4,
-                              borderRadius: 'calc(var(--radius-control) - 2px)',
-                              color: profileViewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)',
-                              background: profileViewMode === 'annual' ? 'var(--color-primary)' : 'transparent',
-                              '&:hover': {
-                                background: profileViewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
-                              }
-                            }}
-                          >
-                            Annual
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => setProfileViewMode('monthly')}
-                            sx={{
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              px: 2,
-                              py: 0.4,
-                              borderRadius: 'calc(var(--radius-control) - 2px)',
-                              color: profileViewMode === 'monthly' ? '#fff' : 'var(--color-text-secondary)',
-                              background: profileViewMode === 'monthly' ? 'var(--color-primary)' : 'transparent',
-                              '&:hover': {
-                                background: profileViewMode === 'monthly' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
-                              }
-                            }}
-                          >
-                            Monthly
-                          </Button>
-                        </Box>
-
-                        <Menu
+                        {/* Range Popover */}
+                        <Popover
                           anchorEl={profileTenureAnchorEl}
                           open={Boolean(profileTenureAnchorEl)}
                           onClose={() => setProfileTenureAnchorEl(null)}
+                          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
                           PaperProps={{
                             sx: {
                               mt: 1,
-                              p: 2,
-                              width: 330,
+                              p: 2.5,
+                              width: 340,
                               background: 'var(--color-surface)',
                               border: '1px solid var(--color-border)',
                               borderRadius: 'var(--radius-card)',
@@ -3148,12 +3109,44 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             },
                           }}
                         >
-                          <Box sx={{ display: 'grid', gap: 2 }}>
+                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700, letterSpacing: '0.06em', mb: 1.5, display: 'block' }}>
+                            QUICK SELECT
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
+                            {[
+                              { label: 'This FY', preset: 'thisfy', start: new Date().getMonth() >= 3 ? `${currentYear}-04-01` : `${currentYear - 1}-04-01`, end: new Date().getMonth() >= 3 ? `${currentYear + 1}-03-31` : `${currentYear}-03-31` },
+                              { label: 'Last FY', preset: 'lastfy', start: new Date().getMonth() >= 3 ? `${currentYear - 1}-04-01` : `${currentYear - 2}-04-01`, end: new Date().getMonth() >= 3 ? `${currentYear}-03-31` : `${currentYear - 1}-03-31` },
+                              { label: 'Last 6M', preset: 'l6m', start: new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] },
+                              { label: 'Last 3M', preset: 'l3m', start: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] },
+                              { label: 'This Month', preset: 'thismonth', start: `${currentYear}-${String(new Date().getMonth() + 1).padStart(2,'0')}-01`, end: new Date().toISOString().split('T')[0] },
+                            ].map(({ label, preset, start, end }) => (
+                              <Box
+                                key={preset}
+                                onClick={() => { setTempStartDate(start); setTempEndDate(end); setActiveRangePreset(preset); }}
+                                sx={{
+                                  px: 1.5, py: 0.5, borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                                  border: '1px solid',
+                                  borderColor: activeRangePreset === preset ? 'var(--color-primary)' : 'var(--color-border)',
+                                  bgcolor: activeRangePreset === preset ? 'rgba(99,102,241,0.15)' : 'transparent',
+                                  color: activeRangePreset === preset ? 'var(--color-primary-hover)' : 'var(--color-text-secondary)',
+                                  transition: 'all 150ms',
+                                  '&:hover': { borderColor: 'var(--color-primary)', color: 'var(--color-primary-hover)' },
+                                }}
+                              >
+                                {label}
+                              </Box>
+                            ))}
+                          </Box>
+
+                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700, letterSpacing: '0.06em', mb: 1.5, display: 'block' }}>
+                            CUSTOM RANGE
+                          </Typography>
+                          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 2.5 }}>
                             <TextField
                               type="date"
                               label="Start Date"
-                              value={profileStartDate}
-                              onChange={(e) => setProfileStartDate(e.target.value)}
+                              value={tempStartDate}
+                              onChange={(e) => { setTempStartDate(e.target.value); setActiveRangePreset('custom'); }}
                               InputLabelProps={{ shrink: true }}
                               size="small"
                               sx={inputStyles}
@@ -3161,28 +3154,56 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             <TextField
                               type="date"
                               label="End Date"
-                              value={profileEndDate}
-                              onChange={(e) => setProfileEndDate(e.target.value)}
+                              value={tempEndDate}
+                              onChange={(e) => { setTempEndDate(e.target.value); setActiveRangePreset('custom'); }}
                               InputLabelProps={{ shrink: true }}
                               size="small"
                               sx={inputStyles}
                             />
                           </Box>
-                        </Menu>
+
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                            <Button size="small" onClick={() => setProfileTenureAnchorEl(null)}
+                              sx={{ textTransform: 'none', color: 'var(--color-text-secondary)', fontWeight: 600 }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              disabled={!tempStartDate || !tempEndDate || tempStartDate > tempEndDate}
+                              onClick={() => {
+                                setProfileStartDate(tempStartDate);
+                                setProfileEndDate(tempEndDate);
+                                setProfileTenureAnchorEl(null);
+                              }}
+                              sx={{ textTransform: 'none', fontWeight: 600, background: 'var(--color-primary)', borderRadius: 'var(--radius-control)', px: 2.5, '&:hover': { background: 'var(--color-primary-hover)' } }}
+                            >
+                              Apply
+                            </Button>
+                          </Box>
+                        </Popover>
+
+                        {/* Annual / Monthly Toggle */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
+                          <Button size="small" onClick={() => setProfileViewMode('annual')}
+                            sx={{ textTransform: 'none', fontWeight: 600, px: 2, py: 0.4, borderRadius: 'calc(var(--radius-control) - 2px)', color: profileViewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)', background: profileViewMode === 'annual' ? 'var(--color-primary)' : 'transparent', '&:hover': { background: profileViewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)' } }}
+                          >
+                            Annual
+                          </Button>
+                          <Button size="small" onClick={() => setProfileViewMode('monthly')}
+                            sx={{ textTransform: 'none', fontWeight: 600, px: 2, py: 0.4, borderRadius: 'calc(var(--radius-control) - 2px)', color: profileViewMode === 'monthly' ? '#fff' : 'var(--color-text-secondary)', background: profileViewMode === 'monthly' ? 'var(--color-primary)' : 'transparent', '&:hover': { background: profileViewMode === 'monthly' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)' } }}
+                          >
+                            Monthly
+                          </Button>
+                        </Box>
 
                         <Button
                           variant="contained"
                           size="small"
                           onClick={handleExportFinancials}
                           startIcon={<DownloadIcon />}
-                          sx={{
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            height: '34px',
-                            borderRadius: 'var(--radius-control)',
-                            background: 'var(--color-primary)',
-                            '&:hover': { background: 'var(--color-primary-hover)' },
-                          }}
+                          sx={{ textTransform: 'none', fontWeight: 600, height: '34px', borderRadius: 'var(--radius-control)', background: 'var(--color-primary)', '&:hover': { background: 'var(--color-primary-hover)' } }}
                         >
                           Export CSV
                         </Button>

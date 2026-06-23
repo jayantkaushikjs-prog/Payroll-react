@@ -79,6 +79,8 @@ interface KpiConfig {
   color: string;
   format?: 'currency' | 'number';
   tooltip?: (data: DashboardData) => string;
+  getValue?: (data: DashboardData) => number;
+  action?: React.ReactNode;
 }
 
 interface ActionConfig {
@@ -148,12 +150,12 @@ const Dashboard: React.FC = () => {
     ] : []),
     ...(isSuperAdmin || isFinance ? [
       { 
-        key: isSuperAdmin ? 'totalPayrollThisMonth' : 'currentMonthPayroll', 
+        key: 'totalPayrollCost', 
         label: isSuperAdmin ? 'Total Payroll This Month' : 'Current Month Payroll', 
         icon: <PayrollIcon />, 
         color: 'var(--color-success)', 
         format: 'currency' as const,
-        tooltip: (d: DashboardData) => `Total net salary disbursed this month. Tax deducted: ${formatCurrency(d.stats.taxDeductions || 0)}, PF deducted: ${formatCurrency(d.stats.pfContributions || 0)}`
+        tooltip: (d: DashboardData) => `Employee Salaries: ${formatCurrency(d.stats.totalPayrollThisMonth || 0)} + Employer PF: ${formatCurrency(d.stats.employerPf || 0)} + Employer ESI: ${formatCurrency(d.stats.employerEsi || 0)}`
       },
       { 
         key: 'totalExpensesThisMonth', 
@@ -161,6 +163,20 @@ const Dashboard: React.FC = () => {
         icon: <ExpensesIcon />, 
         color: 'var(--color-error)', 
         format: 'currency' as const,
+        action: (isSuperAdmin || isFinance) ? (
+          <FormControlLabel
+            control={
+              <Switch
+                checked={!excludeSalaries}
+                onChange={(e) => setExcludeSalaries(!e.target.checked)}
+                color="primary"
+                size="small"
+              />
+            }
+            label={<Typography variant="caption" sx={{ fontWeight: 600 }}>Include Salaries</Typography>}
+            sx={{ m: 0, '& .MuiFormControlLabel-label': { color: 'var(--color-text-secondary)' } }}
+          />
+        ) : undefined,
         tooltip: (d: DashboardData) => {
           const breakdown = d.charts.expensesCategoryDistribution || [];
           if (breakdown.length === 0) return 'Total company expenses recorded this month.';
@@ -189,6 +205,7 @@ const Dashboard: React.FC = () => {
         icon: <PfIcon />, 
         color: 'var(--color-accent)', 
         format: 'currency' as const,
+        getValue: (d: DashboardData) => (d.stats.pfContributions || 0) + (d.stats.esiContributions || 0),
         tooltip: (d: DashboardData) => `Total provident fund (PF) contribution and ESI contribution deducted/added for employees (${formatCurrency(d.stats.pfContributions || 0)} PF + ${formatCurrency(d.stats.esiContributions || 0)} ESI).`
       },
     ] : []),
@@ -235,19 +252,6 @@ const Dashboard: React.FC = () => {
             Welcome back! Here is your business overview.
           </Typography>
         </Box>
-        {(isSuperAdmin || isFinance) && (
-          <FormControlLabel
-            control={
-              <Switch
-                checked={!excludeSalaries}
-                onChange={(e) => setExcludeSalaries(!e.target.checked)}
-                color="primary"
-              />
-            }
-            label="Include Salary Expenses"
-            sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}
-          />
-        )}
       </Box>
 
       {/* KPI Grid */}
@@ -269,10 +273,11 @@ const Dashboard: React.FC = () => {
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}
-                value={formatValue(data.stats[kpi.key], kpi.format)}
+                value={formatValue(kpi.getValue ? kpi.getValue(data) : data.stats[kpi.key], kpi.format)}
                 icon={kpi.icon}
                 color={kpi.color}
                 tooltip={kpi.tooltip?.(data)}
+                action={kpi.action}
               />
             ))}
           </Box>
@@ -292,10 +297,11 @@ const Dashboard: React.FC = () => {
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}
-                value={formatValue(data.stats[kpi.key], kpi.format)}
+                value={formatValue(kpi.getValue ? kpi.getValue(data) : data.stats[kpi.key], kpi.format)}
                 icon={kpi.icon}
                 color={kpi.color}
                 tooltip={kpi.tooltip?.(data)}
+                action={kpi.action}
               />
             ))}
           </Box>
@@ -317,10 +323,11 @@ const Dashboard: React.FC = () => {
             <KpiCard
               key={kpi.key}
               label={kpi.label}
-              value={formatValue(data.stats[kpi.key], kpi.format)}
+              value={formatValue(kpi.getValue ? kpi.getValue(data) : data.stats[kpi.key], kpi.format)}
               icon={kpi.icon}
               color={kpi.color}
               tooltip={kpi.tooltip?.(data)}
+              action={kpi.action}
             />
           ))}
         </Box>
@@ -536,7 +543,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
-const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string; tooltip?: string }> = ({ label, value, icon, color, tooltip }) => (
+const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string; tooltip?: string; action?: React.ReactNode }> = ({ label, value, icon, color, tooltip, action }) => (
   <Paper
     sx={{
       ...cardSx,
@@ -580,27 +587,34 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
           </Tooltip>
         )}
       </Box>
-      <Box
-        className="icon-wrapper"
-        sx={{
-          color: color,
-          backgroundColor: `${color}15`,
-          p: 1.2,
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'transform 200ms ease, background-color 200ms ease, color 200ms ease',
-          '& svg': { fontSize: '1.4rem' }
-        }}
-      >
-        {icon}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          className="icon-wrapper"
+          sx={{
+            color: color,
+            backgroundColor: `${color}15`,
+            p: 1.2,
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'transform 200ms ease, background-color 200ms ease, color 200ms ease',
+            '& svg': { fontSize: '1.4rem' }
+          }}
+        >
+          {icon}
+        </Box>
       </Box>
     </Box>
-    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <Typography variant="h4" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, fontFamily: 'Outfit', letterSpacing: '-0.5px' }}>
         {value}
       </Typography>
+      {action && (
+        <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+          {action}
+        </Box>
+      )}
     </Box>
   </Paper>
 );
