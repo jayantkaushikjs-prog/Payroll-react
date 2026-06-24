@@ -115,10 +115,8 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
 
-  const [excludeSalaries, setExcludeSalaries] = useState(false);
-
-  const { data, isLoading, error } = useQuery<DashboardData>(['dashboardData', user?.role, excludeSalaries], async () => {
-    const res = await api.get(`/reports/dashboard?excludeSalaries=${excludeSalaries}`);
+  const { data, isLoading, error } = useQuery<DashboardData>(['dashboardData', user?.role], async () => {
+    const res = await api.get('/reports/dashboard?excludeSalaries=true');
     return res.data;
   }, { enabled: !!user });
 
@@ -150,8 +148,8 @@ const Dashboard: React.FC = () => {
     ] : []),
     ...(isSuperAdmin || isFinance ? [
       { 
-        key: 'totalPayrollCost', 
-        label: isSuperAdmin ? 'Total Payroll This Month' : 'Current Month Payroll', 
+        key: 'totalPayrollThisMonth', 
+        label: isSuperAdmin ? 'Expected Payroll This Month' : 'Current Month Payroll', 
         icon: <PayrollIcon />, 
         color: 'var(--color-success)', 
         format: 'currency' as const,
@@ -163,25 +161,19 @@ const Dashboard: React.FC = () => {
         icon: <ExpensesIcon />, 
         color: 'var(--color-error)', 
         format: 'currency' as const,
-        action: (isSuperAdmin || isFinance) ? (
-          <FormControlLabel
-            control={
-              <Switch
-                checked={!excludeSalaries}
-                onChange={(e) => setExcludeSalaries(!e.target.checked)}
-                color="primary"
-                size="small"
-              />
-            }
-            label={<Typography variant="caption" sx={{ fontWeight: 600 }}>Include Salaries</Typography>}
-            sx={{ m: 0, '& .MuiFormControlLabel-label': { color: 'var(--color-text-secondary)' } }}
-          />
-        ) : undefined,
         tooltip: (d: DashboardData) => {
           const breakdown = d.charts.expensesCategoryDistribution || [];
           if (breakdown.length === 0) return 'Total company expenses recorded this month.';
           return 'Breakdown: ' + breakdown.map((b: any) => `${b.category.toUpperCase()}: ${formatCurrency(b.amount)}`).join(' | ');
         }
+      },
+      { 
+        key: 'monthlyAdvancesOut', 
+        label: 'Monthly Advances', 
+        icon: <AdvancesIcon />, 
+        color: 'var(--color-warning)', 
+        format: 'currency' as const,
+        tooltip: () => 'Outstanding advances balance currently pending recovery.'
       },
       { 
         key: 'totalAdvancesOutstanding', 
@@ -242,8 +234,8 @@ const Dashboard: React.FC = () => {
   const expensesCategoryDistribution = data.charts.expensesCategoryDistribution || [];
 
   return (
-    <Box sx={{ pb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+    <Box sx={{ pb: 4, width: '100%', overflowX: 'hidden' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3.5, flexWrap: 'wrap', gap: 1.5 }}>
         <Box>
           <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
             {roleTitle(user?.role)}
@@ -262,14 +254,14 @@ const Dashboard: React.FC = () => {
               display: 'grid',
               gridTemplateColumns: {
                 xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(4, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                md: 'repeat(3, minmax(0, 1fr))',
               },
-              gap: 3,
-              mb: 3,
+              gap: 1.75,
+              mb: 1.75,
             }}
           >
-            {[kpis[0], kpis[1], kpis[2], kpis[5]].filter(Boolean).map((kpi) => (
+            {kpis.slice(0, 3).filter(Boolean).map((kpi) => (
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}
@@ -278,6 +270,7 @@ const Dashboard: React.FC = () => {
                 color={kpi.color}
                 tooltip={kpi.tooltip?.(data)}
                 action={kpi.action}
+                compact
               />
             ))}
           </Box>
@@ -286,14 +279,16 @@ const Dashboard: React.FC = () => {
               display: 'grid',
               gridTemplateColumns: {
                 xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(4, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                md: 'repeat(3, minmax(0, 1fr))',
+                lg: 'repeat(6, minmax(0, 1fr))',
               },
-              gap: 3,
+              gap: { xs: 1.25, md: 1.5, lg: 1.75 },
               mb: 4,
+              width: '100%',
             }}
           >
-            {[kpis[3], kpis[4], kpis[6], kpis[7]].filter(Boolean).map((kpi) => (
+            {kpis.slice(3).filter(Boolean).map((kpi) => (
               <KpiCard
                 key={kpi.key}
                 label={kpi.label}
@@ -382,7 +377,7 @@ const Dashboard: React.FC = () => {
             <Grid item xs={12} lg={isSuperAdmin ? 8 : 12}>
               <ChartPanel title="Payroll Cost Trend" empty={!payrollTrends.length}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={payrollTrends} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <AreaChart data={payrollTrends} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                     <defs>
                       <linearGradient id="payrollTrend" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.35} />
@@ -390,8 +385,8 @@ const Dashboard: React.FC = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
-                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
-                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value as number)} />
+                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} minTickGap={20} />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={70} tickFormatter={(value) => formatCurrency(value as number)} interval="preserveStartEnd" />
                     <ChartTooltip
                       contentStyle={{
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -413,10 +408,10 @@ const Dashboard: React.FC = () => {
             <Grid item xs={12} lg={isSuperAdmin ? 4 : 5}>
               <ChartPanel title="Tax/PF/ESI Summary" empty={!payrollTrends.length}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={payrollTrends} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <LineChart data={payrollTrends} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
-                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
-                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value as number)} />
+                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} minTickGap={20} />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={70} tickFormatter={(value) => formatCurrency(value as number)} interval="preserveStartEnd" />
                     <ChartTooltip
                       contentStyle={{
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -440,7 +435,7 @@ const Dashboard: React.FC = () => {
             <Grid item xs={12} lg={isSuperAdmin ? 8 : 7}>
               <ChartPanel title="Company Expenses Trend" empty={!expensesTrends.length}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={expensesTrends} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <AreaChart data={expensesTrends} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                     <defs>
                       <linearGradient id="expensesTrend" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--color-error)" stopOpacity={0.35} />
@@ -448,8 +443,8 @@ const Dashboard: React.FC = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
-                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
-                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value as number)} />
+                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} minTickGap={20} />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={70} tickFormatter={(value) => formatCurrency(value as number)} interval="preserveStartEnd" />
                     <ChartTooltip
                       contentStyle={{
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -543,17 +538,22 @@ const Dashboard: React.FC = () => {
   );
 };
 
-const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string; tooltip?: string; action?: React.ReactNode }> = ({ label, value, icon, color, tooltip, action }) => (
+const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string; tooltip?: string; action?: React.ReactNode; compact?: boolean }> = ({ label, value, icon, color, tooltip, action, compact = false }) => (
   <Paper
     sx={{
       ...cardSx,
-      p: 3,
+      p: { xs: compact ? 1.25 : 1.75, md: compact ? 1.4 : 2, lg: compact ? 1.6 : 2.2 },
+      width: '100%',
       height: '100%',
+      minHeight: compact ? 80 : 100,
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
+      flexDirection: compact ? 'row' : 'column',
+      alignItems: compact ? 'center' : 'stretch',
+      justifyContent: compact ? 'space-between' : 'space-between',
+      gap: compact ? 0.75 : 0.5,
+      flexWrap: 'wrap',
       cursor: 'default',
       backgroundColor: 'var(--color-surface)',
       border: '1px solid var(--color-border)',
@@ -574,9 +574,9 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
       },
     }}
   >
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: '0.88rem' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: compact ? 0 : 1, width: compact ? '100%' : 'auto', gap: 1, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+        <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: compact ? '0.74rem' : '0.8rem', lineHeight: 1.2, whiteSpace: 'normal', overflowWrap: 'anywhere', pr: 0.25 }}>
           {label}
         </Typography>
         {tooltip && (
@@ -593,7 +593,7 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
           sx={{
             color: color,
             backgroundColor: `${color}15`,
-            p: 1.2,
+            p: { xs: 0.9, md: 1 },
             borderRadius: '12px',
             display: 'flex',
             alignItems: 'center',
@@ -606,8 +606,8 @@ const KpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; c
         </Box>
       </Box>
     </Box>
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <Typography variant="h4" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, fontFamily: 'Outfit', letterSpacing: '-0.5px' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, ml: compact ? 0.5 : 0, flex: 1, minWidth: 0 }}>
+      <Typography variant={compact ? 'h6' : 'h5'} sx={{ color: 'var(--color-text-primary)', fontWeight: 700, fontFamily: 'Outfit', letterSpacing: '-0.5px', lineHeight: 1.1, fontSize: compact ? { xs: '0.95rem', md: '1.05rem' } : { xs: '1.05rem', md: '1.2rem' }, wordBreak: 'break-word' }}>
         {value}
       </Typography>
       {action && (

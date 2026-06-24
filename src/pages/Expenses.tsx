@@ -546,74 +546,6 @@ const Expenses: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Grid of KPI Cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Total Month Expenses"
-            value={formatCurrency(totalCMExpenses)}
-            icon={<ReceiptIcon />}
-            color="var(--color-primary)"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Employee Salaries"
-            value={formatCurrency(getCMExpensesByCategory('salary'))}
-            icon={<SalaryIcon />}
-            color="#3b82f6"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Employer PF"
-            value={formatCurrency(getCMExpensesByCategory('pf'))}
-            icon={<PfIcon />}
-            color="#6366f1"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Employer ESI"
-            value={formatCurrency(getCMExpensesByCategory('esi'))}
-            icon={<EsiIcon />}
-            color="#14b8a6"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Office Rent"
-            value={formatCurrency(getCMExpensesByCategory('rent'))}
-            icon={<RentIcon />}
-            color="#10b981"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Utilities & Cloud"
-            value={formatCurrency(getCMExpensesByCategory('utilities'))}
-            icon={<UtilitiesIcon />}
-            color="#f59e0b"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="One-Time Payments"
-            value={formatCurrency(getCMExpensesByFrequency('one-time'))}
-            icon={<OneTimeIcon />}
-            color="#ef4444"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Other Expenses"
-            value={formatCurrency(getCMExpensesByCategory('other') + getCMExpensesByCategory('marketing'))}
-            icon={<OtherIcon />}
-            color="#8b5cf6"
-          />
-        </Grid>
-      </Grid>
-
       {/* Filter panel */}
       <Paper sx={{ ...cardSx, p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -716,6 +648,74 @@ const Expenses: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* Grid of KPI Cards */}
+      <Grid container spacing={2} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Total Month Expenses"
+            value={formatCurrency(totalCMExpenses)}
+            icon={<ReceiptIcon />}
+            color="var(--color-primary)"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Employee Salaries"
+            value={formatCurrency(getCMExpensesByCategory('salary'))}
+            icon={<SalaryIcon />}
+            color="#3b82f6"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Employer PF"
+            value={formatCurrency(getCMExpensesByCategory('pf'))}
+            icon={<PfIcon />}
+            color="#6366f1"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Employer ESI"
+            value={formatCurrency(getCMExpensesByCategory('esi'))}
+            icon={<EsiIcon />}
+            color="#14b8a6"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Office Rent"
+            value={formatCurrency(getCMExpensesByCategory('rent'))}
+            icon={<RentIcon />}
+            color="#10b981"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Utilities & Cloud"
+            value={formatCurrency(getCMExpensesByCategory('utilities'))}
+            icon={<UtilitiesIcon />}
+            color="#f59e0b"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="One-Time Payments"
+            value={formatCurrency(getCMExpensesByFrequency('one-time'))}
+            icon={<OneTimeIcon />}
+            color="#ef4444"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <MiniKpiCard
+            label="Other Expenses"
+            value={formatCurrency(getCMExpensesByCategory('other') + getCMExpensesByCategory('marketing'))}
+            icon={<OtherIcon />}
+            color="#8b5cf6"
+          />
+        </Grid>
+      </Grid>
 
       {/* Expense Listing Table */}
       <Paper sx={{ ...cardSx, p: 3, overflow: 'hidden' }}>

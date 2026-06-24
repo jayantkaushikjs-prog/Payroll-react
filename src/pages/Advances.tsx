@@ -23,6 +23,8 @@ import {
   Select,
   MenuItem,
   FormControl,
+  ToggleButton,
+  ToggleButtonGroup,
   InputLabel,
   CircularProgress,
   IconButton,
@@ -39,6 +41,7 @@ import {
   Download as DownloadIcon,
   Edit as EditIcon,
   HistoryEdu as LogIcon,
+  CurrencyExchange as ReturnIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -62,6 +65,7 @@ interface EmployeeAdvance {
   start_year: number;
   is_fully_recovered: boolean;
   is_advance_salary: boolean;
+  entry_type?: 'manual' | 'payroll';
 }
 
 interface AdvanceLog {
@@ -89,10 +93,15 @@ const Advances: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedAdvance, setSelectedAdvance] = useState<EmployeeAdvance | null>(null);
+  const [openReturnDialog, setOpenReturnDialog] = useState(false);
+  const [selectedReturnAdvance, setSelectedReturnAdvance] = useState<EmployeeAdvance | null>(null);
+  const [returnForm, setReturnForm] = useState({ amount: 0, date: new Date().toISOString().split('T')[0], notes: '' });
 
   // Advance Log dialog state
   const [openLogDialog, setOpenLogDialog] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AdvanceLog | null>(null);
+  const [openBreakdownDialog, setOpenBreakdownDialog] = useState(false);
+  const [selectedAdvanceForBreakdown, setSelectedAdvanceForBreakdown] = useState<EmployeeAdvance | null>(null);
   const [logForm, setLogForm] = useState({
     employee_id: '',
     amount: 0,
@@ -127,6 +136,7 @@ const Advances: React.FC = () => {
     start_month: new Date().getMonth() + 1,
     start_year: currentYear,
     is_advance_salary: false,
+    entry_type: 'manual' as 'manual' | 'payroll',
   });
 
   const isFinanceOrAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
@@ -207,6 +217,7 @@ const Advances: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['advances']);
+        queryClient.invalidateQueries(['advance-logs']);
         showToast('Employee advance issued successfully!', 'success');
         setOpenDialog(false);
       },
@@ -225,6 +236,7 @@ const Advances: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['advances']);
+        queryClient.invalidateQueries(['advance-logs']);
         showToast('Employee advance updated successfully!', 'success');
         setOpenDialog(false);
       },
@@ -246,6 +258,24 @@ const Advances: React.FC = () => {
       },
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to delete advance log', 'error');
+      },
+    }
+  );
+
+  const manualReturnMutation = useMutation(
+    async ({ id, payload }: { id: number; payload: any }) => {
+      const res = await api.post(`/advances/${id}/manual-return`, payload);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['advances']);
+        queryClient.invalidateQueries(['advance-logs']);
+        showToast('Manual return recorded successfully!', 'success');
+        setOpenReturnDialog(false);
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to record manual return', 'error');
       },
     }
   );
@@ -299,6 +329,7 @@ const Advances: React.FC = () => {
       start_month: new Date().getMonth() + 1,
       start_year: currentYear,
       is_advance_salary: false,
+      entry_type: 'manual',
     });
     setOpenDialog(true);
   };
@@ -329,6 +360,7 @@ const Advances: React.FC = () => {
       start_month: adv.start_month,
       start_year: adv.start_year,
       is_advance_salary: adv.is_advance_salary || false,
+      entry_type: adv.entry_type || 'manual',
     });
     setOpenDialog(true);
   };
@@ -398,6 +430,7 @@ const Advances: React.FC = () => {
       start_month: Number(formData.start_month),
       start_year: Number(formData.start_year),
       is_advance_salary: formData.is_advance_salary,
+      entry_type: formData.entry_type,
     };
 
     if (selectedAdvance) {
@@ -485,6 +518,42 @@ const Advances: React.FC = () => {
   const handleDeleteLog = (id: number) => {
     if (window.confirm('Delete this advance log?')) deleteLogMutation.mutate(id);
   };
+
+  const handleOpenReturnDialog = (adv: EmployeeAdvance) => {
+    setSelectedReturnAdvance(adv);
+    setReturnForm({
+      amount: 0,
+      date: new Date().toISOString().split('T')[0],
+      notes: '',
+    });
+    setOpenReturnDialog(true);
+  };
+
+  const handleSubmitReturn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReturnAdvance) return;
+    if (Number(returnForm.amount) <= 0) {
+      showToast('Return amount must be greater than 0.', 'error');
+      return;
+    }
+    manualReturnMutation.mutate({
+      id: selectedReturnAdvance.id,
+      payload: {
+        amount: Number(returnForm.amount),
+        date: returnForm.date,
+        notes: returnForm.notes || undefined,
+      },
+    });
+  };
+
+  const handleOpenBreakdown = (adv: EmployeeAdvance) => {
+    setSelectedAdvanceForBreakdown(adv);
+    setOpenBreakdownDialog(true);
+  };
+
+  const breakdownLogs = selectedAdvanceForBreakdown
+    ? advanceLogs.filter((log: AdvanceLog) => log.employee_id === selectedAdvanceForBreakdown.employee_id)
+    : [];
 
   const months = [
     { value: 1, label: 'January' },
@@ -575,7 +644,8 @@ const Advances: React.FC = () => {
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Remaining</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Start Month/Year</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
-                {isFinanceOrAdmin && <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>}
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Entry</TableCell>
+                <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -592,62 +662,189 @@ const Advances: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                advances.map((adv: EmployeeAdvance) => (
-                  <TableRow key={adv.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' }, borderColor: 'rgba(255, 255, 255, 0.05)' }}>
-                    <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{adv.employee?.employee_code}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{adv.employee?.name}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(adv.date).toLocaleDateString('en-IN')}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(adv.amount)}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
-                      {adv.recovery_type.replace('_', ' ')}
-                    </TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>
-                      {adv.recovery_type === 'installment' && adv.installment_amount
-                        ? formatCurrency(adv.installment_amount)
-                        : 'N/A (One Time)'}
-                    </TableCell>
-                    <TableCell sx={{ color: 'var(--color-success)' }}>{formatCurrency(adv.total_recovered)}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-error)', fontWeight: 600 }}>{formatCurrency(adv.remaining_amount)}</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>
-                      {months.find((m) => m.value === adv.start_month)?.label} {adv.start_year}
-                    </TableCell>
-                    <TableCell>
-                      <Box
+                advances.map((adv: EmployeeAdvance) => {
+                  const statusLabel = adv.is_fully_recovered
+                    ? 'Recovered'
+                    : Number(adv.total_recovered) > 0
+                      ? 'Partially Returned'
+                      : 'Active';
+                  const statusBg = adv.is_fully_recovered
+                    ? 'rgba(16, 185, 129, 0.15)'
+                    : Number(adv.total_recovered) > 0
+                      ? 'rgba(99, 102, 241, 0.15)'
+                      : 'rgba(251, 191, 36, 0.15)';
+                  const statusColor = adv.is_fully_recovered
+                    ? 'var(--color-success)'
+                    : Number(adv.total_recovered) > 0
+                      ? 'var(--color-primary)'
+                      : 'var(--color-warning)';
+
+                  return (
+                    <TableRow key={adv.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' }, borderColor: 'rgba(255, 255, 255, 0.05)' }}>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{adv.employee?.employee_code}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{adv.employee?.name}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(adv.date).toLocaleDateString('en-IN')}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(adv.amount)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
+                        {adv.recovery_type.replace('_', ' ')}
+                      </TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>
+                        {adv.recovery_type === 'installment' && adv.installment_amount
+                          ? formatCurrency(adv.installment_amount)
+                          : 'N/A (One Time)'}
+                      </TableCell>
+                      <TableCell sx={{ color: 'var(--color-success)' }}>{formatCurrency(adv.total_recovered)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-error)', fontWeight: 600 }}>{formatCurrency(adv.remaining_amount)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>
+                        {months.find((m) => m.value === adv.start_month)?.label} {adv.start_year}
+                      </TableCell>
+                      <TableCell>
+                        <Box
+                          sx={{
+                            display: 'inline-block',
+                            px: 1.5,
+                            py: 0.4,
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            bgcolor: statusBg,
+                            color: statusColor,
+                          }}
+                        >
+                          {statusLabel}
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
+                        {adv.entry_type === 'payroll' ? 'Via Payroll' : 'Manual'}
+                      </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<LogIcon />}
+                        onClick={() => handleOpenBreakdown(adv)}
                         sx={{
-                          display: 'inline-block',
-                          px: 1.5,
-                          py: 0.4,
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          bgcolor: adv.is_fully_recovered ? 'rgba(16, 185, 129, 0.15)' : 'rgba(251, 191, 36, 0.15)',
-                          color: adv.is_fully_recovered ? 'var(--color-success)' : 'var(--color-warning)',
+                          mr: 1,
+                          borderColor: 'var(--color-border)',
+                          color: 'var(--color-text-secondary)',
+                          textTransform: 'none',
+                          borderRadius: 'var(--radius-control)',
+                          '&:hover': {
+                            borderColor: 'var(--color-primary)',
+                            color: 'var(--color-primary)',
+                            bgcolor: 'var(--color-surface-subtle)',
+                          },
                         }}
                       >
-                        {adv.is_fully_recovered ? 'Recovered' : 'Active'}
-                      </Box>
+                        Breakdown
+                      </Button>
+                      {isFinanceOrAdmin && (
+                        <>
+                          <Tooltip title="Record Manual Return">
+                            <IconButton onClick={() => handleOpenReturnDialog(adv)} sx={{ color: 'var(--color-accent)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}>
+                              <ReturnIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit Advance Record">
+                            <IconButton onClick={() => handleOpenEdit(adv)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Advance Record">
+                            <IconButton onClick={() => handleDelete(adv.id)} sx={{ color: 'var(--color-error)' }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
                     </TableCell>
-                    {isFinanceOrAdmin && (
-                      <TableCell align="right">
-                        <Tooltip title="Edit Advance Record">
-                          <IconButton onClick={() => handleOpenEdit(adv)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Advance Record">
-                          <IconButton onClick={() => handleDelete(adv.id)} sx={{ color: 'var(--color-error)' }}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    )}
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Manual return dialog */}
+      <Dialog
+        open={openReturnDialog}
+        onClose={() => setOpenReturnDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            color: 'var(--color-text-primary)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--color-border)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 2 }}>
+          Record Manual Return
+        </DialogTitle>
+        <form onSubmit={handleSubmitReturn}>
+          <DialogContent sx={{ py: 3 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  label="Return Amount (₹)"
+                  type="number"
+                  fullWidth
+                  required
+                  inputProps={{ min: 1 }}
+                  value={returnForm.amount === 0 ? '' : returnForm.amount}
+                  onChange={(e) => setReturnForm({ ...returnForm, amount: parseFloat(e.target.value) || 0 })}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Return Date"
+                  type="date"
+                  fullWidth
+                  required
+                  value={returnForm.date}
+                  onChange={(e) => setReturnForm({ ...returnForm, date: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Notes"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  value={returnForm.notes}
+                  onChange={(e) => setReturnForm({ ...returnForm, notes: e.target.value })}
+                  sx={inputStyles}
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <Button onClick={() => setOpenReturnDialog(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{
+                background: 'var(--color-accent)',
+                borderRadius: 'var(--radius-control)',
+                px: 3,
+                textTransform: 'none',
+              }}
+            >
+              Record Return
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
 
       {/* Issue/Edit advance dialog */}
       <Dialog
@@ -738,6 +935,21 @@ const Advances: React.FC = () => {
                   label="Advance Salary (Disables next month's net salary to recover this advance)"
                   sx={{ color: 'var(--color-text-primary)' }}
                 />
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 1 }}>
+                  ENTRY TYPE
+                </Typography>
+                <ToggleButtonGroup
+                  color="primary"
+                  value={formData.entry_type}
+                  exclusive
+                  onChange={(_, value) => value && setFormData({ ...formData, entry_type: value })}
+                  sx={{ '& .MuiToggleButton-root': { color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)' } }}
+                >
+                  <ToggleButton value="manual">Manual</ToggleButton>
+                  <ToggleButton value="payroll">Via Payroll</ToggleButton>
+                </ToggleButtonGroup>
               </Grid>
               <Grid item xs={12}>
                 <TextField
@@ -876,98 +1088,77 @@ const Advances: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* ─── Manual Advance / Borrow Logs ───────────────────────────────────── */}
-      <Box sx={{ mt: 5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <LogIcon sx={{ color: 'var(--color-accent)', fontSize: '1.5rem' }} />
+      <Dialog
+        open={openBreakdownDialog}
+        onClose={() => setOpenBreakdownDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            color: 'var(--color-text-primary)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px solid var(--color-border)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 2 }}>
+          Advance Breakdown
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          {selectedAdvanceForBreakdown && (
             <Box>
-              <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-                Manual Borrow / Return Logs
+              <Typography variant="h6" fontWeight={700} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+                {selectedAdvanceForBreakdown.employee?.employee_code} - {selectedAdvanceForBreakdown.employee?.name}
               </Typography>
-              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.3 }}>
-                Track informal cash borrows — date borrowed, expected return, actual return date and notes.
+              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+                Issued {new Date(selectedAdvanceForBreakdown.date).toLocaleDateString('en-IN')} · Remaining {formatCurrency(selectedAdvanceForBreakdown.remaining_amount)}
               </Typography>
-            </Box>
-          </Box>
-          {isFinanceOrAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenAddLog}
-              sx={{
-                background: 'var(--color-accent)',
-                boxShadow: '0 8px 18px rgba(99,102,241,0.22)',
-                borderRadius: 'var(--radius-control)',
-                textTransform: 'none',
-              }}
-            >
-              Add Log
-            </Button>
-          )}
-        </Box>
 
-        <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', overflow: 'hidden', p: 3 }}>
-          <TableContainer>
-            <Table>
-              <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-                <TableRow>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Emp Code</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Amount</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Borrowed Date</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Tentative Return</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Returned Amount</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actual Return</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
-                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Notes</TableCell>
-                  {isFinanceOrAdmin && <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {logsLoading ? (
-                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 3 }}><CircularProgress size={28} sx={{ color: 'var(--color-primary)' }} /></TableCell></TableRow>
-                ) : advanceLogs.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>No borrow logs recorded yet.</TableCell></TableRow>
-                ) : (
-                  advanceLogs.map((log: AdvanceLog) => {
-                    const statusColor = log.status === 'returned' ? 'var(--color-success)' : log.status === 'partially_returned' ? 'var(--color-warning)' : 'var(--color-error)';
-                    const statusBg = log.status === 'returned' ? 'rgba(16,185,129,0.12)' : log.status === 'partially_returned' ? 'rgba(251,191,36,0.12)' : 'rgba(244,63,94,0.12)';
-                    const statusLabel = log.status === 'returned' ? 'Returned' : log.status === 'partially_returned' ? 'Partial' : 'Open';
-                    return (
-                      <TableRow key={log.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' } }}>
-                        <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{log.employee?.employee_code}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{log.employee?.name}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(log.amount)}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(log.borrowed_date).toLocaleDateString('en-IN')}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-secondary)' }}>{log.tentative_return_date ? new Date(log.tentative_return_date).toLocaleDateString('en-IN') : '—'}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-success)' }}>{Number(log.amount_returned) > 0 ? formatCurrency(log.amount_returned) : '—'}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{log.actual_return_date ? new Date(log.actual_return_date).toLocaleDateString('en-IN') : '—'}</TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'inline-block', px: 1.5, py: 0.4, borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, bgcolor: statusBg, color: statusColor }}>
-                            {statusLabel}
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-secondary)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <Tooltip title={log.notes || ''} arrow>
-                            <span>{log.notes || '—'}</span>
-                          </Tooltip>
-                        </TableCell>
-                        {isFinanceOrAdmin && (
-                          <TableCell align="right">
-                            <Tooltip title="Edit Log"><IconButton onClick={() => handleOpenEditLog(log)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                            <Tooltip title="Delete Log"><IconButton onClick={() => handleDeleteLog(log.id)} sx={{ color: 'var(--color-error)' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+              <TableContainer component={Paper} sx={{ background: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                <Table>
+                  <TableHead sx={{ bgcolor: 'var(--color-surface)' }}>
+                    <TableRow>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Date</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Amount</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Returned</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Notes</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {logsLoading ? (
+                      <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3 }}><CircularProgress size={24} sx={{ color: 'var(--color-primary)' }} /></TableCell></TableRow>
+                    ) : breakdownLogs.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>No history found for this advance.</TableCell></TableRow>
+                    ) : (
+                      breakdownLogs.map((log: AdvanceLog) => (
+                        <TableRow key={log.id} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
+                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(log.borrowed_date).toLocaleDateString('en-IN')}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(log.amount)}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-success)' }}>{Number(log.amount_returned) > 0 ? formatCurrency(log.amount_returned) : '—'}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{log.status.replace('_', ' ')}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-secondary)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <Tooltip title={log.notes || ''} arrow>
+                              <span>{log.notes || '—'}</span>
+                            </Tooltip>
                           </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      </Box>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <Button onClick={() => setOpenBreakdownDialog(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ─── Add/Edit Log Dialog ──────────────────────────────────────────────── */}
       <Dialog open={openLogDialog} onClose={() => setOpenLogDialog(false)} maxWidth="sm" fullWidth

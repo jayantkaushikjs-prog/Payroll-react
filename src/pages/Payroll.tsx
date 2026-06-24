@@ -227,6 +227,33 @@ const Payroll: React.FC = () => {
         </Grid>
       </Paper>
 
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2.2, borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Gross</Typography>
+            <Typography variant="h6" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('gross_salary'))}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2.2, borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Deductions</Typography>
+            <Typography variant="h6" sx={{ color: 'var(--color-error)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('tax_deduction') + sum('pf_deduction') + sum('non_payable_deduction'))}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2.2, borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Net Payroll</Typography>
+            <Typography variant="h6" sx={{ color: 'var(--color-success)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('net_salary'))}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 2.2, borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Processed Employees</Typography>
+            <Typography variant="h6" sx={{ color: 'var(--color-info)', fontWeight: 700, mt: 0.5 }}>{payrolls.length}</Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
       <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', overflow: 'hidden', p: 3 }}>
         <TableContainer>
           <Table sx={{ minWidth: 900 }}>
