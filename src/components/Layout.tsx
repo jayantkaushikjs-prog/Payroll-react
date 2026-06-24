@@ -183,6 +183,11 @@ const Layout: React.FC = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleGoToDashboard = () => {
+    navigate('/');
+    setMobileOpen(false);
+  };
+
   const formatUserLabel = (email: string) =>
     email
       .split('@')[0]
@@ -295,7 +300,19 @@ const Layout: React.FC = () => {
 
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-sidebar)' }}>
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Box
+        onClick={handleGoToDashboard}
+        sx={{
+          p: 3,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          cursor: 'pointer',
+          '&:hover': {
+            backgroundColor: 'var(--color-surface-subtle)',
+          },
+        }}
+      >
         <THPMSLogo size={36} color="var(--color-text-primary)" />
         <Typography variant="h6" sx={{ fontFamily: 'Outfit', fontWeight: 700, color: 'var(--color-text-primary)', letterSpacing: '1px' }}>
           TH-PMS
