@@ -383,6 +383,7 @@ const Expenses: React.FC = () => {
 
   const getPayrollValue = (pr: any, field: string) => {
     switch (field) {
+      case 'ctc': return Number(pr.tax_breakdown_json?.ctc ?? pr.ctc ?? 0);
       case 'basic': return Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0);
       case 'hra': return Number(pr.tax_breakdown_json?.hra ?? 0);
       case 'others': return Number(pr.tax_breakdown_json?.othersAllowance ?? Math.max(0, Number(pr.gross_salary) - (Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0)) - (Number(pr.tax_breakdown_json?.hra ?? 0))));
@@ -404,6 +405,7 @@ const Expenses: React.FC = () => {
   };
 
   const payrollBreakdown = payrolls.reduce((acc: Record<string, number>, pr: any) => ({
+    ctc: acc.ctc + getPayrollValue(pr, 'ctc'),
     basic: acc.basic + getPayrollValue(pr, 'basic'),
     hra: acc.hra + getPayrollValue(pr, 'hra'),
     others: acc.others + getPayrollValue(pr, 'others'),
@@ -421,6 +423,7 @@ const Expenses: React.FC = () => {
     net: acc.net + getPayrollValue(pr, 'net'),
     gross: acc.gross + getPayrollValue(pr, 'gross'),
   }), {
+    ctc: 0,
     basic: 0,
     hra: 0,
     others: 0,
@@ -758,7 +761,7 @@ const Expenses: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
             label="Employee Salaries (CTC)"
-            value={formatCurrency(payrollBreakdown.gross || 0)}
+            value={formatCurrency(payrollBreakdown.ctc || 0)}
             icon={<SalaryIcon />}
             color="#3b82f6"
             expandable
@@ -766,8 +769,8 @@ const Expenses: React.FC = () => {
             onToggle={() => setExpandedSalaryCard((prev) => !prev)}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-              <span>Gross</span>
-              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(payrollBreakdown.gross || 0)}</span>
+              <span>Monthly CTC</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(payrollBreakdown.ctc || 0)}</span>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
               <span>Basic</span>
