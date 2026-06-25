@@ -191,7 +191,7 @@ const SalaryStructures: React.FC = () => {
     let basic_percent: string | number = '';
     let hra_percent: string | number = '';
     if (current && Number(current.gross_salary) > 0) {
-      basic_percent = Math.round((Number(current.basic_salary) / Number(current.gross_salary)) * 100);
+      basic_percent = Math.round((Number(current.basic_salary) / Number(current.ctc)) * 100);
       if (Number(current.basic_salary) > 0) {
         hra_percent = Math.round((Number(current.hra) / Number(current.basic_salary)) * 100);
       }
