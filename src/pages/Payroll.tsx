@@ -11,7 +11,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   Tooltip, IconButton, Divider,
 } from '@mui/material';
-import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon, Payments as DisburseIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
+import { PlayArrow as GenIcon, Lock as LockIcon, LockOpen as UnlockIcon, Download as DownloadIcon, Payments as DisburseIcon, HelpOutline as HelpOutlineIcon, ArrowUpward, ArrowDownward, UnfoldMore, ExpandMore, ChevronRight } from '@mui/icons-material';
 import { useToast } from '../context/ToastContext';
 
 const ss = {
@@ -38,6 +38,8 @@ const Payroll: React.FC = () => {
   const [yr, setYr] = useState(now.getFullYear());
   const [disburseOpen, setDisburseOpen] = useState(false);
   const [selectedTaxBreakdown, setSelectedTaxBreakdown] = useState<any>(null);
+  const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' | 'none' }>({ field: '', direction: 'none' });
+  const [expandedTile, setExpandedTile] = useState<'gross' | 'deductions' | 'net' | null>(null);
   
   const canEdit = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
@@ -69,6 +71,58 @@ const Payroll: React.FC = () => {
   const allLocked = payrolls.length > 0 && payrolls.every((p: any) => p.status === 'locked' || p.status === 'disbursed');
   const hasDraft = payrolls.some((p: any) => p.status === 'draft');
   const sum = (key: string) => payrolls.reduce((s: number, p: any) => s + Number(p[key]), 0);
+  const sumByField = (field: string) => payrolls.reduce((s: number, p: any) => s + Number(getPayrollValue(p, field) || 0), 0);
+
+  const getPayrollValue = (pr: any, field: string) => {
+    switch (field) {
+      case 'employee_code': return pr.employee?.employee_code || '';
+      case 'name': return pr.employee?.name || '';
+      case 'department': return pr.employee?.department || '';
+      case 'basic': return Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0);
+      case 'hra': return Number(pr.tax_breakdown_json?.hra ?? 0);
+      case 'others': return Number(pr.tax_breakdown_json?.othersAllowance ?? Math.max(0, Number(pr.gross_salary) - (Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0)) - (Number(pr.tax_breakdown_json?.hra ?? 0))));
+      case 'bonus': return Number(pr.tax_breakdown_json?.bonus ?? 0);
+      case 'encash': return Number(pr.tax_breakdown_json?.leaveEncashment ?? 0);
+      case 'gross': return Number(pr.gross_salary ?? 0);
+      case 'absent': return Number(pr.non_payable_deduction ?? 0);
+      case 'late': return Number(pr.tax_breakdown_json?.lateArrivalDeduction ?? 0);
+      case 'pf': return Number(pr.pf_deduction ?? 0);
+      case 'esi': return Number(pr.tax_breakdown_json?.employeeEsi ?? 0);
+      case 'pt': return Number(pr.tax_breakdown_json?.professionalTax ?? 0);
+      case 'tax': return Number(pr.tax_deduction ?? 0);
+      case 'damages': return Number(pr.tax_breakdown_json?.damages ?? 0);
+      case 'other_ded': return Number(pr.tax_breakdown_json?.otherDeductions ?? 0);
+      case 'advance': return Number(pr.advance_recovery ?? 0);
+      case 'net': return Number(pr.net_salary ?? 0);
+      case 'status': return pr.status || '';
+      default: return '';
+    }
+  };
+
+  const sortedPayrolls = React.useMemo(() => {
+    if (!sortConfig.field || sortConfig.direction === 'none') return payrolls;
+    const sorted = [...payrolls].sort((a, b) => {
+      const aValue = getPayrollValue(a, sortConfig.field);
+      const bValue = getPayrollValue(b, sortConfig.field);
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      const left = String(aValue).toLowerCase();
+      const right = String(bValue).toLowerCase();
+      return sortConfig.direction === 'asc' ? left.localeCompare(right) : right.localeCompare(left);
+    });
+    return sorted;
+  }, [payrolls, sortConfig]);
+
+  const handleSort = (field: string) => {
+    setSortConfig((prev) => {
+      if (prev.field === field) {
+        if (prev.direction === 'asc') return { field, direction: 'desc' };
+        if (prev.direction === 'desc') return { field: '', direction: 'none' };
+      }
+      return { field, direction: 'asc' };
+    });
+  };
 
   const downloadCsv = async (url: string, filename: string) => {
     try {
@@ -230,20 +284,89 @@ const Payroll: React.FC = () => {
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2.2, borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
-            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Gross</Typography>
-            <Typography variant="h6" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('gross_salary'))}</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Gross</Typography>
+                <Typography variant="h6" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('gross_salary'))}</Typography>
+              </Box>
+              <IconButton size="small" onClick={() => setExpandedTile(expandedTile === 'gross' ? null : 'gross')} sx={{ color: 'var(--color-text-secondary)', p: 0.25 }}>
+                {expandedTile === 'gross' ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
+              </IconButton>
+            </Box>
+            {expandedTile === 'gross' && (
+              <Box sx={{ mt: 1.2, display: 'grid', gap: 0.7 }}>
+                {[
+                  { label: 'Basic', value: sumByField('basic') },
+                  { label: 'HRA', value: sumByField('hra') },
+                  { label: 'Others', value: sumByField('others') },
+                  { label: 'Bonus', value: sumByField('bonus') },
+                  { label: 'Encash', value: sumByField('encash') },
+                ].map((item) => (
+                  <Box key={item.label} sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                    <span>{item.label}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(item.value)}</span>
+                  </Box>
+                ))}
+              </Box>
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2.2, borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
-            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Deductions</Typography>
-            <Typography variant="h6" sx={{ color: 'var(--color-error)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('tax_deduction') + sum('pf_deduction') + sum('non_payable_deduction'))}</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Deductions</Typography>
+                <Typography variant="h6" sx={{ color: 'var(--color-error)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('tax_deduction') + sum('pf_deduction') + sum('non_payable_deduction'))}</Typography>
+              </Box>
+              <IconButton size="small" onClick={() => setExpandedTile(expandedTile === 'deductions' ? null : 'deductions')} sx={{ color: 'var(--color-text-secondary)', p: 0.25 }}>
+                {expandedTile === 'deductions' ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
+              </IconButton>
+            </Box>
+            {expandedTile === 'deductions' && (
+              <Box sx={{ mt: 1.2, display: 'grid', gap: 0.7 }}>
+                {[
+                  { label: 'Absent', value: sumByField('absent') },
+                  { label: 'Late Ded', value: sumByField('late') },
+                  { label: 'PF', value: sumByField('pf') },
+                  { label: 'ESI', value: sumByField('esi') },
+                  { label: 'PT', value: sumByField('pt') },
+                  { label: 'Tax/TDS', value: sumByField('tax') },
+                  { label: 'Damages', value: sumByField('damages') },
+                  { label: 'Other Ded', value: sumByField('other_ded') },
+                  { label: 'Advance Rec.', value: sumByField('advance') },
+                ].map((item) => (
+                  <Box key={item.label} sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                    <span>{item.label}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>{formatCurrency(item.value)}</span>
+                  </Box>
+                ))}
+              </Box>
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2.2, borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-card)' }}>
-            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Net Payroll</Typography>
-            <Typography variant="h6" sx={{ color: 'var(--color-success)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('net_salary'))}</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Net Payroll</Typography>
+                <Typography variant="h6" sx={{ color: 'var(--color-success)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('net_salary'))}</Typography>
+              </Box>
+              <IconButton size="small" onClick={() => setExpandedTile(expandedTile === 'net' ? null : 'net')} sx={{ color: 'var(--color-text-secondary)', p: 0.25 }}>
+                {expandedTile === 'net' ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
+              </IconButton>
+            </Box>
+            {expandedTile === 'net' && (
+              <Box sx={{ mt: 1.2, display: 'grid', gap: 0.7 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                  <span>Gross</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(sum('gross_salary'))}</span>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                  <span>Deductions</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>{formatCurrency(sum('tax_deduction') + sum('pf_deduction') + sum('non_payable_deduction'))}</span>
+                </Box>
+              </Box>
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -259,15 +382,43 @@ const Payroll: React.FC = () => {
           <Table sx={{ minWidth: 900 }}>
             <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
               <TableRow>
-                {['Emp Code','Name','Dept','Basic','HRA','Others','Bonus','Encash','Gross (A)','Absent','Late Ded','PF','ESI','PT','Tax/TDS','Damages','Other Ded','Advance Rec.','Net (A−B)','Status'].map(h => (
-                  <TableCell key={h} align={['Basic','HRA','Others','Bonus','Encash','Gross (A)','Absent','Late Ded','PF','ESI','PT','Tax/TDS','Damages','Other Ded','Advance Rec.','Net (A−B)'].includes(h) ? 'right' : h === 'Status' ? 'center' : 'left'} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</TableCell>
+                {[
+                  { label: 'Emp Code', field: 'employee_code' },
+                  { label: 'Name', field: 'name' },
+                  { label: 'Dept', field: 'department' },
+                  { label: 'Basic', field: 'basic' },
+                  { label: 'HRA', field: 'hra' },
+                  { label: 'Others', field: 'others' },
+                  { label: 'Bonus', field: 'bonus' },
+                  { label: 'Encash', field: 'encash' },
+                  { label: 'Gross (A)', field: 'gross' },
+                  { label: 'Absent', field: 'absent' },
+                  { label: 'Late Ded', field: 'late' },
+                  { label: 'PF', field: 'pf' },
+                  { label: 'ESI', field: 'esi' },
+                  { label: 'PT', field: 'pt' },
+                  { label: 'Tax/TDS', field: 'tax' },
+                  { label: 'Damages', field: 'damages' },
+                  { label: 'Other Ded', field: 'other_ded' },
+                  { label: 'Advance Rec.', field: 'advance' },
+                  { label: 'Net (A−B)', field: 'net' },
+                  { label: 'Status', field: 'status' },
+                ].map((header) => (
+                  <TableCell key={header.label} align={['basic','hra','others','bonus','encash','gross','absent','late','pf','esi','pt','tax','damages','other_ded','advance','net'].includes(header.field) ? 'right' : header.field === 'status' ? 'center' : 'left'} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: ['basic','hra','others','bonus','encash','gross','absent','late','pf','esi','pt','tax','damages','other_ded','advance','net'].includes(header.field) ? 'flex-end' : header.field === 'status' ? 'center' : 'flex-start', gap: 0.5 }}>
+                      <span>{header.label}</span>
+                      <IconButton size="small" onClick={() => handleSort(header.field)} sx={{ color: sortConfig.field === header.field ? 'var(--color-primary)' : 'var(--color-text-muted)', p: 0.25 }}>
+                        {sortConfig.field !== header.field ? <UnfoldMore fontSize="small" /> : sortConfig.direction === 'asc' ? <ArrowUpward fontSize="small" /> : sortConfig.direction === 'desc' ? <ArrowDownward fontSize="small" /> : <UnfoldMore fontSize="small" />}
+                      </IconButton>
+                    </Box>
+                  </TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
               {isLoading ? <TableRow><TableCell colSpan={20} align="center" sx={{ py: 5 }}><CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} /></TableCell></TableRow>
               : payrolls.length === 0 ? <TableRow><TableCell colSpan={20} align="center" sx={{ py: 5, color: 'var(--color-text-muted)' }}>No payroll data. {canEdit && 'Click "Generate Payroll" to start.'}</TableCell></TableRow>
-              : payrolls.map((pr: any) => {
+              : sortedPayrolls.map((pr: any) => {
                 const basic = Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0);
                 const hra = Number(pr.tax_breakdown_json?.hra ?? (basic * 0.4).toFixed(2));
                 const others = Number(pr.tax_breakdown_json?.othersAllowance ?? Math.max(0, Number(pr.gross_salary) - basic - hra));

@@ -53,6 +53,11 @@ import {
   Shield as PfIcon,
   HealthAndSafety as EsiIcon,
   Sync as SyncIcon,
+  ArrowUpward,
+  ArrowDownward,
+  UnfoldMore,
+  ExpandMore,
+  ChevronRight,
 } from '@mui/icons-material';
 
 interface Expense {
@@ -95,6 +100,8 @@ const Expenses: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [excludeSalaries, setExcludeSalaries] = useState(false);
+  const [expenseSort, setExpenseSort] = useState<{ field: string; direction: 'asc' | 'desc' | 'none' }>({ field: '', direction: 'none' });
+  const [expandedSalaryCard, setExpandedSalaryCard] = useState(false);
 
   // Dialog State
   const [openDialog, setOpenDialog] = useState(false);
@@ -112,6 +119,13 @@ const Expenses: React.FC = () => {
     description: '',
   });
 
+  // Helper calculation for Stats (Current Month or Selected Month)
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
+  const effectiveMonth = monthFilter === 'all' ? currentMonth : Number(monthFilter);
+  const effectiveYear = yearFilter === 'all' ? currentYear : Number(yearFilter);
+
   // Fetch all expenses
   const { data: expenses = [], isLoading } = useQuery(
     ['expenses', excludeSalaries, monthFilter, yearFilter],
@@ -124,6 +138,15 @@ const Expenses: React.FC = () => {
       const res = await api.get(`/expenses?${params.toString()}`);
       return res.data;
     }
+  );
+
+  const { data: payrolls = [] } = useQuery(
+    ['payrollForExpenses', effectiveMonth, effectiveYear],
+    async () => {
+      const res = await api.get(`/payroll?month=${effectiveMonth}&year=${effectiveYear}`);
+      return res.data;
+    },
+    { enabled: !!effectiveMonth && !!effectiveYear }
   );
 
   // Manage Categories States
@@ -312,7 +335,7 @@ const Expenses: React.FC = () => {
     const rows = filteredExpenses.map((exp: Expense) => [
       exp.id,
       `"${exp.title.replace(/"/g, '""')}"`,
-      exp.amount,
+      Number(exp.amount).toFixed(2),
       exp.category,
       exp.frequency,
       exp.date,
@@ -331,13 +354,6 @@ const Expenses: React.FC = () => {
     document.body.removeChild(link);
     showToast('Expenses exported successfully!', 'success');
   };
-
-  // Helper calculation for Stats (Current Month or Selected Month)
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
-
-  const effectiveMonth = monthFilter === 'all' ? currentMonth : Number(monthFilter);
-  const effectiveYear = yearFilter === 'all' ? currentYear : Number(yearFilter);
 
   const getExpensesForEffectiveMonth = () => {
     const startOfMonth = new Date(effectiveYear, effectiveMonth - 1, 1);
@@ -364,6 +380,64 @@ const Expenses: React.FC = () => {
 
   const effectiveMonthExpenses = getExpensesForEffectiveMonth();
   const totalCMExpenses = effectiveMonthExpenses.reduce((sum: number, e: Expense) => sum + Number(e.amount), 0);
+
+  const getPayrollValue = (pr: any, field: string) => {
+    switch (field) {
+      case 'basic': return Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0);
+      case 'hra': return Number(pr.tax_breakdown_json?.hra ?? 0);
+      case 'others': return Number(pr.tax_breakdown_json?.othersAllowance ?? Math.max(0, Number(pr.gross_salary) - (Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0)) - (Number(pr.tax_breakdown_json?.hra ?? 0))));
+      case 'bonus': return Number(pr.tax_breakdown_json?.bonus ?? 0);
+      case 'encash': return Number(pr.tax_breakdown_json?.leaveEncashment ?? 0);
+      case 'absent': return Number(pr.non_payable_deduction ?? 0);
+      case 'late': return Number(pr.tax_breakdown_json?.lateArrivalDeduction ?? 0);
+      case 'pf': return Number(pr.pf_deduction ?? 0);
+      case 'esi': return Number(pr.tax_breakdown_json?.employeeEsi ?? 0);
+      case 'pt': return Number(pr.tax_breakdown_json?.professionalTax ?? 0);
+      case 'tax': return Number(pr.tax_deduction ?? 0);
+      case 'damages': return Number(pr.tax_breakdown_json?.damages ?? 0);
+      case 'other_ded': return Number(pr.tax_breakdown_json?.otherDeductions ?? 0);
+      case 'advance': return Number(pr.advance_recovery ?? 0);
+      case 'net': return Number(pr.net_salary ?? 0);
+      case 'gross': return Number(pr.gross_salary ?? 0);
+      default: return 0;
+    }
+  };
+
+  const payrollBreakdown = payrolls.reduce((acc: Record<string, number>, pr: any) => ({
+    basic: acc.basic + getPayrollValue(pr, 'basic'),
+    hra: acc.hra + getPayrollValue(pr, 'hra'),
+    others: acc.others + getPayrollValue(pr, 'others'),
+    bonus: acc.bonus + getPayrollValue(pr, 'bonus'),
+    encash: acc.encash + getPayrollValue(pr, 'encash'),
+    absent: acc.absent + getPayrollValue(pr, 'absent'),
+    late: acc.late + getPayrollValue(pr, 'late'),
+    pf: acc.pf + getPayrollValue(pr, 'pf'),
+    esi: acc.esi + getPayrollValue(pr, 'esi'),
+    pt: acc.pt + getPayrollValue(pr, 'pt'),
+    tax: acc.tax + getPayrollValue(pr, 'tax'),
+    damages: acc.damages + getPayrollValue(pr, 'damages'),
+    otherDed: acc.otherDed + getPayrollValue(pr, 'other_ded'),
+    advance: acc.advance + getPayrollValue(pr, 'advance'),
+    net: acc.net + getPayrollValue(pr, 'net'),
+    gross: acc.gross + getPayrollValue(pr, 'gross'),
+  }), {
+    basic: 0,
+    hra: 0,
+    others: 0,
+    bonus: 0,
+    encash: 0,
+    absent: 0,
+    late: 0,
+    pf: 0,
+    esi: 0,
+    pt: 0,
+    tax: 0,
+    damages: 0,
+    otherDed: 0,
+    advance: 0,
+    net: 0,
+    gross: 0,
+  });
   
   const getCMExpensesByCategory = (cat: string) => {
     return effectiveMonthExpenses
@@ -410,8 +484,30 @@ const Expenses: React.FC = () => {
     return matchesSearch && matchesCategory && matchesFrequency && matchesDate;
   });
 
+  const sortedExpenses = React.useMemo(() => {
+    if (!expenseSort.field || expenseSort.direction === 'none') return filteredExpenses;
+    return [...filteredExpenses].sort((a, b) => {
+      const aValue = expenseSort.field === 'amount' ? Number(a.amount) : new Date(a[expenseSort.field as keyof Expense] as string).getTime();
+      const bValue = expenseSort.field === 'amount' ? Number(b.amount) : new Date(b[expenseSort.field as keyof Expense] as string).getTime();
+      if (expenseSort.field === 'amount') {
+        return expenseSort.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      return expenseSort.direction === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+  }, [filteredExpenses, expenseSort]);
+
   // Pagination Logic
-  const paginatedExpenses = filteredExpenses.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const paginatedExpenses = sortedExpenses.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleExpenseSort = (field: string) => {
+    setExpenseSort((prev) => {
+      if (prev.field === field) {
+        if (prev.direction === 'asc') return { field, direction: 'desc' };
+        if (prev.direction === 'desc') return { field: '', direction: 'none' };
+      }
+      return { field, direction: 'asc' };
+    });
+  };
 
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
@@ -661,27 +757,51 @@ const Expenses: React.FC = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
-            label="Employee Salaries"
-            value={formatCurrency(getCMExpensesByCategory('salary'))}
+            label="Employee Salaries (CTC)"
+            value={formatCurrency(payrollBreakdown.gross || 0)}
             icon={<SalaryIcon />}
             color="#3b82f6"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Employer PF"
-            value={formatCurrency(getCMExpensesByCategory('pf'))}
-            icon={<PfIcon />}
-            color="#6366f1"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Employer ESI"
-            value={formatCurrency(getCMExpensesByCategory('esi'))}
-            icon={<EsiIcon />}
-            color="#14b8a6"
-          />
+            expandable
+            expanded={expandedSalaryCard}
+            onToggle={() => setExpandedSalaryCard((prev) => !prev)}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>Gross</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(payrollBreakdown.gross || 0)}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>Basic</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(payrollBreakdown.basic || 0)}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>HRA</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(payrollBreakdown.hra || 0)}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>Others</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency(payrollBreakdown.others || 0)}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>Bonus / Encash</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{formatCurrency((payrollBreakdown.bonus || 0) + (payrollBreakdown.encash || 0))}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>Absent / Late</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>{formatCurrency((payrollBreakdown.absent || 0) + (payrollBreakdown.late || 0))}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>PF / ESI</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>{formatCurrency((payrollBreakdown.pf || 0) + (payrollBreakdown.esi || 0))}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>PT / Tax</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>{formatCurrency((payrollBreakdown.pt || 0) + (payrollBreakdown.tax || 0))}</span>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+              <span>Net</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>{formatCurrency(payrollBreakdown.net || 0)}</span>
+            </Box>
+          </MiniKpiCard>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <MiniKpiCard
@@ -726,10 +846,38 @@ const Expenses: React.FC = () => {
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Title</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Category</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Frequency</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Date</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Start Date</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>End Date</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Amount</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <span>Date</span>
+                    <IconButton size="small" onClick={() => handleExpenseSort('date')} sx={{ color: expenseSort.field === 'date' ? 'var(--color-primary)' : 'var(--color-text-muted)', p: 0.25 }}>
+                      {expenseSort.field !== 'date' ? <UnfoldMore fontSize="small" /> : expenseSort.direction === 'asc' ? <ArrowUpward fontSize="small" /> : expenseSort.direction === 'desc' ? <ArrowDownward fontSize="small" /> : <UnfoldMore fontSize="small" />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <span>Start Date</span>
+                    <IconButton size="small" onClick={() => handleExpenseSort('startDate')} sx={{ color: expenseSort.field === 'startDate' ? 'var(--color-primary)' : 'var(--color-text-muted)', p: 0.25 }}>
+                      {expenseSort.field !== 'startDate' ? <UnfoldMore fontSize="small" /> : expenseSort.direction === 'asc' ? <ArrowUpward fontSize="small" /> : expenseSort.direction === 'desc' ? <ArrowDownward fontSize="small" /> : <UnfoldMore fontSize="small" />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <span>End Date</span>
+                    <IconButton size="small" onClick={() => handleExpenseSort('endDate')} sx={{ color: expenseSort.field === 'endDate' ? 'var(--color-primary)' : 'var(--color-text-muted)', p: 0.25 }}>
+                      {expenseSort.field !== 'endDate' ? <UnfoldMore fontSize="small" /> : expenseSort.direction === 'asc' ? <ArrowUpward fontSize="small" /> : expenseSort.direction === 'desc' ? <ArrowDownward fontSize="small" /> : <UnfoldMore fontSize="small" />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <span>Amount</span>
+                    <IconButton size="small" onClick={() => handleExpenseSort('amount')} sx={{ color: expenseSort.field === 'amount' ? 'var(--color-primary)' : 'var(--color-text-muted)', p: 0.25 }}>
+                      {expenseSort.field !== 'amount' ? <UnfoldMore fontSize="small" /> : expenseSort.direction === 'asc' ? <ArrowUpward fontSize="small" /> : expenseSort.direction === 'desc' ? <ArrowDownward fontSize="small" /> : <UnfoldMore fontSize="small" />}
+                    </IconButton>
+                  </Box>
+                </TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Description</TableCell>
                 {isFinanceOrAdmin && (
                   <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
@@ -1084,11 +1232,24 @@ const Expenses: React.FC = () => {
 };
 
 // Reusable KPI card component with vibrant styling and animations
-const MiniKpiCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string }> = ({
+const MiniKpiCard: React.FC<{
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color: string;
+  expandable?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
+  children?: React.ReactNode;
+}> = ({
   label,
   value,
   icon,
   color,
+  expandable = false,
+  expanded = false,
+  onToggle,
+  children,
 }) => (
   <Paper
     sx={{
@@ -1129,23 +1290,35 @@ const MiniKpiCard: React.FC<{ label: string; value: string; icon: React.ReactNod
           {value}
         </Typography>
       </Box>
-      <Box
-        className="icon-wrapper"
-        sx={{
-          color: color,
-          backgroundColor: `${color}15`,
-          p: 1,
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 240ms cubic-bezier(0.16, 1, 0.3, 1)',
-          '& svg': { fontSize: '1.4rem' }
-        }}
-      >
-        {icon}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        {expandable && (
+          <IconButton size="small" onClick={onToggle} sx={{ color, p: 0.5 }}>
+            {expanded ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
+          </IconButton>
+        )}
+        <Box
+          className="icon-wrapper"
+          sx={{
+            color: color,
+            backgroundColor: `${color}15`,
+            p: 1,
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 240ms cubic-bezier(0.16, 1, 0.3, 1)',
+            '& svg': { fontSize: '1.4rem' }
+          }}
+        >
+          {icon}
+        </Box>
       </Box>
     </Box>
+    {expandable && expanded && children ? (
+      <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid var(--color-border)', display: 'grid', gap: 0.7 }}>
+        {children}
+      </Box>
+    ) : null}
   </Paper>
 );
 
