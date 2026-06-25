@@ -31,6 +31,7 @@ import {
   Select,
   MenuItem,
   TablePagination,
+  Chip,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -169,6 +170,7 @@ const SalaryStructures: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['activeSalaries']);
+        queryClient.invalidateQueries(['salaryHistory']);
         showToast('Salary structure revised successfully!', 'success');
         setOpenRevisionDialog(false);
       },
@@ -303,6 +305,7 @@ const SalaryStructures: React.FC = () => {
         const res = await api.post('/salary-structures/import', { csvContent: text });
         const { imported, errors } = res.data;
         queryClient.invalidateQueries(['activeSalaries']);
+        queryClient.invalidateQueries(['salaryHistory']);
         if (errors && errors.length > 0) {
           showToast(`Imported ${imported} structures. There were ${errors.length} warnings/errors (see console details).`, 'error');
           console.warn('Import CSV warnings/errors:', errors);
@@ -454,10 +457,12 @@ const SalaryStructures: React.FC = () => {
               <TableRow>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Emp Code</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>PF</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Monthly CTC</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Basic Salary</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>HRA</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Other Allowance</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer Contributions</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Gross Salary</TableCell>
                 <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
               </TableRow>
@@ -465,13 +470,13 @@ const SalaryStructures: React.FC = () => {
             <TableBody>
               {(loadingSalaries || loadingEmployees) ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                  <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
                     <CircularProgress size={30} sx={{ color: 'var(--color-primary)' }} />
                   </TableCell>
                 </TableRow>
               ) : employees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
+                  <TableCell colSpan={10} align="center" sx={{ py: 3, color: 'var(--color-text-muted)' }}>
                     No employees registered yet.
                   </TableCell>
                 </TableRow>
@@ -489,6 +494,18 @@ const SalaryStructures: React.FC = () => {
                     >
                       <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 700 }}>{emp.employee_code}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.name}</TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={emp.pf_deduction !== false ? 'Enabled' : 'Disabled'}
+                          sx={{
+                            bgcolor: emp.pf_deduction !== false ? 'rgba(16, 185, 129, 0.08)' : 'rgba(148, 163, 184, 0.08)',
+                            color: emp.pf_deduction !== false ? 'var(--color-success)' : 'var(--color-text-muted)',
+                            border: emp.pf_deduction !== false ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid var(--color-border)',
+                            fontWeight: 700,
+                          }}
+                        />
+                      </TableCell>
                       <TableCell sx={{ color: 'var(--color-primary-hover)', fontWeight: 700, fontFamily: 'Outfit' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           {current ? formatCurrency(current.ctc) : '—'}
@@ -504,6 +521,9 @@ const SalaryStructures: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.basic_salary) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.hra) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.other_allowance) : '—'}</TableCell>
+                      <TableCell sx={{ color: current ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: 700, fontFamily: 'Outfit' }}>
+                        {current ? formatCurrency(Number(current.ctc) - Number(current.gross_salary)) : '—'}
+                      </TableCell>
                       <TableCell sx={{ color: current ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 700, fontFamily: 'Outfit' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           {current ? formatCurrency(current.gross_salary) : '—'}
@@ -826,6 +846,7 @@ const SalaryStructures: React.FC = () => {
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Basic</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>HRA</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Other</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer Contributions</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Gross</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
                   </TableRow>
@@ -838,6 +859,7 @@ const SalaryStructures: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.basic_salary)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.hra)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.other_allowance)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{formatCurrency(Number(hist.ctc) - Number(hist.gross_salary))}</TableCell>
                       <TableCell sx={{ color: 'var(--color-success)', fontWeight: 600 }}>{formatCurrency(hist.gross_salary)}</TableCell>
                       <TableCell>
                         <Box

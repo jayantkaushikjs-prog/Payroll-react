@@ -702,6 +702,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
+        queryClient.invalidateQueries(['activeSalaries']);
+        queryClient.invalidateQueries(['salaryHistory']);
         showToast('HR global inputs saved successfully!', 'success');
         setSelectedConsoleEmp(null);
       },
@@ -751,21 +753,24 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   // Profile update mutation
   const updateProfileMutation = useMutation(
-    async ({ id, payload }: { id: number; payload: any }) => {
-      const res = await api.put(`/employees/${id}`, payload);
-      return res.data;
+  async ({ id, payload }: { id: number; payload: any }) => {
+    const res = await api.put(`/employees/${id}`, payload);
+    return res.data;
+  },
+  {
+    onSuccess: () => {
+      queryClient.invalidateQueries(['employees']);
+      queryClient.invalidateQueries(['activeSalaries']);
+      queryClient.invalidateQueries(['salaryHistory']);
+      queryClient.invalidateQueries(['profileFinancialSummary', profileEmpId, profileStartDate, profileEndDate]);
+      showToast('Employee profile details saved successfully!', 'success');
+      setOpenProfileDialog(false);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['employees']);
-        showToast('Employee profile details saved successfully!', 'success');
-        setOpenProfileDialog(false);
-      },
-      onError: (err: any) => {
-        showToast(err.response?.data?.message || 'Failed to update employee details', 'error');
-      },
-    }
-  );
+    onError: (err: any) => {
+      showToast(err.response?.data?.message || 'Failed to update employee details', 'error');
+    },
+  }
+);
 
   const handleProfileFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -922,6 +927,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
+        queryClient.invalidateQueries(['activeSalaries']);
+        queryClient.invalidateQueries(['salaryHistory']);
         showToast('Employee registered successfully!', 'success');
         setOpenDialog(false);
       },
@@ -933,22 +940,23 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   // Update employee mutation
   const updateMutation = useMutation(
-    async ({ id, data }: { id: number; data: Partial<Employee> }) => {
-      const res = await api.put(`/employees/${id}`, data);
-      return res.data;
+  async ({ id, data }: { id: number; data: Partial<Employee> }) => {
+    const res = await api.put(`/employees/${id}`, data);
+    return res.data;
+  },
+  {
+    onSuccess: () => {
+      queryClient.invalidateQueries(['employees']);
+      queryClient.invalidateQueries(['activeSalaries']);
+      queryClient.invalidateQueries(['salaryHistory']);
+      showToast('Employee profile updated!', 'success');
+      setOpenDialog(false);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['employees']);
-        showToast('Employee profile updated!', 'success');
-        setOpenDialog(false);
-      },
-      onError: (err: any) => {
-        handleMutationError(err, 'Failed to update employee');
-      },
-    }
-  );
-
+    onError: (err: any) => {
+      handleMutationError(err, 'Failed to update employee');
+    },
+  }
+);
   const handleOpenAddDialog = () => {
     setSelectedEmp(null);
     setFormErrors({
@@ -1279,6 +1287,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         const res = await api.post('/employees/import', { csvContent: text });
         const { imported, errors } = res.data;
         queryClient.invalidateQueries(['employees']);
+        queryClient.invalidateQueries(['activeSalaries']);
+        queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['dashboardData']);
         if (errors && errors.length > 0) {
           showToast(`Imported ${imported} employees. There were ${errors.length} warnings/errors (see console details).`, 'error');
@@ -1372,6 +1382,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         }
       }
       queryClient.invalidateQueries(['employees']);
+      queryClient.invalidateQueries(['activeSalaries']);
+      queryClient.invalidateQueries(['salaryHistory']);
       if (errors.length > 0) {
         showToast(`Updated ${successCount} records. ${errors.length} failed (see console).`, 'error');
         console.warn('Preview import errors:', errors);
