@@ -1465,7 +1465,10 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     if (value === null || value === undefined || value === '') return '-';
     return String(value);
   };
-  const previewAmount = (value?: number) => Number(value || 0) > 0 ? Number(value).toLocaleString('en-IN') : '-';
+  const previewAmount = (value?: number) => {
+    const numericValue = Number(value || 0);
+    return numericValue > 0 ? formatCurrency(numericValue) : '-';
+  };
   const previewLogs = [...(previewReview?.logs || [])].reverse();
   const paginatedPreviewLogs = previewLogs.slice(
     previewLogPage * previewLogRowsPerPage,
@@ -2290,8 +2293,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               No edited employee inputs found.
             </Box>
           ) : (
-            <TableContainer>
-              <Table sx={{ minWidth: 1600 }}>
+            <TableContainer sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: 1800 }}>
                 <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
                   <TableRow>
                     {[
@@ -2359,12 +2362,12 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           return totalAbsent > 0 ? `${totalAbsent} days` : '—';
                         })()}
                       </TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.appraisal)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.leave_encashment)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 155, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.appraisal)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 185, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 175, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.leave_encashment)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.late_arrival_deduction ? `${emp.late_arrival_deduction} days` : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.damages_recovery)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewAmount(emp.other_deductions)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 175, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.damages_recovery)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 165, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.other_deductions)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 240 }}>
                         <PreviewRemarks remarks={emp.remarks} />
                       </TableCell>
