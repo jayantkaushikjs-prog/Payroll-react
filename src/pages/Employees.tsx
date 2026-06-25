@@ -222,6 +222,13 @@ const getPreviewTagMeta = (tag: PreviewTagFilter) => {
   return meta[tag];
 };
 
+const PF_WAGE_LIMIT = 15000;
+const getBasicSalaryFromMonthlyCtc = (monthlyCtc?: string | number | null) => (Number(monthlyCtc) || 0) * 0.5;
+const isPfRequiredByWageLimit = (monthlyCtc?: string | number | null) => {
+  const basicSalary = getBasicSalaryFromMonthlyCtc(monthlyCtc);
+  return basicSalary > 0 && basicSalary <= PF_WAGE_LIMIT;
+};
+
 const PreviewRemarks: React.FC<{ remarks?: string | null }> = ({ remarks }) => {
   const [expanded, setExpanded] = useState(false);
   const text = remarks?.trim();
@@ -751,6 +758,20 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     }
   }, [profileEmpId, employees]);
 
+  useEffect(() => {
+    if (isPfRequiredByWageLimit(formData.monthly_ctc) && !formData.pf_deduction) {
+      setFormData((prev) => ({ ...prev, pf_deduction: true }));
+    }
+  }, [formData.monthly_ctc, formData.pf_deduction]);
+
+  useEffect(() => {
+    if (!profileEmpId) return;
+    const emp = employees.find((e: Employee) => e.id === profileEmpId);
+    if (isPfRequiredByWageLimit(emp?.monthly_ctc) && !profileFormData.pf_deduction) {
+      setProfileFormData((prev) => ({ ...prev, pf_deduction: true }));
+    }
+  }, [employees, profileEmpId, profileFormData.pf_deduction]);
+
   // Profile update mutation
   const updateProfileMutation = useMutation(
   async ({ id, payload }: { id: number; payload: any }) => {
@@ -782,8 +803,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       return;
     }
     const emp = employees.find((e: any) => e.id === profileEmpId);
-    const basicSalary = (Number(emp?.monthly_ctc) || 0) * 0.5;
-    const pfApplies = profileFormData.pf_deduction || basicSalary <= 15000;
+    const pfRequired = isPfRequiredByWageLimit(emp?.monthly_ctc);
+    const pfApplies = profileFormData.pf_deduction || pfRequired;
     if (pfApplies && !uan) {
       showToast('UAN is required when PF is applicable as Basic is below 15000', 'error');
       return;
@@ -791,6 +812,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     
     const payload = {
       ...profileFormData,
+      pf_deduction: profileFormData.pf_deduction || pfRequired,
       pf_uan: uan || undefined,
       relieving_date: profileFormData.relieving_date || null,
       other_inputs: profileFormData.other_inputs || null,
@@ -1177,8 +1199,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       nextErrors.pf_uan = 'UAN must be exactly 12 digits';
       isValid = false;
     } else {
-      const basicSalary = (Number(formData.monthly_ctc) || 0) * 0.5;
-      const pfApplies = formData.pf_deduction || basicSalary <= 15000;
+      const pfApplies = formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc);
       if (pfApplies && !formData.pf_uan.trim()) {
         nextErrors.pf_uan = 'UAN is required when PF is applicable';
         isValid = false;
@@ -1196,6 +1217,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       ...formData,
       monthly_ctc: Number(formData.monthly_ctc) || 0,
       annual_ctc: (Number(formData.monthly_ctc) || 0) * 12,
+      pf_deduction: formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc),
     };
     if (formData.pf_uan.trim()) {
       payload.pf_uan = formData.pf_uan.trim();
@@ -2921,9 +2943,12 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           <FormControlLabel
                             control={
                               <Switch
-                                checked={profileFormData.pf_deduction}
-                                disabled={!isHRorAdmin}
-                                onChange={(e) => setProfileFormData({ ...profileFormData, pf_deduction: e.target.checked })}
+                                checked={profileFormData.pf_deduction || isPfRequiredByWageLimit(employees.find((e: Employee) => e.id === profileEmpId)?.monthly_ctc)}
+                                disabled={!isHRorAdmin || isPfRequiredByWageLimit(employees.find((e: Employee) => e.id === profileEmpId)?.monthly_ctc)}
+                                onChange={(e) => {
+                                  const pfRequired = isPfRequiredByWageLimit(employees.find((emp: Employee) => emp.id === profileEmpId)?.monthly_ctc);
+                                  setProfileFormData({ ...profileFormData, pf_deduction: pfRequired || e.target.checked });
+                                }}
                                 sx={{
                                   '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
                                   '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
@@ -2937,8 +2962,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         <Grid item xs={12}>
                           {(() => {
                             const emp = employees.find((e: any) => e.id === profileEmpId);
-                            const basicSalary = (Number(emp?.monthly_ctc) || 0) * 0.5;
-                            const pfApplies = profileFormData.pf_deduction || basicSalary <= 15000;
+                            const pfApplies = profileFormData.pf_deduction || isPfRequiredByWageLimit(emp?.monthly_ctc);
                             const uan = profileFormData.pf_uan.trim();
                             const uanError = (uan && !/^\d{12}$/.test(uan)) || (pfApplies && !uan);
                             return (
@@ -3909,8 +3933,12 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   <FormControlLabel
                     control={
 	                      <Switch
-	                        checked={formData.pf_deduction}
-	                        onChange={(e) => setFormData({ ...formData, pf_deduction: e.target.checked })}
+	                        checked={formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc)}
+                          disabled={isPfRequiredByWageLimit(formData.monthly_ctc)}
+	                        onChange={(e) => setFormData({
+                            ...formData,
+                            pf_deduction: isPfRequiredByWageLimit(formData.monthly_ctc) || e.target.checked,
+                          })}
 	                        sx={{
 	                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
 	                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },

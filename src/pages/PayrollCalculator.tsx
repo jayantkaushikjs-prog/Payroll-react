@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import {
@@ -31,6 +31,7 @@ const PayrollCalculator: React.FC = () => {
   const [professionalTaxInput, setProfessionalTaxInput] = useState<string>('');
   const [otherDeductions, setOtherDeductions] = useState<string>('');
   const [appraisal, setAppraisal] = useState<string>('');
+  const pfWageLimit = 15000;
 
   // Fetch all PF Settings for dynamic rates
   const { data: pfList = [] } = useQuery(['pfSettings'], async () => {
@@ -58,7 +59,6 @@ const PayrollCalculator: React.FC = () => {
     const esiEmployeeRate = (Number(settings?.esi_employee_contribution_rate) || 0.75) / 100;
     const professionalTax = Number(settings?.professional_tax !== undefined ? settings.professional_tax : 200);
     const maxPfCap = Number(settings?.max_pf_cap || 1800);
-    const pfWageLimit = 15000;
     const esiWageLimit = 21000;
 
     const ctc = ctcValue + extra.appraisal;
@@ -129,6 +129,20 @@ const PayrollCalculator: React.FC = () => {
     };
   };
 
+  const calculatorBasicSalary = useMemo(() => {
+    const ctc = Number(ctcInput);
+    if (!Number.isFinite(ctc) || ctc <= 0) return 0;
+    return Number(((ctc + (Number(appraisal) || 0)) * 0.5).toFixed(2));
+  }, [ctcInput, appraisal]);
+
+  const pfRequiredByWageLimit = calculatorBasicSalary > 0 && calculatorBasicSalary <= pfWageLimit;
+
+  useEffect(() => {
+    if (pfRequiredByWageLimit && !includePf) {
+      setIncludePf(true);
+    }
+  }, [pfRequiredByWageLimit, includePf]);
+
   const calculated = useMemo(() => {
     let inputCtc = Number(ctcInput);
 
@@ -157,7 +171,7 @@ const PayrollCalculator: React.FC = () => {
     }
 
     const monthlyCtc = inputCtc;
-    return calculateSalary(monthlyCtc, includePf, latestSettings, {
+    return calculateSalary(monthlyCtc, includePf || pfRequiredByWageLimit, latestSettings, {
       bonus: Number(bonus) || 0,
       leaveEncashment: Number(leaveEncashment) || 0,
       lateArrivals: Number(lateArrivals) || 0,
@@ -167,7 +181,7 @@ const PayrollCalculator: React.FC = () => {
       appraisal: Number(appraisal) || 0,
       professionalTax: professionalTaxInput === '' ? undefined : Number(professionalTaxInput),
     });
-  }, [ctcInput, latestSettings, includePf, bonus, leaveEncashment, lateArrivals, nonPayableDays, damages, otherDeductions, appraisal, professionalTaxInput]);
+  }, [ctcInput, latestSettings, includePf, pfRequiredByWageLimit, bonus, leaveEncashment, lateArrivals, nonPayableDays, damages, otherDeductions, appraisal, professionalTaxInput]);
 
   // Section header row spanning all 3 columns
   const sectionRow = (label: string) => (
@@ -263,8 +277,9 @@ const PayrollCalculator: React.FC = () => {
               <FormControlLabel
                 control={
                   <Switch
-                    checked={includePf}
-                    onChange={(e) => setIncludePf(e.target.checked)}
+                    checked={includePf || pfRequiredByWageLimit}
+                    disabled={pfRequiredByWageLimit}
+                    onChange={(e) => setIncludePf(pfRequiredByWageLimit || e.target.checked)}
                     color="primary"
                     size="small"
                   />
