@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
         icon: <PayrollIcon />, 
         color: 'var(--color-success)', 
         format: 'currency' as const,
-        tooltip: (d: DashboardData) => `Employee Salaries: ${formatCurrency(d.stats.totalPayrollThisMonth || 0)} + Employer PF: ${formatCurrency(d.stats.employerPf || 0)} + Employer ESI: ${formatCurrency(d.stats.employerEsi || 0)}`
+        tooltip: (d: DashboardData) => `Employee Salaries: ${formatCurrency(d.stats.totalPayrollThisMonth || 0)} + Employer PF: ${formatCurrency(d.stats.pfContributions || 0)} PF + ${formatCurrency(d.stats.esiContributions || 0)} ESI).`
       },
       { 
         key: 'totalExpensesThisMonth', 
