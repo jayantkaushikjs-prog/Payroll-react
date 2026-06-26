@@ -102,6 +102,20 @@ const chartColors = ['var(--color-info)', 'var(--color-success)', 'var(--color-w
 
 const formatNumber = (value?: number) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Number(value || 0));
 
+const formatAxisCurrency = (value?: number) => {
+  const numericValue = Math.abs(Number(value || 0));
+  const sign = Number(value || 0) < 0 ? '-' : '';
+  const compactValue = (amount: number, divisor: number) => {
+    const formatted = (amount / divisor).toFixed(amount / divisor >= 10 ? 0 : 1);
+    return formatted.endsWith('.0') ? formatted.slice(0, -2) : formatted;
+  };
+
+  if (numericValue >= 10000000) return `${sign}₹${compactValue(numericValue, 10000000)}Cr`;
+  if (numericValue >= 100000) return `${sign}₹${compactValue(numericValue, 100000)}L`;
+  if (numericValue >= 1000) return `${sign}₹${compactValue(numericValue, 1000)}K`;
+  return `${sign}₹${formatNumber(numericValue)}`;
+};
+
 const formatValue = (value?: number, format: KpiConfig['format'] = 'number') =>
   format === 'currency' ? formatCurrency(value || 0) : formatNumber(value);
 
@@ -386,7 +400,7 @@ const Dashboard: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
                     <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} minTickGap={20} />
-                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={70} tickFormatter={(value) => formatCurrency(value as number)} interval="preserveStartEnd" />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={58} tickMargin={8} tickFormatter={(value) => formatAxisCurrency(value as number)} interval="preserveStartEnd" domain={[0, 'dataMax']} allowDecimals={false} />
                     <ChartTooltip
                       contentStyle={{
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -411,7 +425,7 @@ const Dashboard: React.FC = () => {
                   <LineChart data={payrollTrends} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
                     <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} minTickGap={20} />
-                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={70} tickFormatter={(value) => formatCurrency(value as number)} interval="preserveStartEnd" />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={62} tickMargin={8} tickFormatter={(value) => formatAxisCurrency(value as number)} interval="preserveStartEnd" domain={[0, 'dataMax']} allowDecimals={false} />
                     <ChartTooltip
                       contentStyle={{
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -444,7 +458,7 @@ const Dashboard: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
                     <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} minTickGap={20} />
-                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={70} tickFormatter={(value) => formatCurrency(value as number)} interval="preserveStartEnd" />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={58} tickMargin={8} tickFormatter={(value) => formatAxisCurrency(value as number)} interval="preserveStartEnd" domain={[0, 'dataMax']} allowDecimals={false} />
                     <ChartTooltip
                       contentStyle={{
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -623,7 +637,7 @@ const ChartPanel: React.FC<{ title: string; empty: boolean; children: React.Reac
   <Paper
     sx={{
       ...cardSx,
-      p: 3.5,
+      p: { xs: 2.25, sm: 3.5 },
       height: 400,
       borderRadius: '16px',
       boxShadow: 'var(--shadow-card)',
@@ -634,11 +648,11 @@ const ChartPanel: React.FC<{ title: string; empty: boolean; children: React.Reac
       }
     }}
   >
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-      <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 1.5 }}>
+      <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', minWidth: 0, lineHeight: 1.25 }}>
         {title}
       </Typography>
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexShrink: 0 }}>
         <Box
           sx={{
             width: 8,
