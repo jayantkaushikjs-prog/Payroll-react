@@ -167,7 +167,7 @@ const Dashboard: React.FC = () => {
         icon: <PayrollIcon />, 
         color: 'var(--color-success)', 
         format: 'currency' as const,
-        tooltip: (d: DashboardData) => `Employee Salaries: ${formatCurrency(d.stats.totalPayrollThisMonth || 0)} + Employer PF: ${formatCurrency(d.stats.pfContributions || 0)} PF + ${formatCurrency(d.stats.esiContributions || 0)} ESI).`
+        tooltip: (d: DashboardData) => `Employee Salaries: ${formatCurrency(d.stats.totalPayrollThisMonth || 0)} including PF & ESI: ${formatCurrency(d.stats.pfContributions || 0)} PF + ${formatCurrency(d.stats.esiContributions || 0)} ESI).`
       },
       { 
         key: 'totalExpensesThisMonth', 
@@ -187,7 +187,7 @@ const Dashboard: React.FC = () => {
         icon: <AdvancesIcon />, 
         color: 'var(--color-warning)', 
         format: 'currency' as const,
-        tooltip: () => 'Outstanding advances balance currently pending recovery.'
+        tooltip: () => 'Total Advances Paid to  the employees this month.'
       },
       { 
         key: 'totalAdvancesOutstanding', 
@@ -195,7 +195,7 @@ const Dashboard: React.FC = () => {
         icon: <AdvancesIcon />, 
         color: 'var(--color-warning)', 
         format: 'currency' as const,
-        tooltip: () => 'Outstanding principal amount to be recovered from all active employee advances.'
+        tooltip: () => 'Outstanding advances balance currently pending recovery from this month.'
       },
       { 
         key: 'taxDeductions', 
@@ -212,7 +212,7 @@ const Dashboard: React.FC = () => {
         color: 'var(--color-accent)', 
         format: 'currency' as const,
         getValue: (d: DashboardData) => (d.stats.pfContributions || 0) + (d.stats.esiContributions || 0),
-        tooltip: (d: DashboardData) => `Total provident fund (PF) contribution and ESI contribution deducted/added for employees (${formatCurrency(d.stats.pfContributions || 0)} PF + ${formatCurrency(d.stats.esiContributions || 0)} ESI).`
+        tooltip: (d: DashboardData) => `Total provident fund (PF) contribution and ESI contribution deducted/added for employees (${formatCurrency(d.stats.pfContributions || 0)} PF + ${formatCurrency(d.stats.esiContributions || 0)} ESI) this month.`
       },
     ] : []),
   ];
@@ -540,9 +540,9 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Row 4: Recent Activities + Quick Actions */}
-        <Grid item xs={12} lg={8}>
+        {/* <Grid item xs={12} lg={8}>
           <ActivityPanel activities={data.activities} />
-        </Grid>
+        </Grid> */}
 
         {/* <Grid item xs={12} lg={4}>
           <QuickActions actions={actions} onNavigate={navigate} />

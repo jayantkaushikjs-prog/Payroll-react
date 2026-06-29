@@ -100,7 +100,7 @@ const PayrollCalculator: React.FC = () => {
     const lateArrivalDeductionAmount = Number(((gross / daysInMonth) * lateAbsentDays).toFixed(2));
 
     const ptAmount = extra.professionalTax !== undefined && extra.professionalTax !== '' ? Number(extra.professionalTax) : professionalTax;
-    const appliedPt = ctc <= 250000 ? 0 : Number((ptAmount * Math.max(0, Math.min(1, ratio))).toFixed(2));
+    const appliedPt = ctc <= 250000 ? 0 : Number(ptAmount.toFixed(2));
     const totalDeductions = Number((employeePfDeduction + employeeEsiDeduction + appliedPt + lateArrivalDeductionAmount + extra.damages + extra.otherDeductions).toFixed(2));
 
     const totalEarnings = Number((payableGross + extra.bonus + extra.leaveEncashment).toFixed(2));

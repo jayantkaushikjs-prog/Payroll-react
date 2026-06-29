@@ -247,17 +247,17 @@ const Layout: React.FC = () => {
       requireAny: true,
     },
     {
-      text: 'Company Expenses',
-      icon: <ExpensesIcon />,
-      path: '/expenses',
-      permissions: [Permission.MANAGE_EXPENSES, Permission.VIEW_EXPENSES],
-      requireAny: true,
-    },
-    {
       text: 'Payroll Calculation',
       icon: <PayrollIcon />,
       path: '/payroll',
       permissions: [Permission.GENERATE_PAYROLL, Permission.VIEW_PAYROLL],
+      requireAny: true,
+    },
+    {
+      text: 'Company Expenses',
+      icon: <ExpensesIcon />,
+      path: '/expenses',
+      permissions: [Permission.MANAGE_EXPENSES, Permission.VIEW_EXPENSES],
       requireAny: true,
     },
     {
@@ -743,7 +743,6 @@ const resetPwdInputStyles = {
     color: 'var(--color-text-primary)',
     borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
