@@ -540,9 +540,9 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Row 4: Recent Activities + Quick Actions */}
-        <Grid item xs={12} lg={8}>
+        {/* <Grid item xs={12} lg={8}>
           <ActivityPanel activities={data.activities} />
-        </Grid>
+        </Grid> */}
 
         {/* <Grid item xs={12} lg={4}>
           <QuickActions actions={actions} onNavigate={navigate} />
