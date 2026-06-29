@@ -222,7 +222,7 @@ const Expenses: React.FC = () => {
     }
   };
 
-  const categoryOptions = withCurrentOption(allCategories, formData.category);
+  const categoryOptions = withCurrentOption(allCategories.filter((c: string) => c !== 'salary'), formData.category);
 
   // Create mutation
   const createMutation = useMutation(
