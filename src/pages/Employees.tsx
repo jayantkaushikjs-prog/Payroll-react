@@ -3556,10 +3556,14 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-card)',
             boxShadow: 'var(--shadow-card)',
+            maxHeight: { xs: 'calc(100dvh - 32px)', sm: 'calc(100dvh - 64px)' },
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 2 }}>
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 2, flexShrink: 0 }}>
           {previewEditEmp
             ? `Edit HR Inputs — ${previewEditEmp.employee_code} · ${previewEditEmp.name}`
             : 'Add Employee HR Inputs'}
@@ -3569,8 +3573,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               : 'Select an employee below and fill in their monthly HR inputs.'}
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ py: 3 }}>
-          <Grid container spacing={2.5}>
+        <DialogContent sx={{ pt: 4, pb: 3, overflowY: 'auto' }}>
+          <Grid container spacing={2.75}>
             {!previewEditEmp && (
               <Grid item xs={12}>
                 <Autocomplete
@@ -3599,108 +3603,116 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                     }
                   }}
                   renderInput={(params) => (
-                    <TextField {...params} label="Select Employee" placeholder="Search by code or name…" sx={inputStyles} />
+                    <TextField {...params} label="Select Employee" placeholder="Search by code or name..." sx={previewSheetInputStyles} InputLabelProps={{ ...params.InputLabelProps, shrink: true }} />
                   )}
                   ListboxProps={{ sx: dropdownListStyles }}
                 />
               </Grid>
             )}
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="No. of Days Present"
                 type="number"
                 fullWidth
                 value={previewEditFormData.no_of_days_present}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, no_of_days_present: Number(e.target.value) })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0, max: 31 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Non-Payable Days (Absent)"
                 type="number"
                 fullWidth
                 value={previewEditFormData.deduction_absent === 0 ? '' : previewEditFormData.deduction_absent}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, deduction_absent: parseFloat(e.target.value) || 0 })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Appraisal (₹)"
                 type="number"
                 fullWidth
                 value={previewEditFormData.appraisal === 0 ? '' : previewEditFormData.appraisal}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, appraisal: parseFloat(e.target.value) || 0 })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Appraisal Effective Date"
                 type="date"
                 fullWidth
                 value={previewEditFormData.appraisal_effective_date}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, appraisal_effective_date: e.target.value })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Bonus / Incentives (₹)"
                 type="number"
                 fullWidth
                 value={previewEditFormData.bonus_incentives === 0 ? '' : previewEditFormData.bonus_incentives}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, bonus_incentives: parseFloat(e.target.value) || 0 })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Leave Encashment (₹)"
                 type="number"
                 fullWidth
                 value={previewEditFormData.leave_encashment === 0 ? '' : previewEditFormData.leave_encashment}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, leave_encashment: parseFloat(e.target.value) || 0 })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Late Arrival (no. of days)"
                 type="number"
                 fullWidth
                 value={previewEditFormData.late_arrival_deduction === 0 ? '' : previewEditFormData.late_arrival_deduction}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Damages Recovery (₹)"
                 type="number"
                 fullWidth
                 value={previewEditFormData.damages_recovery === 0 ? '' : previewEditFormData.damages_recovery}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, damages_recovery: parseFloat(e.target.value) || 0 })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Other Deductions (₹)"
                 type="number"
                 fullWidth
                 value={previewEditFormData.other_deductions === 0 ? '' : previewEditFormData.other_deductions}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, other_deductions: parseFloat(e.target.value) || 0 })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0 }}
               />
             </Grid>
@@ -3713,12 +3725,13 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                 maxRows={6}
                 value={previewEditFormData.remarks}
                 onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, remarks: e.target.value })}
-                sx={inputStyles}
+                sx={previewSheetInputStyles}
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, borderTop: '1px solid rgba(255,255,255,0.08)', gap: 1 }}>
+        <DialogActions sx={{ p: 2.5, borderTop: '1px solid rgba(255,255,255,0.08)', gap: 1, flexShrink: 0 }}>
           <Button
             onClick={() => { setOpenPreviewEditDialog(false); setPreviewEditEmp(null); }}
             variant="outlined"
@@ -4047,8 +4060,42 @@ const inputStyles = {
       '-moz-appearance': 'textfield',
     },
   },
-  '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
+  '& .MuiInputLabel-root': {
+    color: 'var(--color-text-secondary)',
+    background: 'var(--color-surface)',
+    px: 0.5,
+    maxWidth: 'calc(100% - 24px)',
+  },
   '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
+};
+
+const previewSheetInputStyles = {
+  ...inputStyles,
+  mt: 1.25,
+  '& .MuiOutlinedInput-root': {
+    ...inputStyles['& .MuiOutlinedInput-root'],
+    overflow: 'visible',
+  },
+  '& .MuiInputLabel-root': {
+    color: 'var(--color-text-secondary)',
+    background: 'var(--color-surface)',
+    px: 0.5,
+    maxWidth: 'calc(100% - 20px)',
+    overflow: 'visible',
+    whiteSpace: 'nowrap',
+    zIndex: 1,
+    transform: 'translate(12px, -10px) scale(0.78)',
+    transformOrigin: 'top left',
+    lineHeight: 1.25,
+    pointerEvents: 'none',
+  },
+  '& .MuiInputLabel-root.Mui-focused': { color: 'var(--color-primary-hover)' },
+  '& .MuiInputLabel-root.MuiInputLabel-shrink': {
+    transform: 'translate(12px, -10px) scale(0.78)',
+  },
+  '& .MuiOutlinedInput-notchedOutline legend': {
+    maxWidth: 0,
+  },
 };
 
 const dropdownListStyles = {
