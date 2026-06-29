@@ -566,7 +566,6 @@ const inputStyles = {
     color: 'var(--color-text-primary)',
     borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
     '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
       '-webkit-appearance': 'none',
@@ -585,7 +584,6 @@ const selectStyles = {
     color: 'var(--color-text-primary)',
     borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },

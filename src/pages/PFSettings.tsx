@@ -152,7 +152,6 @@ const PFSettings: React.FC = () => {
                   color: 'var(--color-text-primary)',
                   borderRadius: 'var(--radius-control)',
                   '& fieldset': { borderColor: 'var(--color-border)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
                   '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
                 },
               }}

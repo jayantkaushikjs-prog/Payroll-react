@@ -19,7 +19,6 @@ import { downloadCsvFile } from '../utils/download';
 const ss = {
   '& .MuiOutlinedInput-root': { color: 'var(--color-text-primary)', borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },

@@ -651,7 +651,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     pf_uan: '',
     tax_regime: 'new',
     active_status: true,
-    pf_deduction: true,
+    pf_deduction: false,
     tax_deduction: true,
     relieving_date: '',
     other_inputs: '',
@@ -1762,7 +1762,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   color: 'var(--color-text-primary)',
                   borderRadius: 'var(--radius-control)',
                   '& fieldset': { borderColor: 'var(--color-border)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
                   '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
                 },
               }}

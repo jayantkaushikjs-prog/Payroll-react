@@ -159,7 +159,6 @@ const TaxSlabs: React.FC = () => {
                   color: 'var(--color-text-primary)',
                   borderRadius: 'var(--radius-control)',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-border)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-primary)' },
                 }}
               >

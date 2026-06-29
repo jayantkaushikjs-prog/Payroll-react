@@ -390,7 +390,9 @@ const Expenses: React.FC = () => {
   };
 
   const effectiveMonthExpenses = getExpensesForEffectiveMonth();
-  const totalCMExpenses = effectiveMonthExpenses.reduce((sum: number, e: Expense) => sum + Number(e.amount), 0);
+  const totalCMExpenses = effectiveMonthExpenses
+    .filter((e: Expense) => e.category !== 'pf' && e.category !== 'esi')
+    .reduce((sum: number, e: Expense) => sum + Number(e.amount), 0);
 
   const getPayrollValue = (pr: any, field: string) => {
     switch (field) {
@@ -752,7 +754,7 @@ const Expenses: React.FC = () => {
                   color="primary"
                 />
               }
-              label="Include Salary / PF / ESI"
+              label="Include Salary / PF / ESI / Advances"
               sx={{ color: 'var(--color-text-primary)', whiteSpace: 'nowrap', m: 0 }}
             />
           </Box>
@@ -1328,7 +1330,6 @@ const inputStyles = {
     color: 'var(--color-text-primary)',
     borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },
@@ -1340,7 +1341,6 @@ const selectStyles = {
     color: 'var(--color-text-primary)',
     borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
   },
   '& .MuiInputLabel-root': { color: 'var(--color-text-secondary)' },

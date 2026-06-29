@@ -205,9 +205,6 @@ export const buildTheme = (mode: 'light' | 'dark') => {
             '& .MuiOutlinedInput-notchedOutline': {
               borderColor: 'var(--color-border)',
             },
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'var(--color-border-strong)',
-            },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
               borderColor: 'var(--color-primary)',
               borderWidth: 1,
