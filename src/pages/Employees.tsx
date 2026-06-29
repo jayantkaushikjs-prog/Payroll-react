@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useLocation } from 'react-router-dom';
 import { useAuth, Role } from '../context/AuthContext';
-import { formatCurrency } from '../constants/currency';
+import { formatCurrency, formatCurrencyCrores } from '../constants/currency';
 import {
   Box,
   Button,
@@ -593,6 +593,22 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [activeRangePreset, setActiveRangePreset] = useState<string>('thisfy');
   const [exportStartYear, setExportStartYear] = useState<number>(new Date().getFullYear() - 1);
   const [exportEndYear, setExportEndYear] = useState<number>(new Date().getFullYear());
+
+  const toDateInputValue = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const applyProfileRange = (start: string, end: string, preset: string) => {
+    setTempStartDate(start);
+    setTempEndDate(end);
+    setProfileStartDate(start);
+    setProfileEndDate(end);
+    setActiveRangePreset(preset);
+    setProfileTenureAnchorEl(null);
+  };
   const [profileFormData, setProfileFormData] = useState<{
     employee_code: string;
     name: string;
@@ -661,6 +677,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     },
     {
       enabled: openProfileDialog && !!profileEmpId,
+      staleTime: 0,
+      refetchOnWindowFocus: true,
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to fetch financial summary data', 'error');
       },
@@ -711,6 +729,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['employees']);
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
+        queryClient.invalidateQueries(['profileFinancialSummary']);
         showToast('HR global inputs saved successfully!', 'success');
         setSelectedConsoleEmp(null);
       },
@@ -784,6 +803,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       queryClient.invalidateQueries(['activeSalaries']);
       queryClient.invalidateQueries(['salaryHistory']);
       queryClient.invalidateQueries(['profileFinancialSummary', profileEmpId, profileStartDate, profileEndDate]);
+      queryClient.invalidateQueries(['profileFinancialSummary']);
       showToast('Employee profile details saved successfully!', 'success');
       setOpenProfileDialog(false);
     },
@@ -951,6 +971,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['employees']);
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
+        queryClient.invalidateQueries(['profileFinancialSummary']);
         showToast('Employee registered successfully!', 'success');
         setOpenDialog(false);
       },
@@ -971,6 +992,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       queryClient.invalidateQueries(['employees']);
       queryClient.invalidateQueries(['activeSalaries']);
       queryClient.invalidateQueries(['salaryHistory']);
+      queryClient.invalidateQueries(['profileFinancialSummary']);
       showToast('Employee profile updated!', 'success');
       setOpenDialog(false);
     },
@@ -1312,6 +1334,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['dashboardData']);
+        queryClient.invalidateQueries(['profileFinancialSummary']);
         if (errors && errors.length > 0) {
           showToast(`Imported ${imported} employees. There were ${errors.length} warnings/errors (see console details).`, 'error');
           console.warn('Import CSV warnings/errors:', errors);
@@ -1406,6 +1429,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       queryClient.invalidateQueries(['employees']);
       queryClient.invalidateQueries(['activeSalaries']);
       queryClient.invalidateQueries(['salaryHistory']);
+      queryClient.invalidateQueries(['profileFinancialSummary']);
       if (errors.length > 0) {
         showToast(`Updated ${successCount} records. ${errors.length} failed (see console).`, 'error');
         console.warn('Preview import errors:', errors);
@@ -1524,6 +1548,36 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   const profileDeptOptions = withCurrentOption(allDepartments, profileFormData.department);
   const profileDesigOptions = withCurrentOption(allDesignations, profileFormData.designation);
+
+  const summaryNumber = (value: any, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+
+  const liveSummary = profileSummary ? {
+    paidTotal: summaryNumber(profileSummary.amountPaid),
+    paidMonthly: summaryNumber(profileSummary.amountPaid) / Math.max(1, summaryNumber(profileSummary.paidMonthsCount, 1)),
+    remainingTotal: summaryNumber(profileSummary.amountToBePaid),
+    estimatedMonthlyPayout: summaryNumber(
+      profileSummary.estimatedMonthlyPayout,
+      summaryNumber(profileSummary.amountToBePaid) / Math.max(1, summaryNumber(profileSummary.remainingMonthsCount, 1)),
+    ),
+    pfPaid: summaryNumber(profileSummary.pfDeducted),
+    pfRemaining: summaryNumber(profileSummary.expectedPFRemaining),
+    esiPaid: summaryNumber(profileSummary.esiDeducted),
+    esiRemaining: summaryNumber(profileSummary.expectedESIRemaining),
+    taxPaid: summaryNumber(profileSummary.taxDeducted),
+    taxRemaining: summaryNumber(profileSummary.expectedTaxRemaining),
+    advanceRecovered: summaryNumber(profileSummary.advanceRecovered),
+    advanceOutstanding: summaryNumber(profileSummary.remainingAdvanceBalance),
+    paidMonths: summaryNumber(profileSummary.paidMonthsCount),
+    remainingMonths: summaryNumber(profileSummary.remainingMonthsCount),
+    structure: profileSummary.structure,
+  } : null;
+
+  const annualize = (value: number, months: number) => (months > 0 ? (value / months) * 12 : 0);
+  const annualizeRemaining = (value: number, months: number) => (months > 0 ? (value / months) * 12 : value * 12);
+  const formatSummaryValue = (value: number) => formatCurrencyCrores(value);
 
   return (
     <Box>
@@ -3092,7 +3146,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                     <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
                   </Box>
-                ) : !profileSummary ? (
+                ) : !liveSummary ? (
                   <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)' }}>
                     <Typography sx={{ color: 'var(--color-text-secondary)' }}>No summary details available for this year.</Typography>
                   </Paper>
@@ -3100,7 +3154,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   <Box>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
                       <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>
-                        Financial Summary
+                        Live Payroll Summary
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
 
@@ -3140,7 +3194,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             sx: {
                               mt: 1,
                               p: 2.5,
-                              width: 340,
+                              width: 360,
                               background: 'var(--color-surface)',
                               border: '1px solid var(--color-border)',
                               borderRadius: 'var(--radius-card)',
@@ -3151,29 +3205,32 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 700, letterSpacing: '0.06em', mb: 1.5, display: 'block' }}>
                             QUICK SELECT
                           </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
+                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1, mb: 2.5 }}>
                             {[
                               { label: 'This FY', preset: 'thisfy', start: new Date().getMonth() >= 3 ? `${currentYear}-04-01` : `${currentYear - 1}-04-01`, end: new Date().getMonth() >= 3 ? `${currentYear + 1}-03-31` : `${currentYear}-03-31` },
                               { label: 'Last FY', preset: 'lastfy', start: new Date().getMonth() >= 3 ? `${currentYear - 1}-04-01` : `${currentYear - 2}-04-01`, end: new Date().getMonth() >= 3 ? `${currentYear}-03-31` : `${currentYear - 1}-03-31` },
-                              { label: 'Last 6M', preset: 'l6m', start: new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] },
-                              { label: 'Last 3M', preset: 'l3m', start: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] },
-                              { label: 'This Month', preset: 'thismonth', start: `${currentYear}-${String(new Date().getMonth() + 1).padStart(2,'0')}-01`, end: new Date().toISOString().split('T')[0] },
+                              { label: 'Last 6M', preset: 'l6m', start: toDateInputValue(new Date(new Date().setMonth(new Date().getMonth() - 6))), end: toDateInputValue(new Date()) },
+                              { label: 'Last 3M', preset: 'l3m', start: toDateInputValue(new Date(new Date().setMonth(new Date().getMonth() - 3))), end: toDateInputValue(new Date()) },
                             ].map(({ label, preset, start, end }) => (
-                              <Box
+                              <Button
                                 key={preset}
-                                onClick={() => { setTempStartDate(start); setTempEndDate(end); setActiveRangePreset(preset); }}
+                                size="small"
+                                onClick={() => applyProfileRange(start, end, preset)}
                                 sx={{
-                                  px: 1.5, py: 0.5, borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                                  textTransform: 'none',
+                                  justifyContent: 'center',
+                                  borderRadius: 'var(--radius-control)',
                                   border: '1px solid',
                                   borderColor: activeRangePreset === preset ? 'var(--color-primary)' : 'var(--color-border)',
                                   bgcolor: activeRangePreset === preset ? 'rgba(99,102,241,0.15)' : 'transparent',
                                   color: activeRangePreset === preset ? 'var(--color-primary-hover)' : 'var(--color-text-secondary)',
-                                  transition: 'all 150ms',
-                                  '&:hover': { borderColor: 'var(--color-primary)', color: 'var(--color-primary-hover)' },
+                                  fontWeight: 600,
+                                  py: 0.9,
+                                  '&:hover': { borderColor: 'var(--color-primary)', color: 'var(--color-primary-hover)', bgcolor: 'rgba(99,102,241,0.08)' },
                                 }}
                               >
                                 {label}
-                              </Box>
+                              </Button>
                             ))}
                           </Box>
 
@@ -3202,9 +3259,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           </Box>
 
                           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                            <Button size="small" onClick={() => setProfileTenureAnchorEl(null)}
-                              sx={{ textTransform: 'none', color: 'var(--color-text-secondary)', fontWeight: 600 }}
-                            >
+                            <Button size="small" onClick={() => setProfileTenureAnchorEl(null)} sx={{ textTransform: 'none', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
                               Cancel
                             </Button>
                             <Button
@@ -3255,18 +3310,31 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         <Paper sx={{ p: 2.5, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 'var(--radius-control)' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="caption" sx={{ color: 'var(--color-success)', fontWeight: 600 }}>
-                              {profileViewMode === 'annual' ? 'TOTAL AMOUNT PAID (YTD)' : 'AVG MONTHLY NET PAID (YTD)'}
+                              {profileViewMode === 'annual' ? 'PAYROLL PAID' : 'AVG MONTHLY PAID'}
                             </Typography>
-                            <Tooltip title={`Breakdown: Net Salary Paid YTD (${formatCurrency(profileSummary.amountPaid)}) with parallel deductions of PF (${formatCurrency(profileSummary.pfDeducted)}) and Tax (${formatCurrency(profileSummary.taxDeducted)})`} arrow>
+                            <Tooltip title={`From posted payroll calculations in the selected range. PF: ${formatCurrency(liveSummary.pfPaid)}, ESI: ${formatCurrency(liveSummary.esiPaid)}, Tax: ${formatCurrency(liveSummary.taxPaid)}.`} arrow>
                               <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-success)' }}>
                                 <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
                               </IconButton>
                             </Tooltip>
                           </Box>
-                          <Typography variant="h4" sx={{ color: 'var(--color-success)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
+                          <Typography
+                            variant="h4"
+                            sx={{
+                              color: 'var(--color-success)',
+                              fontWeight: 'bold',
+                              fontFamily: 'Outfit',
+                              mt: 1,
+                              fontSize: { xs: '1.05rem', sm: '1.3rem', md: '1.6rem' },
+                              lineHeight: 1.2,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
                             {profileViewMode === 'annual'
-                              ? formatCurrency(profileSummary.amountPaid)
-                              : formatCurrency(Number((profileSummary.amountPaid / (profileSummary.paidMonthsCount || 1)).toFixed(2)))}
+                              ? formatSummaryValue(annualize(liveSummary.paidTotal, liveSummary.paidMonths))
+                              : formatSummaryValue(Number(liveSummary.paidMonthly.toFixed(2)))}
                           </Typography>
                         </Paper>
                       </Grid>
@@ -3275,44 +3343,57 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         <Paper sx={{ p: 2.5, background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-control)' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
-                              {profileViewMode === 'annual' ? 'ESTIMATED TO BE PAID (REMAINING)' : 'ESTIMATED MONTHLY PAYOUT'}
+                              {profileViewMode === 'annual' ? 'PROJECTED REMAINING PAYOUT' : 'LIVE MONTHLY PAYOUT'}
                             </Typography>
-                            <Tooltip title={`Breakdown: Estimated remaining Net Salary (${formatCurrency(profileSummary.amountToBePaid)}) with projected remaining deductions of PF (${formatCurrency(profileSummary.expectedPFRemaining)}) and Tax (${formatCurrency(profileSummary.expectedTaxRemaining)})`} arrow>
+                            <Tooltip title={`Projected from current employee inputs, preview sheet inputs, payroll rules, advances, and salary structure revisions. PF: ${formatCurrency(liveSummary.pfRemaining)}, ESI: ${formatCurrency(liveSummary.esiRemaining)}, Tax: ${formatCurrency(liveSummary.taxRemaining)}.`} arrow>
                               <IconButton size="small" sx={{ p: 0.2, color: 'var(--color-primary-hover)' }}>
                                 <HelpOutlineIcon sx={{ fontSize: '1rem' }} />
                               </IconButton>
                             </Tooltip>
                           </Box>
-                          <Typography variant="h4" sx={{ color: 'var(--color-primary-hover)', fontWeight: 'bold', fontFamily: 'Outfit', mt: 1 }}>
+                          <Typography
+                            variant="h4"
+                            sx={{
+                              color: 'var(--color-primary-hover)',
+                              fontWeight: 'bold',
+                              fontFamily: 'Outfit',
+                              mt: 1,
+                              fontSize: { xs: '1.05rem', sm: '1.3rem', md: '1.6rem' },
+                              lineHeight: 1.2,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
                             {profileViewMode === 'annual'
-                              ? formatCurrency(profileSummary.amountToBePaid)
-                              : formatCurrency(Number((profileSummary.amountToBePaid / (profileSummary.remainingMonthsCount || 12)).toFixed(2)))}
+                              ? formatSummaryValue(liveSummary.estimatedMonthlyPayout * 12)
+                              : formatSummaryValue(liveSummary.estimatedMonthlyPayout)}
                           </Typography>
                         </Paper>
                       </Grid>
 
-                      {/* PF & Tax Summaries */}
+                      {/* Live deduction summaries */}
                       <Grid item xs={12} sm={6}>
                         <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
-                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>PROVIDENT FUND (PF)</Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>STATUTORY DEDUCTIONS</Typography>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
                             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                              {profileViewMode === 'annual' ? 'PF Deducted (YTD):' : 'Avg. PF / Month (Paid):'}
+                              PF {profileViewMode === 'annual' ? 'Paid / Remaining:' : 'Monthly Paid / Live:'}
                             </Typography>
                             <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
                               {profileViewMode === 'annual'
-                                ? formatCurrency(profileSummary.pfDeducted)
-                                : formatCurrency(Number((profileSummary.pfDeducted / (profileSummary.paidMonthsCount || 1)).toFixed(2)))}
+                                ? `${formatSummaryValue(annualize(liveSummary.pfPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.pfRemaining, liveSummary.remainingMonths))}`
+                                : `${formatSummaryValue(liveSummary.pfPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.pfRemaining / Math.max(1, liveSummary.remainingMonths))}`}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
                             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                              {profileViewMode === 'annual' ? 'Est. PF Remaining:' : 'Est. PF / Month (Rem):'}
+                              ESI {profileViewMode === 'annual' ? 'Paid / Remaining:' : 'Monthly Paid / Live:'}
                             </Typography>
                             <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
                               {profileViewMode === 'annual'
-                                ? formatCurrency(profileSummary.expectedPFRemaining)
-                                : formatCurrency(Number((profileSummary.expectedPFRemaining / (profileSummary.remainingMonthsCount || 12)).toFixed(2)))}
+                                ? `${formatSummaryValue(annualize(liveSummary.esiPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.esiRemaining, liveSummary.remainingMonths))}`
+                                : `${formatSummaryValue(liveSummary.esiPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.esiRemaining / Math.max(1, liveSummary.remainingMonths))}`}
                             </Typography>
                           </Box>
                         </Paper>
@@ -3320,36 +3401,34 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
                       <Grid item xs={12} sm={6}>
                         <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
-                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>INCOME TAX (TDS)</Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>TAX & ADVANCES</Typography>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5 }}>
                             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                              {profileViewMode === 'annual' ? 'Tax Deducted (YTD):' : 'Avg. TDS / Month (Paid):'}
+                              TDS {profileViewMode === 'annual' ? 'Paid / Remaining:' : 'Monthly Paid / Live:'}
                             </Typography>
                             <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
                               {profileViewMode === 'annual'
-                                ? formatCurrency(profileSummary.taxDeducted)
-                                : formatCurrency(Number((profileSummary.taxDeducted / (profileSummary.paidMonthsCount || 1)).toFixed(2)))}
+                                ? `${formatSummaryValue(annualize(liveSummary.taxPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.taxRemaining, liveSummary.remainingMonths))}`
+                                : `${formatSummaryValue(liveSummary.taxPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.taxRemaining / Math.max(1, liveSummary.remainingMonths))}`}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
                             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                              {profileViewMode === 'annual' ? 'Est. Tax Remaining:' : 'Est. TDS / Month (Rem):'}
+                              Advance recovered / open:
                             </Typography>
                             <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)' }}>
-                              {profileViewMode === 'annual'
-                                ? formatCurrency(profileSummary.expectedTaxRemaining)
-                                : formatCurrency(Number((profileSummary.expectedTaxRemaining / (profileSummary.remainingMonthsCount || 12)).toFixed(2)))}
+                              {formatCurrency(liveSummary.advanceRecovered)} / {formatCurrency(liveSummary.advanceOutstanding)}
                             </Typography>
                           </Box>
                         </Paper>
                       </Grid>
 
-                      {/* Active Salary Structure Breakdown */}
+                      {/* Live Salary Structure */}
                       {profileSummary.structure ? (
                         <Grid item xs={12}>
                           <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
                             <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              ACTIVE SALARY BREAKDOWN ({profileViewMode === 'annual' ? 'ANNUAL VIEW' : 'MONTHLY VIEW'})
+                              LIVE SALARY STRUCTURE
                             </Typography>
                             
                             <Grid container spacing={2} sx={{ mt: 1.5 }}>
@@ -3357,8 +3436,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>CTC</Typography>
                                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-primary-hover)', mt: 0.5 }}>
                                   {profileViewMode === 'annual'
-                                    ? formatCurrency(profileSummary.structure.ctc * 12)
-                                    : formatCurrency(profileSummary.structure.ctc)}
+                                    ? formatSummaryValue(profileSummary.structure.ctc * 12)
+                                    : formatSummaryValue(profileSummary.structure.ctc)}
                                 </Typography>
                               </Grid>
 
@@ -3366,8 +3445,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Gross Salary</Typography>
                                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                   {profileViewMode === 'annual'
-                                    ? formatCurrency(profileSummary.structure.gross_salary * 12)
-                                    : formatCurrency(profileSummary.structure.gross_salary)}
+                                    ? formatSummaryValue(profileSummary.structure.gross_salary * 12)
+                                    : formatSummaryValue(profileSummary.structure.gross_salary)}
                                 </Typography>
                               </Grid>
 
@@ -3375,8 +3454,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Basic Salary</Typography>
                                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                   {profileViewMode === 'annual'
-                                    ? formatCurrency(profileSummary.structure.basic_salary * 12)
-                                    : formatCurrency(profileSummary.structure.basic_salary)}
+                                    ? formatSummaryValue(profileSummary.structure.basic_salary * 12)
+                                    : formatSummaryValue(profileSummary.structure.basic_salary)}
                                 </Typography>
                               </Grid>
 
@@ -3384,8 +3463,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>HRA</Typography>
                                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                   {profileViewMode === 'annual'
-                                    ? formatCurrency(profileSummary.structure.hra * 12)
-                                    : formatCurrency(profileSummary.structure.hra)}
+                                    ? formatSummaryValue(profileSummary.structure.hra * 12)
+                                    : formatSummaryValue(profileSummary.structure.hra)}
                                 </Typography>
                               </Grid>
 
@@ -3393,8 +3472,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer PF</Typography>
                                 <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                   {profileViewMode === 'annual'
-                                    ? formatCurrency((profileSummary.structure.employer_pf ?? (profileSummary.structure.ctc - profileSummary.structure.gross_salary)) * 12)
-                                    : formatCurrency(profileSummary.structure.employer_pf ?? (profileSummary.structure.ctc - profileSummary.structure.gross_salary))}
+                                    ? formatSummaryValue((profileSummary.structure.employer_pf ?? (profileSummary.structure.ctc - profileSummary.structure.gross_salary)) * 12)
+                                    : formatSummaryValue(profileSummary.structure.employer_pf ?? (profileSummary.structure.ctc - profileSummary.structure.gross_salary))}
                                 </Typography>
                               </Grid>
 
@@ -3403,8 +3482,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                   <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer ESI</Typography>
                                   <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                     {profileViewMode === 'annual'
-                                      ? formatCurrency(profileSummary.structure.employer_esi * 12)
-                                      : formatCurrency(profileSummary.structure.employer_esi)}
+                                      ? formatSummaryValue(profileSummary.structure.employer_esi * 12)
+                                      : formatSummaryValue(profileSummary.structure.employer_esi)}
                                   </Typography>
                                 </Grid>
                               )}
@@ -3414,8 +3493,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                   <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Special Allowance</Typography>
                                   <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                     {profileViewMode === 'annual'
-                                      ? formatCurrency(profileSummary.structure.special_allowance * 12)
-                                      : formatCurrency(profileSummary.structure.special_allowance)}
+                                      ? formatSummaryValue(profileSummary.structure.special_allowance * 12)
+                                      : formatSummaryValue(profileSummary.structure.special_allowance)}
                                   </Typography>
                                 </Grid>
                               )}
@@ -3425,8 +3504,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                   <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Other Allowance</Typography>
                                   <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                                     {profileViewMode === 'annual'
-                                      ? formatCurrency(profileSummary.structure.other_allowance * 12)
-                                      : formatCurrency(profileSummary.structure.other_allowance)}
+                                      ? formatSummaryValue(profileSummary.structure.other_allowance * 12)
+                                      : formatSummaryValue(profileSummary.structure.other_allowance)}
                                   </Typography>
                                 </Grid>
                               )}
@@ -3442,16 +3521,16 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         <Grid container spacing={2} sx={{ mt: 1 }}>
                           <Grid item xs={4}>
                             <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Taken</Typography>
-                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>{formatCurrency(profileSummary.totalAdvancesTaken)}</Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>{formatSummaryValue(profileSummary.totalAdvancesTaken)}</Typography>
                           </Grid>
                           <Grid item xs={4}>
                             <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Repaid (YTD)</Typography>
-                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-success)', mt: 0.5 }}>{formatCurrency(profileSummary.totalAdvancesRepaid)}</Typography>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-success)', mt: 0.5 }}>{formatSummaryValue(profileSummary.totalAdvancesRepaid)}</Typography>
                           </Grid>
                           <Grid item xs={4}>
                             <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Outstanding Loan</Typography>
                             <Typography variant="body2" fontWeight="bold" sx={{ color: profileSummary.remainingAdvanceBalance > 0 ? '#fb923c' : 'var(--color-text-muted)', mt: 0.5 }}>
-                              {formatCurrency(profileSummary.remainingAdvanceBalance)}
+                              {formatSummaryValue(profileSummary.remainingAdvanceBalance)}
                             </Typography>
                           </Grid>
                         </Grid>
@@ -3502,11 +3581,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       </Paper>
                     </Grid>
 
-                    {/* Chart 1: Bar Chart of Paid vs Remaining */}
+                    {/* Live Paid vs Projected Analysis */}
                     <Grid item xs={12}>
                       <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', height: 320 }}>
                         <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
-                          Paid vs Projected Remaining Analysis
+                          Payroll Paid vs Live Projection
                         </Typography>
                         <Box sx={{ height: 240 }}>
                           <ResponsiveContainer width="100%" height="100%">

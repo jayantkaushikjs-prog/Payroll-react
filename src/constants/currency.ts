@@ -16,3 +16,15 @@ export const formatCurrency = (value: number | string | null | undefined): strin
     minimumFractionDigits: CURRENCY_CONFIG.minimumFractionDigits,
   }).format(Number.isFinite(numericValue) ? numericValue : 0);
 };
+
+export const formatCurrencyCrores = (value: number | string | null | undefined): string => {
+  const numericValue = Number(value ?? 0);
+  if (!Number.isFinite(numericValue)) return '₹0';
+
+  const sign = numericValue < 0 ? '-' : '';
+  const formattedValue = new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 0,
+  }).format(Math.abs(numericValue));
+
+  return `${sign}₹${formattedValue}`;
+};

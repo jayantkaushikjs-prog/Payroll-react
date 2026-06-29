@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
-import { formatCurrency } from '../constants/currency';
+import { formatCurrency, formatCurrencyCrores } from '../constants/currency';
 import { useAuth, Permission } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
