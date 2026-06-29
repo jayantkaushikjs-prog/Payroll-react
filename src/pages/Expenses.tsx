@@ -193,6 +193,7 @@ const Expenses: React.FC = () => {
     }
   );
 
+  const systemExpenseCategories = ['salary', 'pf', 'esi'];
   const allCategories = dbCategories.map((c: any) => c.name);
 
   const withCurrentOption = (options: readonly string[], currentValue: string) => {
@@ -209,6 +210,16 @@ const Expenses: React.FC = () => {
       await addCategoryMutation.mutateAsync(trimmed);
       setNewCategoryName('');
     } catch (e) {}
+  };
+
+  const handleDeleteCategory = (category: { id: number; name: string }) => {
+    if (systemExpenseCategories.includes(category.name)) {
+      showToast('Payroll expense categories cannot be deleted', 'error');
+      return;
+    }
+    if (window.confirm(`Delete "${getCategoryLabel(category.name)}" category?`)) {
+      deleteCategoryMutation.mutate(category.id);
+    }
   };
 
   const categoryOptions = withCurrentOption(allCategories, formData.category);
@@ -806,38 +817,21 @@ const Expenses: React.FC = () => {
             </Box>
           </MiniKpiCard>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Office Rent"
-            value={formatCurrency(getCMExpensesByCategory('rent'))}
-            icon={<RentIcon />}
-            color="#10b981"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Utilities & Cloud"
-            value={formatCurrency(getCMExpensesByCategory('utilities'))}
-            icon={<UtilitiesIcon />}
-            color="#f59e0b"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="One-Time Payments"
-            value={formatCurrency(getCMExpensesByFrequency('one-time'))}
-            icon={<OneTimeIcon />}
-            color="#ef4444"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <MiniKpiCard
-            label="Other Expenses"
-            value={formatCurrency(getCMExpensesByCategory('other') + getCMExpensesByCategory('marketing'))}
-            icon={<OtherIcon />}
-            color="#8b5cf6"
-          />
-        </Grid>
+        {dbCategories
+          .filter((cat: any) => !systemExpenseCategories.includes(cat.name))
+          .map((cat: any) => {
+            const chipDetails = getCategoryChipColor(cat.name);
+            return (
+              <Grid item xs={12} sm={6} md={3} key={cat.id}>
+                <MiniKpiCard
+                  label={chipDetails.label}
+                  value={formatCurrency(getCMExpensesByCategory(cat.name))}
+                  icon={getCategoryIcon(cat.name)}
+                  color={chipDetails.color}
+                />
+              </Grid>
+            );
+          })}
       </Grid>
 
       {/* Expense Listing Table */}
@@ -1208,11 +1202,15 @@ const Expenses: React.FC = () => {
                   {getCategoryLabel(cat.name)}
                 </Typography>
                 <IconButton
-                  onClick={() => deleteCategoryMutation.mutate(cat.id)}
+                  onClick={() => handleDeleteCategory(cat)}
                   sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}
-                  disabled={['salary', 'pf', 'rent', 'utilities', 'marketing', 'one-time', 'other'].includes(cat.name)}
+                  disabled={deleteCategoryMutation.isLoading && deleteCategoryMutation.variables === cat.id}
                 >
-                  <DeleteIcon sx={{ fontSize: 18 }} />
+                  {deleteCategoryMutation.isLoading && deleteCategoryMutation.variables === cat.id ? (
+                    <CircularProgress size={18} />
+                  ) : (
+                    <DeleteIcon sx={{ fontSize: 18 }} />
+                  )}
                 </IconButton>
               </Box>
             ))}
