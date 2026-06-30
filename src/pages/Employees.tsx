@@ -72,6 +72,7 @@ interface Employee {
   employee_code: string;
   name: string;
   email: string;
+  personal_email?: string;
   phone: string;
   department: string;
   designation: string;
