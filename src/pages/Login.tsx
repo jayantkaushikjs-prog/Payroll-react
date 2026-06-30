@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -17,14 +17,30 @@ import {
 import { LockOutlined as LockIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import { THPMSLogo } from '../components/brand/THPMSLogo';
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (options: any) => void;
+          renderButton: (element: HTMLElement, options: any) => void;
+          cancel: () => void;
+        };
+      };
+    };
+  }
+}
+
 const Login: React.FC = () => {
-  const { login, user } = useAuth();
+  const { login, loginWithGoogle, user } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
+  const googleInitializedRef = useRef(false);
 
   // If already logged in, redirect to dashboard
   React.useEffect(() => {
@@ -32,6 +48,60 @@ const Login: React.FC = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (!import.meta.env.VITE_GOOGLE_CLIENT_ID || googleInitializedRef.current) {
+      return;
+    }
+
+    const initializeGoogleButton = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current || googleInitializedRef.current) {
+        return;
+      }
+
+      googleInitializedRef.current = true;
+
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: async (response: { credential?: string }) => {
+          if (!response.credential) {
+            return;
+          }
+          try {
+            setError(null);
+            setLoading(true);
+            await loginWithGoogle(response.credential);
+            navigate('/');
+          } catch (err: any) {
+            setError(err.response?.data?.message || 'Google sign-in failed.');
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        width: 280,
+      });
+    };
+
+    const existingScript = document.getElementById('google-gsi-script');
+    if (existingScript) {
+      initializeGoogleButton();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-gsi-script';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogleButton;
+    document.head.appendChild(script);
+  }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +239,15 @@ const Login: React.FC = () => {
               {loading ? <CircularProgress size={24} sx={{ color: 'var(--color-text-primary)' }} /> : 'Sign In'}
             </Button>
           </form>
+
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', textAlign: 'center', mb: 1.5 }}>
+                Or continue with
+              </Typography>
+              <div ref={googleButtonRef} />
+            </Box>
+          )}
 
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
             <Typography variant="body2" sx={{ color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>

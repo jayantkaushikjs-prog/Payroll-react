@@ -21,6 +21,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  InputAdornment,
   Tooltip,
   Grid,
   FormControlLabel,
@@ -279,6 +280,9 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openDialog, setOpenDialog] = useState(false);
+  const [openImportPreview, setOpenImportPreview] = useState(false);
+  const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
   const [formErrors, setFormErrors] = useState({
     employee_code: '',
@@ -299,6 +303,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     employee_code: string;
     name: string;
     email: string;
+    personal_email: string;
     phone: string;
     department: string;
     designation: string;
@@ -316,6 +321,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     employee_code: '',
     name: '',
     email: '',
+    personal_email: '',
     phone: '',
     department: '',
     designation: '',
@@ -397,6 +403,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const previewMonthObj = new Date(`${previewMonth}-01`);
   const previewM = previewMonthObj.getMonth() + 1;
   const previewY = previewMonthObj.getFullYear();
+  const totalDaysInPreviewMonth = new Date(previewY, previewM, 0).getDate();
 
   const { data: nonPayableDays = [] } = useQuery(
     ['nonPayableDays', previewM, previewY],
@@ -415,7 +422,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     },
     { enabled: canViewPreview && Boolean(previewMonth) }
   );
-  
+
   const isPreviewMonthDisbursed = previewPayrolls.length > 0 && previewPayrolls.every((p: any) => p.status === 'disbursed');
 
   const [financeRemarksDraft, setFinanceRemarksDraft] = useState('');
@@ -526,7 +533,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     try {
       await addDepartmentMutation.mutateAsync(trimmed);
       setNewDeptName('');
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleAddDesig = async () => {
@@ -535,7 +542,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     try {
       await addDesignationMutation.mutateAsync(trimmed);
       setNewDesigName('');
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Profile Details Dialog State
@@ -613,6 +620,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     employee_code: string;
     name: string;
     email: string;
+    personal_email: string;
     phone: string;
     department: string;
     designation: string;
@@ -641,6 +649,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     employee_code: '',
     name: '',
     email: '',
+    personal_email: '',
     phone: '',
     department: '',
     designation: '',
@@ -691,7 +700,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       setConsoleFormData({
         employee_code: selectedConsoleEmp.employee_code || '',
         name: selectedConsoleEmp.name || '',
-        no_of_days_present: selectedConsoleEmp.no_of_days_present !== undefined ? selectedConsoleEmp.no_of_days_present : 30,
+        no_of_days_present: (selectedConsoleEmp.no_of_days_present !== undefined && selectedConsoleEmp.no_of_days_present !== null) ? selectedConsoleEmp.no_of_days_present : totalDaysInPreviewMonth,
         deduction_absent: selectedConsoleEmp.deduction_absent ? Number(selectedConsoleEmp.deduction_absent) : '',
         appraisal: selectedConsoleEmp.appraisal ? Number(selectedConsoleEmp.appraisal) : '',
         appraisal_effective_date: selectedConsoleEmp.appraisal_effective_date || '',
@@ -706,7 +715,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         other_inputs: selectedConsoleEmp.other_inputs || '',
       });
     }
-  }, [selectedConsoleEmp]);
+  }, [selectedConsoleEmp, totalDaysInPreviewMonth]);
 
   // Keep selected console employee reference in sync with updated list
   useEffect(() => {
@@ -748,6 +757,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           employee_code: emp.employee_code || '',
           name: emp.name || '',
           email: emp.email || '',
+          personal_email: emp.personal_email || '',
           phone: emp.phone || '',
           department: emp.department || '',
           designation: emp.designation || '',
@@ -762,7 +772,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           tax_deduction: emp.tax_deduction !== false,
           relieving_date: emp.relieving_date || '',
           other_inputs: emp.other_inputs || '',
-          no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
+          no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : totalDaysInPreviewMonth,
           deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
           appraisal: emp.appraisal ? Number(emp.appraisal) : '',
           appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -775,7 +785,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         });
       }
     }
-  }, [profileEmpId, employees]);
+  }, [profileEmpId, employees, totalDaysInPreviewMonth]);
 
   useEffect(() => {
     if (isPfRequiredByWageLimit(formData.monthly_ctc) && !formData.pf_deduction) {
@@ -793,25 +803,25 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   // Profile update mutation
   const updateProfileMutation = useMutation(
-  async ({ id, payload }: { id: number; payload: any }) => {
-    const res = await api.put(`/employees/${id}`, payload);
-    return res.data;
-  },
-  {
-    onSuccess: () => {
-      queryClient.invalidateQueries(['employees']);
-      queryClient.invalidateQueries(['activeSalaries']);
-      queryClient.invalidateQueries(['salaryHistory']);
-      queryClient.invalidateQueries(['profileFinancialSummary', profileEmpId, profileStartDate, profileEndDate]);
-      queryClient.invalidateQueries(['profileFinancialSummary']);
-      showToast('Employee profile details saved successfully!', 'success');
-      setOpenProfileDialog(false);
+    async ({ id, payload }: { id: number; payload: any }) => {
+      const res = await api.put(`/employees/${id}`, payload);
+      return res.data;
     },
-    onError: (err: any) => {
-      showToast(err.response?.data?.message || 'Failed to update employee details', 'error');
-    },
-  }
-);
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['employees']);
+        queryClient.invalidateQueries(['activeSalaries']);
+        queryClient.invalidateQueries(['salaryHistory']);
+        queryClient.invalidateQueries(['profileFinancialSummary', profileEmpId, profileStartDate, profileEndDate]);
+        queryClient.invalidateQueries(['profileFinancialSummary']);
+        showToast('Employee profile details saved successfully!', 'success');
+        setOpenProfileDialog(false);
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update employee details', 'error');
+      },
+    }
+  );
 
   const handleProfileFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -829,7 +839,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       showToast('UAN is required when PF is applicable as Basic is below 15000', 'error');
       return;
     }
-    
+
     const payload = {
       ...profileFormData,
       pf_deduction: profileFormData.pf_deduction || pfRequired,
@@ -983,24 +993,24 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   // Update employee mutation
   const updateMutation = useMutation(
-  async ({ id, data }: { id: number; data: Partial<Employee> }) => {
-    const res = await api.put(`/employees/${id}`, data);
-    return res.data;
-  },
-  {
-    onSuccess: () => {
-      queryClient.invalidateQueries(['employees']);
-      queryClient.invalidateQueries(['activeSalaries']);
-      queryClient.invalidateQueries(['salaryHistory']);
-      queryClient.invalidateQueries(['profileFinancialSummary']);
-      showToast('Employee profile updated!', 'success');
-      setOpenDialog(false);
+    async ({ id, data }: { id: number; data: Partial<Employee> }) => {
+      const res = await api.put(`/employees/${id}`, data);
+      return res.data;
     },
-    onError: (err: any) => {
-      handleMutationError(err, 'Failed to update employee');
-    },
-  }
-);
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['employees']);
+        queryClient.invalidateQueries(['activeSalaries']);
+        queryClient.invalidateQueries(['salaryHistory']);
+        queryClient.invalidateQueries(['profileFinancialSummary']);
+        showToast('Employee profile updated!', 'success');
+        setOpenDialog(false);
+      },
+      onError: (err: any) => {
+        handleMutationError(err, 'Failed to update employee');
+      },
+    }
+  );
   const handleOpenAddDialog = () => {
     setSelectedEmp(null);
     setFormErrors({
@@ -1017,9 +1027,10 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       pf_uan: '',
     });
     setFormData({
-      employee_code: `EMP${String(employees.length + 1).padStart(3, '0')}`,
+      employee_code: '',
       name: '',
       email: '',
+      personal_email: '',
       phone: '',
       department: '',
       designation: '',
@@ -1056,6 +1067,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       employee_code: emp.employee_code,
       name: emp.name,
       email: emp.email,
+      personal_email: emp.personal_email || '',
       phone: emp.phone || '',
       department: emp.department,
       designation: emp.designation,
@@ -1079,6 +1091,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       employee_code: emp.employee_code || '',
       name: emp.name || '',
       email: emp.email || '',
+      personal_email: emp.personal_email || '',
       phone: emp.phone || '',
       department: emp.department || '',
       designation: emp.designation || '',
@@ -1105,6 +1118,27 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       remarks: emp.remarks || '',
     });
     setOpenProfileDialog(true);
+  };
+
+  const handleGenerateCode = async () => {
+    try {
+      const res = await api.get('/employees/next-code');
+      setFormData((prev) => ({ ...prev, employee_code: res.data.code }));
+      setFormErrors((prev) => ({ ...prev, employee_code: '' }));
+      showToast('Employee code generated!', 'success');
+    } catch (err: any) {
+      showToast('Failed to generate employee code.', 'error');
+    }
+  };
+
+  const handleGenerateCodeForProfile = async () => {
+    try {
+      const res = await api.get('/employees/next-code');
+      setProfileFormData((prev) => ({ ...prev, employee_code: res.data.code }));
+      showToast('Employee code generated!', 'success');
+    } catch (err: any) {
+      showToast('Failed to generate employee code.', 'error');
+    }
   };
 
   // Effect to handle deep linking from global search (Layout)
@@ -1295,6 +1329,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       'Employee Code',
       'Name',
       'Email',
+      'Personal Email',
       'Phone',
       'Department',
       'Designation',
@@ -1306,8 +1341,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       'Active Status',
     ];
     const sampleRows = [
-      ['EMP001', 'John Doe', 'john.doe@example.com', '9876543210', 'Engineering', 'Software Engineer', '2026-01-15', 'HDFC Bank', '50100234567891', 'HDFC0000123', 'new', 'Active'],
-      ['EMP002', 'Jane Smith', 'jane.smith@example.com', '9876543211', 'Human Resources', 'HR Manager', '2026-02-01', 'ICICI Bank', '000401234567', 'ICIC0000004', 'old', 'Active']
+      ['EMP001', 'John Doe', '', '', '', 'Engineering', 'Software Engineer', '15-01-2026', '', '', '', 'new', 'Active'],
     ];
     const csvContent = [headers.join(','), ...sampleRows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1320,33 +1354,97 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     setTimeout(() => URL.revokeObjectURL(link.href), 100);
   };
 
+  const parseCSV = (text: string): any[] => {
+    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length < 2) return [];
+
+    const parseLine = (line: string) => {
+      const result = [];
+      let start = 0;
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') {
+          inQuotes = !inQuotes;
+        } else if (line[i] === ',' && !inQuotes) {
+          result.push(line.substring(start, i).replace(/^"|"$/g, '').replace(/""/g, '"'));
+          start = i + 1;
+        }
+      }
+      result.push(line.substring(start).replace(/^"|"$/g, '').replace(/""/g, '"'));
+      return result;
+    };
+
+    const headers = parseLine(lines[0]).map(h => h.trim().toLowerCase());
+    const rows: any[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseLine(lines[i]);
+      const obj: any = {};
+      headers.forEach((header, index) => {
+        const val = values[index]?.trim() || '';
+        if (header === 'employee code' || header === 'employee_code') obj.employee_code = val;
+        else if (header === 'name') obj.name = val;
+        else if (header === 'email') obj.email = val;
+        else if (header === 'personal email' || header === 'personal_email') obj.personal_email = val;
+        else if (header === 'phone') obj.phone = val;
+        else if (header === 'department') obj.department = val;
+        else if (header === 'designation') obj.designation = val;
+        else if (header === 'joining date' || header === 'joining_date') obj.joining_date = val;
+        else if (header === 'bank name' || header === 'bank_name') obj.bank_name = val;
+        else if (header === 'account number' || header === 'account_number') obj.account_number = val;
+        else if (header === 'ifsc') obj.ifsc = val;
+        else if (header === 'tax regime' || header === 'tax_regime') obj.tax_regime = val || 'new';
+        else if (header === 'active status' || header === 'active_status') {
+          obj.active_status = val.toLowerCase() === 'active' || val.toLowerCase() === 'true' || val === '1';
+        }
+      });
+      rows.push(obj);
+    }
+    return rows;
+  };
+
   const handleImportCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async (event) => {
+    reader.onload = (event) => {
       const text = event.target?.result as string;
-      try {
-        const res = await api.post('/employees/import', { csvContent: text });
-        const { imported, errors } = res.data;
-        queryClient.invalidateQueries(['employees']);
-        queryClient.invalidateQueries(['activeSalaries']);
-        queryClient.invalidateQueries(['salaryHistory']);
-        queryClient.invalidateQueries(['dashboardData']);
-        queryClient.invalidateQueries(['profileFinancialSummary']);
-        if (errors && errors.length > 0) {
-          showToast(`Imported ${imported} employees. There were ${errors.length} warnings/errors (see console details).`, 'error');
-          console.warn('Import CSV warnings/errors:', errors);
-        } else {
-          showToast(`Successfully imported ${imported} employees!`, 'success');
-        }
-      } catch (err: any) {
-        showToast(err.response?.data?.message || 'Failed to import CSV file.', 'error');
+      const parsed = parseCSV(text);
+      if (parsed.length === 0) {
+        showToast('CSV is empty or invalid format.', 'error');
+        return;
       }
+      setPreviewRows(parsed);
+      setOpenImportPreview(true);
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleConfirmImport = async () => {
+    setImporting(true);
+    try {
+      const res = await api.post('/employees/import', { employees: previewRows });
+      const { imported, errors } = res.data;
+      queryClient.invalidateQueries(['employees']);
+      queryClient.invalidateQueries(['activeSalaries']);
+      queryClient.invalidateQueries(['salaryHistory']);
+      queryClient.invalidateQueries(['dashboardData']);
+      queryClient.invalidateQueries(['profileFinancialSummary']);
+      if (errors && errors.length > 0) {
+        showToast(`Imported ${imported} employees. There were ${errors.length} warnings/errors (see console details).`, 'error');
+        console.warn('Import CSV warnings/errors:', errors);
+      } else {
+        showToast(`Successfully imported ${imported} employees!`, 'success');
+      }
+      setOpenImportPreview(false);
+      setPreviewRows([]);
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Failed to import employees.', 'error');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const previewCsvHeaders = [
@@ -1359,7 +1457,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const handleExportPreviewCsv = () => {
     const rows = previewEmployees.map((emp: Employee) => [
       emp.employee_code,
-      emp.no_of_days_present ?? 30,
+      emp.no_of_days_present ?? totalDaysInPreviewMonth,
       Number(emp.appraisal) || 0,
       emp.appraisal_effective_date || '',
       Number(emp.bonus_incentives) || 0,
@@ -1410,7 +1508,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         if (!emp) { errors.push(`Employee code not found: ${code}`); continue; }
         try {
           await api.put(`/employees/${emp.id}`, {
-            no_of_days_present: Number(daysPresent) || 30,
+            no_of_days_present: Number(daysPresent) || totalDaysInPreviewMonth,
             deduction_absent: Number(absent) || 0,
             appraisal: Number(appraisal) || 0,
             appraisal_effective_date: appraisalDate || null,
@@ -1448,7 +1546,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   );
 
   const hasHrPreviewInput = (emp: Employee) =>
-    Number(emp.no_of_days_present ?? 30) !== 30 ||
+    Number(emp.no_of_days_present ?? totalDaysInPreviewMonth) !== totalDaysInPreviewMonth ||
     Number(emp.deduction_absent || 0) > 0 ||
     Number(emp.appraisal || 0) > 0 ||
     Number(emp.leave_encashment || 0) > 0 ||
@@ -1778,428 +1876,428 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             ) : (
               <>
                 <TableContainer>
-                <Table sx={{ minWidth: 650 }}>
-                  <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-                    <TableRow>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
-                      <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredEmployees.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((emp: Employee) => (
-                      <TableRow
-                        key={emp.id}
-                        onClick={() => handleOpenProfileDialog(emp)}
-                        sx={{
-                          '&:last-child td, &:last-child th': { border: 0 },
-                          cursor: 'pointer',
-                          '&:hover': { bgcolor: 'var(--color-row-hover)' },
-                          transition: 'background-color 140ms ease',
-                        }}
-                      >
-                        <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
-                        <TableCell>
-                          <Box
-                            sx={{
-                              display: 'inline-block',
-                              px: 1.5,
-                              py: 0.5,
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                              color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
-                            }}
-                          >
-                            {emp.active_status ? 'Active' : 'Inactive'}
-                          </Box>
-                        </TableCell>
-                        <TableCell align="right">
-                          {isHRorAdmin && emp.active_status && (
-                            <Tooltip title="Mark Inactive">
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                      <TableRow>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
+                        <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredEmployees.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((emp: Employee) => (
+                        <TableRow
+                          key={emp.id}
+                          onClick={() => handleOpenProfileDialog(emp)}
+                          sx={{
+                            '&:last-child td, &:last-child th': { border: 0 },
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: 'var(--color-row-hover)' },
+                            transition: 'background-color 140ms ease',
+                          }}
+                        >
+                          <TableCell component="th" scope="row" sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.email}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
+                          <TableCell>
+                            <Box
+                              sx={{
+                                display: 'inline-block',
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
+                              }}
+                            >
+                              {emp.active_status ? 'Active' : 'Inactive'}
+                            </Box>
+                          </TableCell>
+                          <TableCell align="right">
+                            {isHRorAdmin && emp.active_status && (
+                              <Tooltip title="Mark Inactive">
+                                <IconButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Mark ${emp.name} as inactive?`)) {
+                                      updateMutation.mutate({ id: emp.id, data: { active_status: false } });
+                                    }
+                                  }}
+                                  sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-warning)' }, mr: 0.5 }}
+                                >
+                                  <PeopleIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            <Tooltip title="Edit Details">
                               <IconButton
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (window.confirm(`Mark ${emp.name} as inactive?`)) {
-                                    updateMutation.mutate({ id: emp.id, data: { active_status: false } });
-                                  }
+                                  handleOpenEditDialog(emp);
                                 }}
-                                sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-warning)' }, mr: 0.5 }}
+                                sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}
                               >
-                                <PeopleIcon fontSize="small" />
+                                <EditIcon />
                               </IconButton>
                             </Tooltip>
-                          )}
-                          <Tooltip title="Edit Details">
-                            <IconButton
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenEditDialog(emp);
-                              }}
-                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
 
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <TablePagination
-                rowsPerPageOptions={[10, 25, 50]}
-                component="div"
-                count={filteredEmployees.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, newPage) => setPage(newPage)}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
-                sx={{
-                  color: 'var(--color-text-primary)',
-                  borderTop: '1px solid var(--color-border)',
-                  '& .MuiTablePagination-actions': {
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <TablePagination
+                  rowsPerPageOptions={[10, 25, 50]}
+                  component="div"
+                  count={filteredEmployees.length}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={(_, newPage) => setPage(newPage)}
+                  onRowsPerPageChange={(e) => {
+                    setRowsPerPage(parseInt(e.target.value, 10));
+                    setPage(0);
+                  }}
+                  sx={{
                     color: 'var(--color-text-primary)',
-                  },
-                  '& .MuiTablePagination-select': {
-                    color: 'var(--color-text-primary)',
-                  },
-                }}
-              />
-            </>
-          )}
+                    borderTop: '1px solid var(--color-border)',
+                    '& .MuiTablePagination-actions': {
+                      color: 'var(--color-text-primary)',
+                    },
+                    '& .MuiTablePagination-select': {
+                      color: 'var(--color-text-primary)',
+                    },
+                  }}
+                />
+              </>
+            )}
           </Paper>
         </>
       ) : previewOnly || isFinance ? (
-      //   /* HR Global Console View */
-      //   <Box className="animate-fade-in">
-      //     <Paper
-      //       sx={{
-      //         background: 'var(--color-surface)',
-      //         border: '1px solid var(--color-border)',
-      //         borderRadius: 'var(--radius-card)',
-      //         p: 4,
-      //         mb: 4,
-      //       }}
-      //     >
-      //       <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
-      //         Employee Search & Selector
-      //       </Typography>
-      //       <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
-      //         Select an employee to modify their operational, salary, lifecycle, and leave adjustments globally.
-      //       </Typography>
-      //       <Autocomplete
-      //         options={activeEmployees}
-      //         getOptionLabel={(emp) => `${emp.employee_code} - ${emp.name}`}
-      //         value={selectedConsoleEmp}
-      //         onChange={(_, newValue) => setSelectedConsoleEmp(newValue)}
-      //         renderInput={(params) => (
-      //           <TextField
-      //             {...params}
-      //             label="Select Employee"
-      //             placeholder="Search by code or name..."
-      //             sx={inputStyles}
-      //           />
-      //         )}
-      //         ListboxProps={{ sx: dropdownListStyles }}
-      //       />
-      //     </Paper>
+        //   /* HR Global Console View */
+        //   <Box className="animate-fade-in">
+        //     <Paper
+        //       sx={{
+        //         background: 'var(--color-surface)',
+        //         border: '1px solid var(--color-border)',
+        //         borderRadius: 'var(--radius-card)',
+        //         p: 4,
+        //         mb: 4,
+        //       }}
+        //     >
+        //       <Typography variant="h6" fontFamily="Outfit" fontWeight={600} sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+        //         Employee Search & Selector
+        //       </Typography>
+        //       <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
+        //         Select an employee to modify their operational, salary, lifecycle, and leave adjustments globally.
+        //       </Typography>
+        //       <Autocomplete
+        //         options={activeEmployees}
+        //         getOptionLabel={(emp) => `${emp.employee_code} - ${emp.name}`}
+        //         value={selectedConsoleEmp}
+        //         onChange={(_, newValue) => setSelectedConsoleEmp(newValue)}
+        //         renderInput={(params) => (
+        //           <TextField
+        //             {...params}
+        //             label="Select Employee"
+        //             placeholder="Search by code or name..."
+        //             sx={inputStyles}
+        //           />
+        //         )}
+        //         ListboxProps={{ sx: dropdownListStyles }}
+        //       />
+        //     </Paper>
 
-      //     {!selectedConsoleEmp ? (
-      //       <Paper
-      //         sx={{
-      //           p: 6,
-      //           textAlign: 'center',
-      //           border: '1px dashed var(--color-border)',
-      //           background: 'var(--color-surface)',
-      //           borderRadius: 'var(--radius-card)',
-      //           color: 'var(--color-text-secondary)',
-      //         }}
-      //       >
-      //         <PeopleIcon sx={{ fontSize: 56, color: 'var(--color-text-muted)', mb: 2 }} />
-      //         <Typography variant="h6" fontFamily="Outfit" fontWeight={600} gutterBottom sx={{ color: 'var(--color-text-primary)' }}>
-      //           No Employee Selected
-      //         </Typography>
-      //         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', maxW: '400px', mx: 'auto' }}>
-      //           Search for an employee using the selector above to manage their global inputs, including attendance, deductions, appraisals, relieving dates, and exceptions.
-      //         </Typography>
-      //       </Paper>
-      //     ) : (
-      //       <Paper
-      //         sx={{
-      //           background: 'var(--color-surface)',
-      //           border: '1px solid var(--color-border)',
-      //           borderRadius: 'var(--radius-card)',
-      //           p: 4,
-      //         }}
-      //       >
-      //         <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 4 }}>
-      //           <Tabs
-      //             value={currentSubTab}
-      //             onChange={(_, newValue) => setCurrentSubTab(newValue)}
-      //             sx={{
-      //               '& .MuiTab-root': {
-      //                 textTransform: 'none',
-      //                 fontWeight: 700,
-      //                 fontFamily: 'Outfit',
-      //                 fontSize: '1rem',
-      //                 color: 'var(--color-text-secondary)',
-      //                 pb: 1.5,
-      //                 '&.Mui-selected': {
-      //                   color: 'var(--color-primary-hover)',
-      //                 },
-      //               },
-      //               '& .MuiTabs-indicator': {
-      //                 backgroundColor: 'var(--color-primary)',
-      //                 height: 3,
-      //                 borderRadius: '3px 3px 0 0',
-      //               },
-      //             }}
-      //           >
-      //             <Tab label="1st Tab: Attendance & Monthly Operations" />
-      //             <Tab label="2nd Tab: Lifecycle & Joinings/Relieving" />
-      //           </Tabs>
-      //         </Box>
+        //     {!selectedConsoleEmp ? (
+        //       <Paper
+        //         sx={{
+        //           p: 6,
+        //           textAlign: 'center',
+        //           border: '1px dashed var(--color-border)',
+        //           background: 'var(--color-surface)',
+        //           borderRadius: 'var(--radius-card)',
+        //           color: 'var(--color-text-secondary)',
+        //         }}
+        //       >
+        //         <PeopleIcon sx={{ fontSize: 56, color: 'var(--color-text-muted)', mb: 2 }} />
+        //         <Typography variant="h6" fontFamily="Outfit" fontWeight={600} gutterBottom sx={{ color: 'var(--color-text-primary)' }}>
+        //           No Employee Selected
+        //         </Typography>
+        //         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', maxW: '400px', mx: 'auto' }}>
+        //           Search for an employee using the selector above to manage their global inputs, including attendance, deductions, appraisals, relieving dates, and exceptions.
+        //         </Typography>
+        //       </Paper>
+        //     ) : (
+        //       <Paper
+        //         sx={{
+        //           background: 'var(--color-surface)',
+        //           border: '1px solid var(--color-border)',
+        //           borderRadius: 'var(--radius-card)',
+        //           p: 4,
+        //         }}
+        //       >
+        //         <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 4 }}>
+        //           <Tabs
+        //             value={currentSubTab}
+        //             onChange={(_, newValue) => setCurrentSubTab(newValue)}
+        //             sx={{
+        //               '& .MuiTab-root': {
+        //                 textTransform: 'none',
+        //                 fontWeight: 700,
+        //                 fontFamily: 'Outfit',
+        //                 fontSize: '1rem',
+        //                 color: 'var(--color-text-secondary)',
+        //                 pb: 1.5,
+        //                 '&.Mui-selected': {
+        //                   color: 'var(--color-primary-hover)',
+        //                 },
+        //               },
+        //               '& .MuiTabs-indicator': {
+        //                 backgroundColor: 'var(--color-primary)',
+        //                 height: 3,
+        //                 borderRadius: '3px 3px 0 0',
+        //               },
+        //             }}
+        //           >
+        //             <Tab label="1st Tab: Attendance & Monthly Operations" />
+        //             <Tab label="2nd Tab: Lifecycle & Joinings/Relieving" />
+        //           </Tabs>
+        //         </Box>
 
-      //         {currentSubTab === 0 ? (
-      //           /* Sub Tab 1: Operational Adjustments */
-      //           <Box className="animate-fade-in">
-      //             <Grid container spacing={3.5}>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Employee Code"
-      //                   fullWidth
-      //                   disabled
-      //                   value={consoleFormData.employee_code}
-      //                   sx={inputStyles}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Employee Name"
-      //                   fullWidth
-      //                   disabled
-      //                   value={consoleFormData.name}
-      //                   sx={inputStyles}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="No Of day Present"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.no_of_days_present}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, no_of_days_present: Number(e.target.value) })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0, max: 31 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Non Payable Days (Absent)"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.deduction_absent === 0 ? '' : consoleFormData.deduction_absent}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, deduction_absent: parseFloat(e.target.value) || 0 })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Appraisal"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.appraisal === 0 ? '' : consoleFormData.appraisal}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, appraisal: parseFloat(e.target.value) || 0 })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Appraisal Effective Date"
-      //                   type="date"
-      //                   fullWidth
-      //                   value={consoleFormData.appraisal_effective_date}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, appraisal_effective_date: e.target.value })
-      //                   }
-      //                   sx={inputStyles}
-      //                   InputLabelProps={{ shrink: true }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Leave Encashment"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.leave_encashment === 0 ? '' : consoleFormData.leave_encashment}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, leave_encashment: parseFloat(e.target.value) || 0 })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Late Arrival Deduction (depends on days, not on numbers)"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.late_arrival_deduction === 0 ? '' : consoleFormData.late_arrival_deduction}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Damages Recovery"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.damages_recovery === 0 ? '' : consoleFormData.damages_recovery}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, damages_recovery: parseFloat(e.target.value) || 0 })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Bonus / Incentives"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.bonus_incentives === 0 ? '' : consoleFormData.bonus_incentives}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, bonus_incentives: parseFloat(e.target.value) || 0 })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Other Deductions"
-      //                   type="number"
-      //                   fullWidth
-      //                   value={consoleFormData.other_deductions === 0 ? '' : consoleFormData.other_deductions}
-      //                   onChange={(e) =>
-      //                     setConsoleFormData({ ...consoleFormData, other_deductions: parseFloat(e.target.value) || 0 })
-      //                   }
-      //                   sx={inputStyles}
-      //                   inputProps={{ min: 0 }}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12}>
-      //                 <TextField
-      //                   label="Remarks"
-      //                   fullWidth
-      //                   multiline
-      //                   minRows={2}
-      //                   maxRows={10}
-      //                   value={consoleFormData.remarks}
-      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, remarks: e.target.value })}
-      //                   sx={inputStyles}
-      //                 />
-      //               </Grid>
-      //             </Grid>
-      //           </Box>
-      //         ) : (
-      //           /* Sub Tab 2: Lifecycle Adjustments */
-      //           <Box className="animate-fade-in">
-      //             <Grid container spacing={3.5}>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Joinings (Joining Date)"
-      //                   type="date"
-      //                   fullWidth
-      //                   InputLabelProps={{ shrink: true }}
-      //                   value={consoleFormData.joining_date}
-      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, joining_date: e.target.value })}
-      //                   sx={inputStyles}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12} md={6}>
-      //                 <TextField
-      //                   label="Relieving (Relieving Date)"
-      //                   type="date"
-      //                   fullWidth
-      //                   InputLabelProps={{ shrink: true }}
-      //                   value={consoleFormData.relieving_date || ''}
-      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, relieving_date: e.target.value })}
-      //                   sx={inputStyles}
-      //                 />
-      //               </Grid>
-      //               <Grid item xs={12}>
-      //                 <TextField
-      //                   label="Other Inputs (Maternity, Career Break, Extra Info, etc.)"
-      //                   fullWidth
-      //                   multiline
-      //                   rows={5}
-      //                   placeholder="Enter extra information, exceptions, career breaks, etc."
-      //                   value={consoleFormData.other_inputs}
-      //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, other_inputs: e.target.value })}
-      //                   sx={inputStyles}
-      //                 />
-      //               </Grid>
-      //             </Grid>
-      //           </Box>
-      //         )}
+        //         {currentSubTab === 0 ? (
+        //           /* Sub Tab 1: Operational Adjustments */
+        //           <Box className="animate-fade-in">
+        //             <Grid container spacing={3.5}>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Employee Code"
+        //                   fullWidth
+        //                   disabled
+        //                   value={consoleFormData.employee_code}
+        //                   sx={inputStyles}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Employee Name"
+        //                   fullWidth
+        //                   disabled
+        //                   value={consoleFormData.name}
+        //                   sx={inputStyles}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="No Of day Present"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.no_of_days_present}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, no_of_days_present: Number(e.target.value) })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0, max: 31 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Non Payable Days (Absent)"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.deduction_absent === 0 ? '' : consoleFormData.deduction_absent}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, deduction_absent: parseFloat(e.target.value) || 0 })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Appraisal"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.appraisal === 0 ? '' : consoleFormData.appraisal}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, appraisal: parseFloat(e.target.value) || 0 })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Appraisal Effective Date"
+        //                   type="date"
+        //                   fullWidth
+        //                   value={consoleFormData.appraisal_effective_date}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, appraisal_effective_date: e.target.value })
+        //                   }
+        //                   sx={inputStyles}
+        //                   InputLabelProps={{ shrink: true }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Leave Encashment"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.leave_encashment === 0 ? '' : consoleFormData.leave_encashment}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, leave_encashment: parseFloat(e.target.value) || 0 })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Late Arrival Deduction (depends on days, not on numbers)"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.late_arrival_deduction === 0 ? '' : consoleFormData.late_arrival_deduction}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, late_arrival_deduction: parseFloat(e.target.value) || 0 })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Damages Recovery"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.damages_recovery === 0 ? '' : consoleFormData.damages_recovery}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, damages_recovery: parseFloat(e.target.value) || 0 })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Bonus / Incentives"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.bonus_incentives === 0 ? '' : consoleFormData.bonus_incentives}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, bonus_incentives: parseFloat(e.target.value) || 0 })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Other Deductions"
+        //                   type="number"
+        //                   fullWidth
+        //                   value={consoleFormData.other_deductions === 0 ? '' : consoleFormData.other_deductions}
+        //                   onChange={(e) =>
+        //                     setConsoleFormData({ ...consoleFormData, other_deductions: parseFloat(e.target.value) || 0 })
+        //                   }
+        //                   sx={inputStyles}
+        //                   inputProps={{ min: 0 }}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12}>
+        //                 <TextField
+        //                   label="Remarks"
+        //                   fullWidth
+        //                   multiline
+        //                   minRows={2}
+        //                   maxRows={10}
+        //                   value={consoleFormData.remarks}
+        //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, remarks: e.target.value })}
+        //                   sx={inputStyles}
+        //                 />
+        //               </Grid>
+        //             </Grid>
+        //           </Box>
+        //         ) : (
+        //           /* Sub Tab 2: Lifecycle Adjustments */
+        //           <Box className="animate-fade-in">
+        //             <Grid container spacing={3.5}>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Joinings (Joining Date)"
+        //                   type="date"
+        //                   fullWidth
+        //                   InputLabelProps={{ shrink: true }}
+        //                   value={consoleFormData.joining_date}
+        //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, joining_date: e.target.value })}
+        //                   sx={inputStyles}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12} md={6}>
+        //                 <TextField
+        //                   label="Relieving (Relieving Date)"
+        //                   type="date"
+        //                   fullWidth
+        //                   InputLabelProps={{ shrink: true }}
+        //                   value={consoleFormData.relieving_date || ''}
+        //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, relieving_date: e.target.value })}
+        //                   sx={inputStyles}
+        //                 />
+        //               </Grid>
+        //               <Grid item xs={12}>
+        //                 <TextField
+        //                   label="Other Inputs (Maternity, Career Break, Extra Info, etc.)"
+        //                   fullWidth
+        //                   multiline
+        //                   rows={5}
+        //                   placeholder="Enter extra information, exceptions, career breaks, etc."
+        //                   value={consoleFormData.other_inputs}
+        //                   onChange={(e) => setConsoleFormData({ ...consoleFormData, other_inputs: e.target.value })}
+        //                   sx={inputStyles}
+        //                 />
+        //               </Grid>
+        //             </Grid>
+        //           </Box>
+        //         )}
 
-      //         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 5 }}>
-      //           <Button
-      //             variant="contained"
-      //             onClick={handleSaveConsoleData}
-      //             disabled={saveConsoleMutation.isLoading}
-      //             sx={{
-      //               background: 'var(--color-primary)',
-      //               boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
-      //               borderRadius: 'var(--radius-control)',
-      //               px: 5,
-      //               py: 1.4,
-      //               fontWeight: 700,
-      //               textTransform: 'none',
-      //               transition: 'all 160ms ease',
-      //               '&:hover': {
-      //                 background: 'var(--color-primary-hover)',
-      //                 boxShadow: '0 12px 24px rgba(99, 102, 241, 0.28)',
-      //                 transform: 'translateY(-1px)',
-      //               },
-      //               '&:active': {
-      //                 transform: 'translateY(1px)',
-      //               },
-      //             }}
-      //           >
-      //             {saveConsoleMutation.isLoading ? 'Saving...' : 'Save Inputs Globally'}
-      //           </Button>
-      //         </Box>
-      //       </Paper>
-      //     )}
-      //   </Box>
-      // ) : currentMainTab === 2 ? (
+        //         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 5 }}>
+        //           <Button
+        //             variant="contained"
+        //             onClick={handleSaveConsoleData}
+        //             disabled={saveConsoleMutation.isLoading}
+        //             sx={{
+        //               background: 'var(--color-primary)',
+        //               boxShadow: '0 8px 18px rgba(99, 102, 241, 0.22)',
+        //               borderRadius: 'var(--radius-control)',
+        //               px: 5,
+        //               py: 1.4,
+        //               fontWeight: 700,
+        //               textTransform: 'none',
+        //               transition: 'all 160ms ease',
+        //               '&:hover': {
+        //                 background: 'var(--color-primary-hover)',
+        //                 boxShadow: '0 12px 24px rgba(99, 102, 241, 0.28)',
+        //                 transform: 'translateY(-1px)',
+        //               },
+        //               '&:active': {
+        //                 transform: 'translateY(1px)',
+        //               },
+        //             }}
+        //           >
+        //             {saveConsoleMutation.isLoading ? 'Saving...' : 'Save Inputs Globally'}
+        //           </Button>
+        //         </Box>
+        //       </Paper>
+        //     )}
+        //   </Box>
+        // ) : currentMainTab === 2 ? (
         /* HR Inputs Preview View */
         <Box className="animate-fade-in">
           {/* Title & Description */}
@@ -2212,464 +2310,464 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
             </Typography>
           </Box>
 
-        <Paper
-          sx={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-card)',
-            overflow: 'hidden',
-            p: 3,
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 2,
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              mb: 3,
-              p: 2,
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-control)',
-              bgcolor: 'var(--color-surface-subtle)',
-            }}
-          >
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={previewTagFilters.length === 0}
-                    onChange={() => setPreviewTagFilters([])}
-                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
-                  />
-                }
-                label="All"
-                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
-              />
-                <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={previewTagFilters.includes('new')}
-                    onChange={() => togglePreviewTagFilter('new')}
-                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
-                  />
-                }
-                label="New"
-                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={previewTagFilters.includes('old')}
-                    onChange={() => togglePreviewTagFilter('old')}
-                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
-                  />
-                }
-                label="Old"
-                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={previewTagFilters.includes('on_notice')}
-                    onChange={() => togglePreviewTagFilter('on_notice')}
-                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
-                  />
-                }
-                label="On Notice"
-                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={previewTagFilters.includes('relieving')}
-                    onChange={() => togglePreviewTagFilter('relieving')}
-                    sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
-                  />
-                }
-                label="Relieving"
-                sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
-              />
-            
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              {isHRorAdmin && (
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => {
-                    // Open add dialog pre-filled with defaults for a new preview record
-                    setPreviewEditEmp(null);
-                    setPreviewEditFormData({
-                      employee_code: '',
-                      name: '',
-                      no_of_days_present: 30,
-                      deduction_absent: '',
-                      appraisal: '',
-                      appraisal_effective_date: '',
-                      leave_encashment: '',
-                      late_arrival_deduction: '',
-                      damages_recovery: '',
-                      bonus_incentives: '',
-                      other_deductions: '',
-                      remarks: '',
-                      joining_date: '',
-                      relieving_date: '',
-                      other_inputs: '',
-                    });
-                    setOpenPreviewEditDialog(true);
-                  }}
-                  sx={{
-                    background: 'var(--color-primary)',
-                    boxShadow: '0 4px 12px rgba(99,102,241,0.22)',
-                    borderRadius: 'var(--radius-control)',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.85rem',
-                  }}
-                  disabled={isPreviewMonthDisbursed}
-                >
-                  {isPreviewMonthDisbursed ? 'Locked (Disbursed)' : 'Add Record'}
-                </Button>
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleDownloadPreviewSampleCsv}
-                sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}
-              >
-                Sample CSV
-              </Button>
-              {isHRorAdmin && (
-                <>
-                  <input type="file" accept=".csv" id="import-preview-csv" style={{ display: 'none' }} onChange={handleImportPreviewCsv} disabled={isPreviewMonthDisbursed} />
-                  <label htmlFor="import-preview-csv">
-                    <Button component="span" variant="outlined" startIcon={<UploadIcon />} disabled={isPreviewMonthDisbursed} sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', cursor: 'pointer', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}>
-                      Import CSV
-                    </Button>
-                  </label>
-                </>
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleExportPreviewCsv}
-                sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}
-              >
-                Export CSV
-              </Button>
-              <TextField
-                type="month"
-                label="Month"
-                value={previewMonth}
-                onChange={(e) => setPreviewMonth(e.target.value)}
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                sx={{ ...inputStyles, minWidth: 170 }}
-              />
-            </Box>
-          </Box>
-
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
-            </Box>
-          ) : previewEmployees.length === 0 ? (
-            <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              No edited employee inputs found.
-            </Box>
-          ) : (
-            <TableContainer sx={{ overflowX: 'auto' }}>
-              <Table sx={{ minWidth: 1800 }}>
-                <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
-                  <TableRow>
-                    {[
-                      'Employee Code',
-                      'Employee Name',
-                      'Status',
-                      'Days Present',
-                      'Non-Payable Days',
-                      'Appraisal (₹)',
-                      'Bonus / Incentives (₹)',
-                      'Leave Encashment (₹)',
-                      'Late Arrival (days)',
-                      'Damages Recovery (₹)',
-                      'Other Deductions (₹)',
-                      'Remarks',
-                    ].map((header) => (
-                      <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, verticalAlign: 'top', whiteSpace: 'nowrap' }}>
-                        {header}
-                      </TableCell>
-                    ))}
-                    {isHRorAdmin && (
-                      <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {previewEmployees.map((emp: Employee) => (
-                    <TableRow
-                      key={emp.id}
-                      hover
-                      sx={{
-                        '&:last-child td, &:last-child th': { border: 0 },
-                        '&:hover': { bgcolor: 'var(--color-row-hover)' },
-                      }}
-                    >
-                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.employee_code}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
-                      <TableCell sx={{ minWidth: 110 }}>
-                        {(() => {
-                          const tag = getPreviewTag(emp, previewMonth);
-                          const meta = getPreviewTagMeta(tag);
-                          return (
-                            <Chip
-                              label={meta.label}
-                              size="small"
-                              sx={{
-                                height: 24,
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                textTransform: 'capitalize',
-                                color: meta.color,
-                                bgcolor: meta.bgcolor,
-                                border: `1px solid ${meta.border}`,
-                              }}
-                            />
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? 30)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>
-                        {(() => {
-                          const npd = nonPayableDays.find((n: any) => n.employee?.id === emp.id || n.employee_id === emp.id)?.days || 0;
-                          const consoleAbsent = Number(emp.deduction_absent) || 0;
-                          const totalAbsent = npd + consoleAbsent;
-                          return totalAbsent > 0 ? `${totalAbsent} days` : '—';
-                        })()}
-                      </TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 155, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.appraisal)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 185, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 175, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.leave_encashment)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.late_arrival_deduction ? `${emp.late_arrival_deduction} days` : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 175, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.damages_recovery)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 165, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.other_deductions)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 240 }}>
-                        <PreviewRemarks remarks={emp.remarks} />
-                      </TableCell>
-                      {isHRorAdmin && (
-                        <TableCell>
-                          <Tooltip title={isPreviewMonthDisbursed ? 'Locked (Payroll Disbursed)' : 'Edit HR Inputs'}>
-                            <span>
-                            <IconButton
-                              size="small"
-                              disabled={isPreviewMonthDisbursed}
-                              onClick={() => {
-                                setPreviewEditEmp(emp);
-                                setPreviewEditFormData({
-                                  employee_code: emp.employee_code,
-                                  name: emp.name,
-                                  no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
-                                  deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
-                                  appraisal: emp.appraisal ? Number(emp.appraisal) : '',
-                                  appraisal_effective_date: emp.appraisal_effective_date || '',
-                                  leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
-                                  late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
-                                  damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
-                                  bonus_incentives: emp.bonus_incentives ? Number(emp.bonus_incentives) : '',
-                                  other_deductions: emp.other_deductions ? Number(emp.other_deductions) : '',
-                                  remarks: emp.remarks || '',
-                                  joining_date: emp.joining_date || '',
-                                  relieving_date: emp.relieving_date || '',
-                                  other_inputs: emp.other_inputs || '',
-                                });
-                                setOpenPreviewEditDialog(true);
-                              }}
-                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            </span>
-                          </Tooltip>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-
           <Paper
-            elevation={0}
             sx={{
-              mt: 3,
-              p: 2,
-              bgcolor: 'var(--color-surface-subtle)',
+              background: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-control)',
+              borderRadius: 'var(--radius-card)',
+              overflow: 'hidden',
+              p: 3,
             }}
           >
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box>
-                <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
-                  HR Preview Status
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.25 }}>
-                  {isPreviewReviewLoading
-                    ? 'Loading review status...'
-                    : previewReview?.status === 'done'
-                      ? `Marked done${previewReview.hr_marked_done_at ? ` on ${new Date(previewReview.hr_marked_done_at).toLocaleString()}` : ''}.`
-                      : 'Marked undone. Finance should wait for HR completion.'}
-                </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 2,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 3,
+                p: 2,
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-control)',
+                bgcolor: 'var(--color-surface-subtle)',
+              }}
+            >
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={previewTagFilters.length === 0}
+                      onChange={() => setPreviewTagFilters([])}
+                      sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                    />
+                  }
+                  label="All"
+                  sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={previewTagFilters.includes('new')}
+                      onChange={() => togglePreviewTagFilter('new')}
+                      sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                    />
+                  }
+                  label="New"
+                  sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={previewTagFilters.includes('old')}
+                      onChange={() => togglePreviewTagFilter('old')}
+                      sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                    />
+                  }
+                  label="Old"
+                  sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={previewTagFilters.includes('on_notice')}
+                      onChange={() => togglePreviewTagFilter('on_notice')}
+                      sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                    />
+                  }
+                  label="On Notice"
+                  sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={previewTagFilters.includes('relieving')}
+                      onChange={() => togglePreviewTagFilter('relieving')}
+                      sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                    />
+                  }
+                  label="Relieving"
+                  sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+
               </Box>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                 {isHRorAdmin && (
                   <Button
                     variant="contained"
-                    disabled={updatePreviewStatusMutation.isLoading || isPreviewMonthDisbursed}
-                    onClick={() => updatePreviewStatusMutation.mutate(previewReview?.status === 'done' ? 'undone' : 'done')}
+                    startIcon={<AddIcon />}
+                    onClick={() => {
+                      // Open add dialog pre-filled with defaults for a new preview record
+                      setPreviewEditEmp(null);
+                      setPreviewEditFormData({
+                        employee_code: '',
+                        name: '',
+                        no_of_days_present: 30,
+                        deduction_absent: '',
+                        appraisal: '',
+                        appraisal_effective_date: '',
+                        leave_encashment: '',
+                        late_arrival_deduction: '',
+                        damages_recovery: '',
+                        bonus_incentives: '',
+                        other_deductions: '',
+                        remarks: '',
+                        joining_date: '',
+                        relieving_date: '',
+                        other_inputs: '',
+                      });
+                      setOpenPreviewEditDialog(true);
+                    }}
                     sx={{
-                      background: previewReview?.status === 'done' ? 'var(--color-warning)' : 'var(--color-primary)',
+                      background: 'var(--color-primary)',
+                      boxShadow: '0 4px 12px rgba(99,102,241,0.22)',
                       borderRadius: 'var(--radius-control)',
                       textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
                     }}
+                    disabled={isPreviewMonthDisbursed}
                   >
-                    {previewReview?.status === 'done' ? 'Mark Undone' : 'Mark Done'}
+                    {isPreviewMonthDisbursed ? 'Locked (Disbursed)' : 'Add Record'}
                   </Button>
                 )}
-                {isFinance && previewReview?.status === 'done' && (
-                  <Button
-                    variant="contained"
-                    disabled={updatePreviewStatusMutation.isLoading || isPreviewMonthDisbursed}
-                    onClick={() => updatePreviewStatusMutation.mutate('undone')}
-                    sx={{
-                      background: 'var(--color-warning)',
-                      borderRadius: 'var(--radius-control)',
-                      textTransform: 'none',
-                    }}
-                  >
-                    Mark Undone
-                  </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleDownloadPreviewSampleCsv}
+                  sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}
+                >
+                  Sample CSV
+                </Button>
+                {isHRorAdmin && (
+                  <>
+                    <input type="file" accept=".csv" id="import-preview-csv" style={{ display: 'none' }} onChange={handleImportPreviewCsv} disabled={isPreviewMonthDisbursed} />
+                    <label htmlFor="import-preview-csv">
+                      <Button component="span" variant="outlined" startIcon={<UploadIcon />} disabled={isPreviewMonthDisbursed} sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', cursor: 'pointer', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}>
+                        Import CSV
+                      </Button>
+                    </label>
+                  </>
                 )}
+                <Button
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExportPreviewCsv}
+                  sx={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', textTransform: 'none', borderRadius: 'var(--radius-control)', fontSize: '0.85rem', '&:hover': { borderColor: 'var(--color-border-strong)', bgcolor: 'var(--color-surface-subtle)', color: 'var(--color-text-primary)' } }}
+                >
+                  Export CSV
+                </Button>
+                <TextField
+                  type="month"
+                  label="Month"
+                  value={previewMonth}
+                  onChange={(e) => setPreviewMonth(e.target.value)}
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ ...inputStyles, minWidth: 170 }}
+                />
               </Box>
             </Box>
 
-            {isFinance && previewReview?.status === 'undone' && previewReview?.hr_marked_done_at && (
-              <>
-                <Box sx={{ mb: 2, p: 1.5, borderRadius: 'var(--radius-control)', bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.22)', color: 'var(--color-warning)', fontSize: '0.875rem', fontWeight: 600 }}>
-                  You have marked this sheet as undone. Add your remarks for HR to review and correct.
-                </Box>
-                <Grid container spacing={2} alignItems="flex-start">
-                  <Grid item xs={12} md={9}>
-                    <TextField
-                      label="Finance Remarks"
-                      placeholder="Comment any mistake or correction needed in this sheet..."
-                      fullWidth
-                      multiline
-                      minRows={2}
-                      maxRows={6}
-                      value={financeRemarksDraft}
-                      onChange={(e) => setFinanceRemarksDraft(e.target.value)}
-                      sx={inputStyles}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={3}>
-                    <Button
-                      variant="outlined"
-                      disabled={updateFinanceRemarksMutation.isLoading || isPreviewMonthDisbursed}
-                      onClick={() => updateFinanceRemarksMutation.mutate()}
-                      sx={{
-                        mt: { xs: 0, md: 1 },
-                        px: 2.5,
-                        py: 1,
-                        minWidth: '120px',
-                        borderColor: 'var(--color-primary)',
-                        color: 'var(--color-primary)',
-                        borderRadius: 'var(--radius-control)',
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        fontSize: '0.875rem',
-                        '&:hover:not(:disabled)': {
-                          borderColor: 'var(--color-primary-hover)',
-                          color: 'var(--color-primary-hover)',
-                          bgcolor: 'rgba(59, 130, 246, 0.04)',
-                        },
-                      }}
-                    >
-                      Save Remarks
-                    </Button>
-                  </Grid>
-                </Grid>
-              </>
-            )}
-
-            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid var(--color-border)' }}>
-              <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mb: 1 }}>
-                Sheet Activity Logs
-              </Typography>
-              {previewLogs.length > 0 ? (
-                <Box>
-                  <Box sx={{ display: 'grid', gap: 1 }}>
-                    {paginatedPreviewLogs.map((log, index) => (
-                      <Box
-                        key={`${log.created_at}-${previewLogPage}-${index}`}
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress size={40} sx={{ color: 'var(--color-primary)' }} />
+              </Box>
+            ) : previewEmployees.length === 0 ? (
+              <Box sx={{ py: 4, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                No edited employee inputs found.
+              </Box>
+            ) : (
+              <TableContainer sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: 1800 }}>
+                  <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                    <TableRow>
+                      {[
+                        'Employee Code',
+                        'Employee Name',
+                        'Status',
+                        'Days Present',
+                        'Non-Payable Days',
+                        'Appraisal (₹)',
+                        'Bonus / Incentives (₹)',
+                        'Leave Encashment (₹)',
+                        'Late Arrival (days)',
+                        'Damages Recovery (₹)',
+                        'Other Deductions (₹)',
+                        'Remarks',
+                      ].map((header) => (
+                        <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                          {header}
+                        </TableCell>
+                      ))}
+                      {isHRorAdmin && (
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
+                      )}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {previewEmployees.map((emp: Employee) => (
+                      <TableRow
+                        key={emp.id}
+                        hover
                         sx={{
-                          p: 1.25,
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 'var(--radius-control)',
-                          bgcolor: 'var(--color-surface)',
+                          '&:last-child td, &:last-child th': { border: 0 },
+                          '&:hover': { bgcolor: 'var(--color-row-hover)' },
                         }}
                       >
-                        <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
-                          {previewLogText(log)}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mt: 0.25 }}>
-                          {previewLogEmail(log) && (
-                            <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
-                              {previewLogEmail(log)}
-                            </Typography>
-                          )}
-                          <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
-                            {new Date(log.created_at).toLocaleString()}
-                          </Typography>
-                        </Box>
-                      </Box>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{emp.employee_code}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.name}</TableCell>
+                        <TableCell sx={{ minWidth: 110 }}>
+                          {(() => {
+                            const tag = getPreviewTag(emp, previewMonth);
+                            const meta = getPreviewTagMeta(tag);
+                            return (
+                              <Chip
+                                label={meta.label}
+                                size="small"
+                                sx={{
+                                  height: 24,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  textTransform: 'capitalize',
+                                  color: meta.color,
+                                  bgcolor: meta.bgcolor,
+                                  border: `1px solid ${meta.border}`,
+                                }}
+                              />
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? totalDaysInPreviewMonth)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>
+                          {(() => {
+                            const npd = nonPayableDays.find((n: any) => n.employee?.id === emp.id || n.employee_id === emp.id)?.days || 0;
+                            const consoleAbsent = Number(emp.deduction_absent) || 0;
+                            const totalAbsent = npd + consoleAbsent;
+                            return totalAbsent > 0 ? `${totalAbsent} days` : '—';
+                          })()}
+                        </TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 155, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.appraisal)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 185, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.bonus_incentives)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 175, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.leave_encashment)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.late_arrival_deduction ? `${emp.late_arrival_deduction} days` : '—'}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 175, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.damages_recovery)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 165, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{previewAmount(emp.other_deductions)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)', minWidth: 240 }}>
+                          <PreviewRemarks remarks={emp.remarks} />
+                        </TableCell>
+                        {isHRorAdmin && (
+                          <TableCell>
+                            <Tooltip title={isPreviewMonthDisbursed ? 'Locked (Payroll Disbursed)' : 'Edit HR Inputs'}>
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  disabled={isPreviewMonthDisbursed}
+                                  onClick={() => {
+                                    setPreviewEditEmp(emp);
+                                    setPreviewEditFormData({
+                                      employee_code: emp.employee_code,
+                                      name: emp.name,
+                                      no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : totalDaysInPreviewMonth,
+                                      deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
+                                      appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+                                      appraisal_effective_date: emp.appraisal_effective_date || '',
+                                      leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
+                                      late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
+                                      damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
+                                      bonus_incentives: emp.bonus_incentives ? Number(emp.bonus_incentives) : '',
+                                      other_deductions: emp.other_deductions ? Number(emp.other_deductions) : '',
+                                      remarks: emp.remarks || '',
+                                      joining_date: emp.joining_date || '',
+                                      relieving_date: emp.relieving_date || '',
+                                      other_inputs: emp.other_inputs || '',
+                                    });
+                                    setOpenPreviewEditDialog(true);
+                                  }}
+                                  sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' } }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          </TableCell>
+                        )}
+                      </TableRow>
                     ))}
-                  </Box>
-                  <TablePagination
-                    component="div"
-                    count={previewLogs.length}
-                    page={previewLogPage}
-                    rowsPerPage={previewLogRowsPerPage}
-                    rowsPerPageOptions={[5, 10, 25]}
-                    onPageChange={(_, nextPage) => setPreviewLogPage(nextPage)}
-                    onRowsPerPageChange={(event) => {
-                      setPreviewLogRowsPerPage(parseInt(event.target.value, 10));
-                      setPreviewLogPage(0);
-                    }}
-                    sx={{
-                      color: 'var(--color-text-primary)',
-                      borderTop: '1px solid var(--color-border)',
-                      mt: 1,
-                      '& .MuiTablePagination-actions': {
-                        color: 'var(--color-text-primary)',
-                      },
-                      '& .MuiTablePagination-select': {
-                        color: 'var(--color-text-primary)',
-                      },
-                    }}
-                  />
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+
+            <Paper
+              elevation={0}
+              sx={{
+                mt: 3,
+                p: 2,
+                bgcolor: 'var(--color-surface-subtle)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-control)',
+              }}
+            >
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
+                    HR Preview Status
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.25 }}>
+                    {isPreviewReviewLoading
+                      ? 'Loading review status...'
+                      : previewReview?.status === 'done'
+                        ? `Marked done${previewReview.hr_marked_done_at ? ` on ${new Date(previewReview.hr_marked_done_at).toLocaleString()}` : ''}.`
+                        : 'Marked undone. Finance should wait for HR completion.'}
+                  </Typography>
                 </Box>
-              ) : (
-                <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
-                  No activity logs yet.
-                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  {isHRorAdmin && (
+                    <Button
+                      variant="contained"
+                      disabled={updatePreviewStatusMutation.isLoading || isPreviewMonthDisbursed}
+                      onClick={() => updatePreviewStatusMutation.mutate(previewReview?.status === 'done' ? 'undone' : 'done')}
+                      sx={{
+                        background: previewReview?.status === 'done' ? 'var(--color-warning)' : 'var(--color-primary)',
+                        borderRadius: 'var(--radius-control)',
+                        textTransform: 'none',
+                      }}
+                    >
+                      {previewReview?.status === 'done' ? 'Mark Undone' : 'Mark Done'}
+                    </Button>
+                  )}
+                  {isFinance && previewReview?.status === 'done' && (
+                    <Button
+                      variant="contained"
+                      disabled={updatePreviewStatusMutation.isLoading || isPreviewMonthDisbursed}
+                      onClick={() => updatePreviewStatusMutation.mutate('undone')}
+                      sx={{
+                        background: 'var(--color-warning)',
+                        borderRadius: 'var(--radius-control)',
+                        textTransform: 'none',
+                      }}
+                    >
+                      Mark Undone
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+
+              {isFinance && previewReview?.status === 'undone' && previewReview?.hr_marked_done_at && (
+                <>
+                  <Box sx={{ mb: 2, p: 1.5, borderRadius: 'var(--radius-control)', bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.22)', color: 'var(--color-warning)', fontSize: '0.875rem', fontWeight: 600 }}>
+                    You have marked this sheet as undone. Add your remarks for HR to review and correct.
+                  </Box>
+                  <Grid container spacing={2} alignItems="flex-start">
+                    <Grid item xs={12} md={9}>
+                      <TextField
+                        label="Finance Remarks"
+                        placeholder="Comment any mistake or correction needed in this sheet..."
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        maxRows={6}
+                        value={financeRemarksDraft}
+                        onChange={(e) => setFinanceRemarksDraft(e.target.value)}
+                        sx={inputStyles}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Button
+                        variant="outlined"
+                        disabled={updateFinanceRemarksMutation.isLoading || isPreviewMonthDisbursed}
+                        onClick={() => updateFinanceRemarksMutation.mutate()}
+                        sx={{
+                          mt: { xs: 0, md: 1 },
+                          px: 2.5,
+                          py: 1,
+                          minWidth: '120px',
+                          borderColor: 'var(--color-primary)',
+                          color: 'var(--color-primary)',
+                          borderRadius: 'var(--radius-control)',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          '&:hover:not(:disabled)': {
+                            borderColor: 'var(--color-primary-hover)',
+                            color: 'var(--color-primary-hover)',
+                            bgcolor: 'rgba(59, 130, 246, 0.04)',
+                          },
+                        }}
+                      >
+                        Save Remarks
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </>
               )}
-            </Box>
+
+              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid var(--color-border)' }}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-text-primary)', fontWeight: 700, mb: 1 }}>
+                  Sheet Activity Logs
+                </Typography>
+                {previewLogs.length > 0 ? (
+                  <Box>
+                    <Box sx={{ display: 'grid', gap: 1 }}>
+                      {paginatedPreviewLogs.map((log, index) => (
+                        <Box
+                          key={`${log.created_at}-${previewLogPage}-${index}`}
+                          sx={{
+                            p: 1.25,
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-control)',
+                            bgcolor: 'var(--color-surface)',
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                            {previewLogText(log)}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mt: 0.25 }}>
+                            {previewLogEmail(log) && (
+                              <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
+                                {previewLogEmail(log)}
+                              </Typography>
+                            )}
+                            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>
+                              {new Date(log.created_at).toLocaleString()}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                    <TablePagination
+                      component="div"
+                      count={previewLogs.length}
+                      page={previewLogPage}
+                      rowsPerPage={previewLogRowsPerPage}
+                      rowsPerPageOptions={[5, 10, 25]}
+                      onPageChange={(_, nextPage) => setPreviewLogPage(nextPage)}
+                      onRowsPerPageChange={(event) => {
+                        setPreviewLogRowsPerPage(parseInt(event.target.value, 10));
+                        setPreviewLogPage(0);
+                      }}
+                      sx={{
+                        color: 'var(--color-text-primary)',
+                        borderTop: '1px solid var(--color-border)',
+                        mt: 1,
+                        '& .MuiTablePagination-actions': {
+                          color: 'var(--color-text-primary)',
+                        },
+                        '& .MuiTablePagination-select': {
+                          color: 'var(--color-text-primary)',
+                        },
+                      }}
+                    />
+                  </Box>
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)' }}>
+                    No activity logs yet.
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
           </Paper>
-        </Paper>
         </Box>
       ) : (
         /* Manage Options View */
@@ -2701,7 +2799,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               <Typography className="manage-options-copy" variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
                 Add new departments or remove existing ones. Removed departments will no longer appear in employee forms.
               </Typography>
-              
+
               <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                 <TextField
                   placeholder="New department name..."
@@ -2775,7 +2873,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               <Typography className="manage-options-copy" variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
                 Add new designations or remove existing ones. Removed designations will no longer appear in employee forms.
               </Typography>
-              
+
               <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                 <TextField
                   placeholder="New designation name..."
@@ -2865,10 +2963,10 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               {/* Left Column: Editable HR & Bank Details */}
               <Grid item xs={12} lg={5}>
                 <Paper sx={{ p: 3, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface-subtle)' }}>
-                  <Typography variant="subtitle1" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
+                  {/* <Typography variant="subtitle1" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)', mb: 1 }}>
                     HR Profile Details
-                  </Typography>
-                  
+                  </Typography> */}
+
                   <Box sx={{ borderBottom: 1, borderColor: 'var(--color-border)', mb: 2.5 }}>
                     <Tabs
                       value={profileDialogTab}
@@ -2910,6 +3008,25 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             value={profileFormData.employee_code}
                             onChange={(e) => setProfileFormData({ ...profileFormData, employee_code: e.target.value })}
                             sx={inputStyles}
+                            InputProps={{
+                              endAdornment: isHRorAdmin ? (
+                                <InputAdornment position="end">
+                                  <Button
+                                    onClick={handleGenerateCodeForProfile}
+                                    size="small"
+                                    variant="text"
+                                    sx={{
+                                      textTransform: 'none',
+                                      fontWeight: 600,
+                                      color: 'var(--color-primary-hover)',
+                                      mr: -1,
+                                    }}
+                                  >
+                                    Generate
+                                  </Button>
+                                </InputAdornment>
+                              ) : undefined
+                            }}
                           />
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -2925,13 +3042,24 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <TextField
-                            label="Email Address"
+                            label="Professional Email"
                             fullWidth
                             required
                             type="email"
                             disabled={!isHRorAdmin}
                             value={profileFormData.email}
                             onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
+                            sx={inputStyles}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Personal Email"
+                            fullWidth
+                            type="email"
+                            disabled={!isHRorAdmin}
+                            value={profileFormData.personal_email}
+                            onChange={(e) => setProfileFormData({ ...profileFormData, personal_email: e.target.value })}
                             sx={inputStyles}
                           />
                         </Grid>
@@ -2973,7 +3101,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             ListboxProps={{ sx: dropdownListStyles }}
                           />
                         </Grid>
-                        
+
 
                         <Grid item xs={12} sm={6}>
                           <FormControlLabel
@@ -3033,8 +3161,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                   uan && !/^\d{12}$/.test(uan)
                                     ? 'UAN must be exactly 12 digits'
                                     : pfApplies && !uan
-                                    ? 'UAN is required when PF is applicable'
-                                    : 'Enter 12-digit UAN' + (pfApplies ? ' (required)' : ' (optional)')
+                                      ? 'UAN is required when PF is applicable'
+                                      : 'Enter 12-digit UAN' + (pfApplies ? ' (required)' : ' (optional)')
                                 }
                                 inputProps={{ maxLength: 12, inputMode: 'numeric' }}
                                 sx={inputStyles}
@@ -3072,7 +3200,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           />
                         </Grid>
 
-                        
+
                         <Grid item xs={12} sx={{ mt: 1 }}>
                           <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>
                             BANK ACCOUNT DETAILS
@@ -3429,7 +3557,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                               LIVE SALARY STRUCTURE
                             </Typography>
-                            
+
                             <Grid container spacing={2} sx={{ mt: 1.5 }}>
                               <Grid item xs={6} sm={3}>
                                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>CTC</Typography>
@@ -3513,104 +3641,104 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Grid>
                       ) : null}
 
-                    {/* Advances loan summary */}
-                    <Grid item xs={12}>
-                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
-                        <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>SALARY ADVANCES OVERVIEW</Typography>
-                        <Grid container spacing={2} sx={{ mt: 1 }}>
-                          <Grid item xs={4}>
-                            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Taken</Typography>
-                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>{formatSummaryValue(profileSummary.totalAdvancesTaken)}</Typography>
+                      {/* Advances loan summary */}
+                      <Grid item xs={12}>
+                        <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface-subtle)' }}>
+                          <Typography variant="caption" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600 }}>SALARY ADVANCES OVERVIEW</Typography>
+                          <Grid container spacing={2} sx={{ mt: 1 }}>
+                            <Grid item xs={4}>
+                              <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Taken</Typography>
+                              <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>{formatSummaryValue(profileSummary.totalAdvancesTaken)}</Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Repaid (YTD)</Typography>
+                              <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-success)', mt: 0.5 }}>{formatSummaryValue(profileSummary.totalAdvancesRepaid)}</Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Outstanding Loan</Typography>
+                              <Typography variant="body2" fontWeight="bold" sx={{ color: profileSummary.remainingAdvanceBalance > 0 ? '#fb923c' : 'var(--color-text-muted)', mt: 0.5 }}>
+                                {formatSummaryValue(profileSummary.remainingAdvanceBalance)}
+                              </Typography>
+                            </Grid>
                           </Grid>
-                          <Grid item xs={4}>
-                            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Total Repaid (YTD)</Typography>
-                            <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-success)', mt: 0.5 }}>{formatSummaryValue(profileSummary.totalAdvancesRepaid)}</Typography>
-                          </Grid>
-                          <Grid item xs={4}>
-                            <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Outstanding Loan</Typography>
-                            <Typography variant="body2" fontWeight="bold" sx={{ color: profileSummary.remainingAdvanceBalance > 0 ? '#fb923c' : 'var(--color-text-muted)', mt: 0.5 }}>
-                              {formatSummaryValue(profileSummary.remainingAdvanceBalance)}
-                            </Typography>
-                          </Grid>
-                        </Grid>
-                        {profileSummary.advanceDetails?.length > 0 && (
-                          <TableContainer sx={{ mt: 2, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
-                            <Table size="small">
-                              <TableHead sx={{ bgcolor: 'var(--color-surface)' }}>
-                                <TableRow>
-                                  {['Date', 'Amount', 'Type', 'Installment', 'Months', 'Start', 'Recovered', 'Remaining'].map((header) => (
-                                    <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', fontWeight: 700 }}>
-                                      {header}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {profileSummary.advanceDetails.map((advance: any) => {
-                                  const months = advance.installment_amount
-                                    ? Math.ceil(Number(advance.amount) / Number(advance.installment_amount))
-                                    : '-';
-                                  return (
-                                    <TableRow key={advance.id}>
-                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{advance.date}</TableCell>
-                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{formatCurrency(advance.amount)}</TableCell>
-                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem', textTransform: 'capitalize' }}>
-                                        {advance.recovery_type?.replace('_', ' ')}
+                          {profileSummary.advanceDetails?.length > 0 && (
+                            <TableContainer sx={{ mt: 2, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+                              <Table size="small">
+                                <TableHead sx={{ bgcolor: 'var(--color-surface)' }}>
+                                  <TableRow>
+                                    {['Date', 'Amount', 'Type', 'Installment', 'Months', 'Start', 'Recovered', 'Remaining'].map((header) => (
+                                      <TableCell key={header} sx={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        {header}
                                       </TableCell>
-                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>
-                                        {advance.installment_amount ? formatCurrency(advance.installment_amount) : '-'}
-                                      </TableCell>
-                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{months}</TableCell>
-                                      <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>
-                                        {formatMonthLabel(advance.start_month)} {advance.start_year}
-                                      </TableCell>
-                                      <TableCell sx={{ color: 'var(--color-success)', fontSize: '0.78rem', fontWeight: 600 }}>
-                                        {formatCurrency(advance.total_recovered)}
-                                      </TableCell>
-                                      <TableCell sx={{ color: advance.remaining_amount > 0 ? '#fb923c' : 'var(--color-text-muted)', fontSize: '0.78rem', fontWeight: 600 }}>
-                                        {formatCurrency(advance.remaining_amount)}
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        )}
-                      </Paper>
-                    </Grid>
+                                    ))}
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {profileSummary.advanceDetails.map((advance: any) => {
+                                    const months = advance.installment_amount
+                                      ? Math.ceil(Number(advance.amount) / Number(advance.installment_amount))
+                                      : '-';
+                                    return (
+                                      <TableRow key={advance.id}>
+                                        <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{advance.date}</TableCell>
+                                        <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{formatCurrency(advance.amount)}</TableCell>
+                                        <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem', textTransform: 'capitalize' }}>
+                                          {advance.recovery_type?.replace('_', ' ')}
+                                        </TableCell>
+                                        <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>
+                                          {advance.installment_amount ? formatCurrency(advance.installment_amount) : '-'}
+                                        </TableCell>
+                                        <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>{months}</TableCell>
+                                        <TableCell sx={{ color: 'var(--color-text-primary)', fontSize: '0.78rem' }}>
+                                          {formatMonthLabel(advance.start_month)} {advance.start_year}
+                                        </TableCell>
+                                        <TableCell sx={{ color: 'var(--color-success)', fontSize: '0.78rem', fontWeight: 600 }}>
+                                          {formatCurrency(advance.total_recovered)}
+                                        </TableCell>
+                                        <TableCell sx={{ color: advance.remaining_amount > 0 ? '#fb923c' : 'var(--color-text-muted)', fontSize: '0.78rem', fontWeight: 600 }}>
+                                          {formatCurrency(advance.remaining_amount)}
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          )}
+                        </Paper>
+                      </Grid>
 
-                    {/* Live Paid vs Projected Analysis */}
-                    <Grid item xs={12}>
-                      <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', height: 320 }}>
-                        <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
-                          Payroll Paid vs Live Projection
-                        </Typography>
-                        <Box sx={{ height: 240 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                              data={[
-                                { name: 'Net Salary', Paid: profileSummary.amountPaid, Remaining: profileSummary.amountToBePaid },
-                                { name: 'PF', Paid: profileSummary.pfDeducted, Remaining: profileSummary.expectedPFRemaining },
-                                { name: 'Tax', Paid: profileSummary.taxDeducted, Remaining: profileSummary.expectedTaxRemaining },
-                              ]}
-                              margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
-                              <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
-                              <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => formatCurrency(val)} />
-                              <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
-                              <Legend />
-                              <Bar dataKey="Paid" name="YTD Paid/Deducted" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="Remaining" name="Est. Remaining" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </Box>
-                      </Paper>
+                      {/* Live Paid vs Projected Analysis */}
+                      <Grid item xs={12}>
+                        <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', height: 320 }}>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
+                            Payroll Paid vs Live Projection
+                          </Typography>
+                          <Box sx={{ height: 240 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                data={[
+                                  { name: 'Net Salary', Paid: profileSummary.amountPaid, Remaining: profileSummary.amountToBePaid },
+                                  { name: 'PF', Paid: profileSummary.pfDeducted, Remaining: profileSummary.expectedPFRemaining },
+                                  { name: 'Tax', Paid: profileSummary.taxDeducted, Remaining: profileSummary.expectedTaxRemaining },
+                                ]}
+                                margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
+                                <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
+                                <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => formatCurrency(val)} />
+                                <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
+                                <Legend />
+                                <Bar dataKey="Paid" name="YTD Paid/Deducted" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Remaining" name="Est. Remaining" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </Box>
+                        </Paper>
+                      </Grid>
                     </Grid>
-                  </Grid>
-                </Box>
-              )}
+                  </Box>
+                )}
               </Grid>
             </Grid>
           )}
@@ -3664,7 +3792,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       setPreviewEditFormData({
                         employee_code: emp.employee_code,
                         name: emp.name,
-                        no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
+                        no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : totalDaysInPreviewMonth,
                         deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
                         appraisal: emp.appraisal ? Number(emp.appraisal) : '',
                         appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -3854,249 +3982,278 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         </DialogTitle>
         <form onSubmit={handleFormSubmit}>
           <DialogContent sx={{ py: 3 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Employee Code"
-                    fullWidth
-                    required
-                    value={formData.employee_code}
-                    onChange={(e) => setFormData({ ...formData, employee_code: e.target.value })}
-                    error={!!formErrors.employee_code}
-                    helperText={formErrors.employee_code}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Full Name"
-                    fullWidth
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    error={!!formErrors.name}
-                    helperText={formErrors.name}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Email Address"
-                    fullWidth
-                    required
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    error={!!formErrors.email}
-                    helperText={formErrors.email}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Phone Number"
-                    fullWidth
-                    value={formData.phone}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setFormData({ ...formData, phone: val });
-                    }}
-                    error={!!formErrors.phone}
-                    helperText={formErrors.phone || 'Exactly 10 digits'}
-                    inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Autocomplete
-                    options={departmentOptions}
-                    value={formData.department || null}
-                    onChange={(_, value) => {
-                      setFormData({ ...formData, department: value || '' });
-                      setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Department"
-                        fullWidth
-                        required
-                        error={!!formErrors.department}
-                        helperText={formErrors.department}
-                        sx={inputStyles}
-                      />
-                    )}
-                    ListboxProps={{ sx: dropdownListStyles }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Autocomplete
-                    options={designationOptions}
-                    value={formData.designation || null}
-                    onChange={(_, value) => {
-                      setFormData({ ...formData, designation: value || '' });
-                      setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Designation"
-                        fullWidth
-                        required
-                        error={!!formErrors.designation}
-                        helperText={formErrors.designation}
-                        sx={inputStyles}
-                      />
-                    )}
-                    ListboxProps={{ sx: dropdownListStyles }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Joining Date"
-                    type="date"
-                    fullWidth
-                    required
-                    value={formData.joining_date}
-                    onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                    error={!!formErrors.joining_date}
-                    helperText={formErrors.joining_date}
-                    sx={inputStyles}
-                  />
-                </Grid>
-
-                {/* CTC Section */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mt: 1 }}>
-                    CTC DETAILS
-                  </Typography>
-                  <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Monthly CTC"
-                    type="number"
-                    fullWidth
-                    value={formData.monthly_ctc}
-                    onChange={(e) => {
-                      const monthly = e.target.value;
-                      setFormData({ ...formData, monthly_ctc: monthly });
-                    }}
-                    inputProps={{ min: 0 }}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Annual CTC"
-                    type="number"
-                    fullWidth
-                    value={formData.monthly_ctc ? String(Number(formData.monthly_ctc) * 12) : ''}
-                    InputProps={{ readOnly: true }}
-                    disabled
-                    helperText="Auto-calculated (Monthly × 12)"
-                    inputProps={{ min: 0 }}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                {!!selectedEmp && (
-                  <Grid item xs={12} sm={6}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={formData.active_status}
-                          disabled={!formData.active_status}
-                          onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Employee Code"
+                  fullWidth
+                  required
+                  value={formData.employee_code}
+                  onChange={(e) => setFormData({ ...formData, employee_code: e.target.value })}
+                  error={!!formErrors.employee_code}
+                  helperText={formErrors.employee_code}
+                  sx={inputStyles}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Button
+                          onClick={handleGenerateCode}
+                          size="small"
+                          variant="text"
                           sx={{
-                            '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            color: 'var(--color-primary-hover)',
+                            mr: -1,
                           }}
-                        />
-                      }
-                      label={formData.active_status ? 'Active Status' : 'Inactive (cannot re-activate here)'}
-                      sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                        >
+                          Generate
+                        </Button>
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Full Name"
+                  fullWidth
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  error={!!formErrors.name}
+                  helperText={formErrors.name}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Professional Email"
+                  fullWidth
+                  required
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  error={!!formErrors.email}
+                  helperText={formErrors.email}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Personal Email"
+                  fullWidth
+                  type="email"
+                  value={formData.personal_email}
+                  onChange={(e) => setFormData({ ...formData, personal_email: e.target.value })}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Phone Number"
+                  fullWidth
+                  value={formData.phone}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setFormData({ ...formData, phone: val });
+                  }}
+                  error={!!formErrors.phone}
+                  helperText={formErrors.phone}
+                  inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  options={departmentOptions}
+                  value={formData.department || null}
+                  onChange={(_, value) => {
+                    setFormData({ ...formData, department: value || '' });
+                    setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Department"
+                      fullWidth
+                      required
+                      error={!!formErrors.department}
+                      helperText={formErrors.department}
+                      sx={inputStyles}
                     />
-                  </Grid>
-                )}
+                  )}
+                  ListboxProps={{ sx: dropdownListStyles }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  options={designationOptions}
+                  value={formData.designation || null}
+                  onChange={(_, value) => {
+                    setFormData({ ...formData, designation: value || '' });
+                    setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Designation"
+                      fullWidth
+                      required
+                      error={!!formErrors.designation}
+                      helperText={formErrors.designation}
+                      sx={inputStyles}
+                    />
+                  )}
+                  ListboxProps={{ sx: dropdownListStyles }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Joining Date"
+                  type="date"
+                  fullWidth
+                  required
+                  value={formData.joining_date}
+                  onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  error={!!formErrors.joining_date}
+                  helperText={formErrors.joining_date}
+                  sx={inputStyles}
+                />
+              </Grid>
+
+              {/* CTC Section */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mt: 1 }}>
+                  CTC DETAILS
+                </Typography>
+                <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Monthly CTC"
+                  type="number"
+                  fullWidth
+                  value={formData.monthly_ctc}
+                  onChange={(e) => {
+                    const monthly = e.target.value;
+                    setFormData({ ...formData, monthly_ctc: monthly });
+                  }}
+                  inputProps={{ min: 0 }}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Annual CTC"
+                  type="number"
+                  fullWidth
+                  value={formData.monthly_ctc ? String(Number(formData.monthly_ctc) * 12) : ''}
+                  InputProps={{ readOnly: true }}
+                  disabled
+                  // helperText="Auto-calculated (Monthly × 12)"
+                  inputProps={{ min: 0 }}
+                  sx={inputStyles}
+                />
+              </Grid>
+              {!!selectedEmp && (
                 <Grid item xs={12} sm={6}>
                   <FormControlLabel
                     control={
-	                      <Switch
-	                        checked={formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc)}
-                          disabled={isPfRequiredByWageLimit(formData.monthly_ctc)}
-	                        onChange={(e) => setFormData({
-                            ...formData,
-                            pf_deduction: isPfRequiredByWageLimit(formData.monthly_ctc) || e.target.checked,
-                          })}
-	                        sx={{
-	                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-	                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                      <Switch
+                        checked={formData.active_status}
+                        disabled={!formData.active_status}
+                        onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
+                        sx={{
+                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
                         }}
                       />
                     }
-                    label="PF Deduction"
+                    label={formData.active_status ? 'Active Status' : 'Inactive (cannot re-activate here)'}
                     sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="PF No. / UAN"
-                    fullWidth
-                    value={formData.pf_uan}
-                    onChange={(e) => setFormData({ ...formData, pf_uan: e.target.value })}
-                    error={!!formErrors.pf_uan}
-                    helperText={formErrors.pf_uan}
-                    sx={inputStyles}
-                  />
-                </Grid>
-
-                {/* Bank Details Sub-header */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mt: 1 }}>
-                    BANK ACCOUNT INFORMATION
-                  </Typography>
-                  <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
-                </Grid>
-
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    label="Bank Name"
-                    fullWidth
-                    required
-                    value={formData.bank_name}
-                    onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                    error={!!formErrors.bank_name}
-                    helperText={formErrors.bank_name}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    label="Account Number"
-                    fullWidth
-                    required
-                    value={formData.account_number}
-                    onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                    error={!!formErrors.account_number}
-                    helperText={formErrors.account_number}
-                    sx={inputStyles}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    label="IFSC Code"
-                    fullWidth
-                    required
-                    value={formData.ifsc}
-                    onChange={(e) => setFormData({ ...formData, ifsc: e.target.value })}
-                    error={!!formErrors.ifsc}
-                    helperText={formErrors.ifsc}
-                    sx={inputStyles}
-                  />
-                </Grid>
+              )}
+              <Grid item xs={12} sm={6}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc)}
+                      disabled={isPfRequiredByWageLimit(formData.monthly_ctc)}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        pf_deduction: isPfRequiredByWageLimit(formData.monthly_ctc) || e.target.checked,
+                      })}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
+                      }}
+                    />
+                  }
+                  label="PF Deduction"
+                  sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
+                />
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="PF No. / UAN"
+                  fullWidth
+                  value={formData.pf_uan}
+                  onChange={(e) => setFormData({ ...formData, pf_uan: e.target.value })}
+                  error={!!formErrors.pf_uan}
+                  helperText={formErrors.pf_uan}
+                  sx={inputStyles}
+                />
+              </Grid>
+
+              {/* Bank Details Sub-header */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mt: 1 }}>
+                  BANK ACCOUNT INFORMATION
+                </Typography>
+                <Divider sx={{ borderColor: 'var(--color-border)', mt: 1 }} />
+              </Grid>
+
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  label="Bank Name"
+                  fullWidth
+                  required
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                  error={!!formErrors.bank_name}
+                  helperText={formErrors.bank_name}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  label="Account Number"
+                  fullWidth
+                  required
+                  value={formData.account_number}
+                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                  error={!!formErrors.account_number}
+                  helperText={formErrors.account_number}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  label="IFSC Code"
+                  fullWidth
+                  required
+                  value={formData.ifsc}
+                  onChange={(e) => setFormData({ ...formData, ifsc: e.target.value })}
+                  error={!!formErrors.ifsc}
+                  helperText={formErrors.ifsc}
+                  sx={inputStyles}
+                />
+              </Grid>
+            </Grid>
           </DialogContent>
           <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
             <Button onClick={() => setOpenDialog(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
@@ -4118,6 +4275,82 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         </form>
       </Dialog>
 
+      {/* CSV Import Preview Dialog */}
+      <Dialog
+        open={openImportPreview}
+        onClose={() => !importing && setOpenImportPreview(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            boxShadow: 'var(--shadow-card)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          Preview Import Data ({previewRows.length} Employees)
+        </DialogTitle>
+        <DialogContent sx={{ py: 3, maxHeight: '60vh', overflowY: 'auto' }}>
+          <TableContainer component={Paper} sx={{ bgcolor: 'transparent', boxShadow: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                <TableRow>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Prof. Email</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Pers. Email</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Phone</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Dept.</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Desig.</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Joining Date</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Bank</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>A/C No.</TableCell>
+                  <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>IFSC</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {previewRows.map((row, idx) => (
+                  <TableRow key={idx} sx={{ '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.02)' } }}>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.employee_code || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>empty</span>}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{row.name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>empty</span>}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>empty</span>}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.personal_email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.phone || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.department}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.designation}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.joining_date}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.bank_name}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.account_number}</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-primary)' }}>{row.ifsc}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <Button onClick={() => setOpenImportPreview(false)} disabled={importing} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmImport}
+            variant="contained"
+            disabled={importing}
+            sx={{
+              background: 'var(--color-success)',
+              '&:hover': { background: 'var(--color-success-pressed)' },
+              borderRadius: 'var(--radius-control)',
+              px: 3,
+              textTransform: 'none',
+            }}
+          >
+            {importing ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Confirm & Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );

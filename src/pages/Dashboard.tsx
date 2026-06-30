@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
@@ -134,6 +134,29 @@ const Dashboard: React.FC = () => {
     return res.data;
   }, { enabled: !!user });
 
+  // Call hooks before any conditional returns (required by Rules of Hooks)
+  const payrollTrends = data?.charts?.payrollTrends || [];
+  const departmentDistribution = data?.charts?.departmentDistribution || [];
+  const expensesTrends = data?.charts?.expensesTrend || [];
+  const expensesCategoryDistribution = data?.charts?.expensesCategoryDistribution || [];
+
+  const normalizedPayrollTrends = useMemo(() =>
+    (payrollTrends || []).map((entry: any) => ({
+      ...entry,
+      payrollCost: Number(entry?.payrollCost) || 0,
+      pf: Number(entry?.pf) || 0,
+      tax: Number(entry?.tax) || 0,
+      esi: Number(entry?.esi) || 0,
+    })),
+    [payrollTrends]
+  );
+
+  const trendChartMaxValue = useMemo(() => {
+    const values = normalizedPayrollTrends.flatMap((entry: any) => [entry.payrollCost, entry.pf, entry.tax, entry.esi]);
+    const maxValue = Math.max(...values, 0);
+    return maxValue > 0 ? maxValue : 1;
+  }, [normalizedPayrollTrends]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -241,11 +264,6 @@ const Dashboard: React.FC = () => {
       { label: 'Download Finance Reports', icon: <ReportsIcon />, permission: Permission.VIEW_PAYROLL_REPORTS, path: '/reports' },
     ] : []),
   ].filter((action) => hasPermission(action.permission));
-
-  const payrollTrends = data.charts.payrollTrends || [];
-  const departmentDistribution = data.charts.departmentDistribution || [];
-  const expensesTrends = data.charts.expensesTrend || [];
-  const expensesCategoryDistribution = data.charts.expensesCategoryDistribution || [];
 
   return (
     <Box sx={{ pb: 4, width: '100%', overflowX: 'hidden' }}>
@@ -420,12 +438,12 @@ const Dashboard: React.FC = () => {
 
             {/* Row 2: Tax/PF/ESI Summary + Company Expenses Trend */}
             <Grid item xs={12} lg={isSuperAdmin ? 4 : 5}>
-              <ChartPanel title="Tax/PF/ESI Summary" empty={!payrollTrends.length}>
+              <ChartPanel title="Tax/PF/ESI Summary" empty={!normalizedPayrollTrends.length}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={payrollTrends} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
+                  <LineChart data={normalizedPayrollTrends} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.5} />
                     <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} minTickGap={20} />
-                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={62} tickMargin={8} tickFormatter={(value) => formatAxisCurrency(value as number)} interval="preserveStartEnd" domain={[0, 'dataMax']} allowDecimals={false} />
+                    <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} width={62} tickMargin={8} tickFormatter={(value) => formatAxisCurrency(value as number)} interval="preserveStartEnd" domain={[0, trendChartMaxValue]} allowDecimals={false} />
                     <ChartTooltip
                       contentStyle={{
                         backgroundColor: 'rgba(15, 23, 42, 0.95)',
