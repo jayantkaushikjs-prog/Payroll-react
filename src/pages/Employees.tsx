@@ -64,6 +64,7 @@ import {
   Upload as UploadIcon,
   People as PeopleIcon,
   HelpOutline as HelpOutlineIcon,
+  Archive as ArchiveIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -594,7 +595,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [profileStartDate, setProfileStartDate] = useState<string>(defaultProfileStart);
   const [profileEndDate, setProfileEndDate] = useState<string>(defaultProfileEnd);
   const [profileTenureAnchorEl, setProfileTenureAnchorEl] = useState<null | HTMLElement>(null);
-  const [profileViewMode, setProfileViewMode] = useState<'annual' | 'monthly'>('annual');
+  const [profileViewMode, setProfileViewMode] = useState<'monthly' | 'annual'>('monthly');
   const [tempStartDate, setTempStartDate] = useState<string>(defaultProfileStart);
   const [tempEndDate, setTempEndDate] = useState<string>(defaultProfileEnd);
   const [activeRangePreset, setActiveRangePreset] = useState<string>('thisfy');
@@ -1923,17 +1924,17 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           </TableCell>
                           <TableCell align="right">
                             {isHRorAdmin && emp.active_status && (
-                              <Tooltip title="Mark Inactive">
+                              <Tooltip title="Archive">
                                 <IconButton
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (window.confirm(`Mark ${emp.name} as inactive?`)) {
+                                    if (window.confirm(`Archive ${emp.name}?`)) {
                                       updateMutation.mutate({ id: emp.id, data: { active_status: false } });
                                     }
                                   }}
-                                  sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-warning)' }, mr: 0.5 }}
+                                  sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' }, mr: 0.5 }}
                                 >
-                                  <PeopleIcon fontSize="small" />
+                                  <ArchiveIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             )}
@@ -3708,34 +3709,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Paper>
                       </Grid>
 
-                      {/* Live Paid vs Projected Analysis */}
-                      <Grid item xs={12}>
-                        <Paper sx={{ p: 2.5, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', background: 'var(--color-surface)', height: 320 }}>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mb: 2 }}>
-                            Payroll Paid vs Live Projection
-                          </Typography>
-                          <Box sx={{ height: 240 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart
-                                data={[
-                                  { name: 'Net Salary', Paid: profileSummary.amountPaid, Remaining: profileSummary.amountToBePaid },
-                                  { name: 'PF', Paid: profileSummary.pfDeducted, Remaining: profileSummary.expectedPFRemaining },
-                                  { name: 'Tax', Paid: profileSummary.taxDeducted, Remaining: profileSummary.expectedTaxRemaining },
-                                ]}
-                                margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
-                              >
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-strong)" vertical={false} />
-                                <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} />
-                                <YAxis stroke="var(--color-text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => formatCurrency(val)} />
-                                <ChartTooltip contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', color: 'var(--color-text-primary)' }} formatter={(value) => formatCurrency(value as number)} />
-                                <Legend />
-                                <Bar dataKey="Paid" name="YTD Paid/Deducted" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="Remaining" name="Est. Remaining" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </Box>
-                        </Paper>
-                      </Grid>
+
                     </Grid>
                   </Box>
                 )}

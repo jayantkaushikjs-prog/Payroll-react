@@ -272,24 +272,7 @@ const FinancialSummary: React.FC = () => {
           </Menu>
 
           <Box sx={{ display: 'flex', gap: 1, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)', height: '42px', alignItems: 'center' }}>
-            <Button
-              size="small"
-              onClick={() => setViewMode('annual')}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 2,
-                py: 0.4,
-                borderRadius: 'calc(var(--radius-control) - 2px)',
-                color: viewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)',
-                background: viewMode === 'annual' ? 'var(--color-primary)' : 'transparent',
-                '&:hover': {
-                  background: viewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)',
-                }
-              }}
-            >
-              Annual
-            </Button>
+            
             <Button
               size="small"
               onClick={() => setViewMode('monthly')}
@@ -308,6 +291,7 @@ const FinancialSummary: React.FC = () => {
             >
               Monthly
             </Button>
+            
           </Box>
         </Box>
       </Box>

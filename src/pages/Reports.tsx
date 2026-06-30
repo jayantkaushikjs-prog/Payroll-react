@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useAuth, Permission } from '../context/AuthContext';
 import {
   Box, Button, Typography, Paper, Grid, Select, MenuItem,
-  FormControl, InputLabel,
+  FormControl, InputLabel, Tabs, Tab, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, IconButton, Tooltip
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -13,8 +14,11 @@ import {
   Savings as AdvancesIcon,
   Timeline as JoiningIcon,
   Wallet as SalaryIcon,
+  Restore as RestoreIcon,
 } from '@mui/icons-material';
 import { downloadCsvFile } from '../utils/download';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../services/api';
 
 const ss = {
   '& .MuiOutlinedInput-root': { color: 'var(--color-text-primary)', borderRadius: 'var(--radius-control)',
@@ -33,9 +37,36 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 const Reports: React.FC = () => {
   const { hasPermission } = useAuth();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const now = new Date();
   const [mo, setMo] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
+  const [activeTab, setActiveTab] = useState(0);
+
+  const { data: allEmployees = [], isLoading: isLoadingAll } = useQuery(['allEmployees'], async () => {
+    const res = await api.get('/employees');
+    return res.data;
+  });
+
+  const archivedEmployees = allEmployees.filter((emp: any) => emp.active_status === false);
+
+  const restoreMutation = useMutation(
+    async (id: number) => {
+      const res = await api.put(`/employees/${id}`, { active_status: true });
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['employees']);
+        queryClient.invalidateQueries(['allEmployees']);
+        showToast('Employee restored successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to restore employee', 'error');
+      },
+    }
+  );
+
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const today = now.toISOString().split('T')[0];
   const canViewHrReports = hasPermission(Permission.VIEW_HR_REPORTS);
@@ -67,42 +98,123 @@ const Reports: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>Reports & CSV Export</Typography>
-        <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>Download reports available to your role.</Typography>
+        <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>Download reports and manage archived employees.</Typography>
       </Box>
 
-      {canViewFinanceReports && (
-      <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', p: 3, mb: 4 }}>
-        <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 2, letterSpacing: '0.5px' }}>REPORT PERIOD</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Month</InputLabel>
-              <Select value={mo} label="Month" onChange={e => setMo(e.target.value as number)}>
-                {months.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
-              <Select value={yr} label="Year" onChange={e => setYr(e.target.value as number)}>
-                {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Paper>
+      <Tabs
+        value={activeTab}
+        onChange={(_, val) => setActiveTab(val)}
+        sx={{
+          mb: 4,
+          borderBottom: '1px solid var(--color-border)',
+          '& .MuiTab-root': {
+            textTransform: 'none',
+            fontFamily: 'Outfit',
+            fontWeight: 500,
+            fontSize: '0.95rem',
+            color: 'var(--color-text-secondary)',
+            '&.Mui-selected': {
+              color: 'var(--color-primary-hover)',
+              fontWeight: 600,
+            },
+          },
+          '& .MuiTabs-indicator': {
+            backgroundColor: 'var(--color-primary)',
+          },
+        }}
+      >
+        <Tab label="Export Reports" />
+        <Tab label={`Archived Employees (${archivedEmployees.length})`} />
+      </Tabs>
+
+      {activeTab === 0 && (
+        <>
+          {canViewFinanceReports && (
+            <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', p: 3, mb: 4 }}>
+              <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 2, letterSpacing: '0.5px' }}>REPORT PERIOD</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Month</InputLabel>
+                    <Select value={mo} label="Month" onChange={e => setMo(e.target.value as number)}>
+                      {months.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
+                    <Select value={yr} label="Year" onChange={e => setYr(e.target.value as number)}>
+                      {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+
+          {canViewHrReports && (
+            <ReportSection title="HR Reports" reports={hrReports} onDownload={downloadCsv} />
+          )}
+
+          {canViewFinanceReports && (
+            <ReportSection title="Finance Reports" reports={financeReports} onDownload={downloadCsv} />
+          )}
+        </>
       )}
 
-      {canViewHrReports && (
-        <ReportSection title="HR Reports" reports={hrReports} onDownload={downloadCsv} />
+      {activeTab === 1 && (
+        <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', p: 3 }}>
+          <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 3, letterSpacing: '0.5px' }}>ARCHIVED EMPLOYEES</Typography>
+          {isLoadingAll ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+              <CircularProgress size={30} />
+            </Box>
+          ) : archivedEmployees.length === 0 ? (
+            <Typography variant="body2" sx={{ color: 'var(--color-text-muted)', py: 3, textAlign: 'center' }}>
+              No archived employees found.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} sx={{ bgcolor: 'transparent', boxShadow: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
+                  <TableRow>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employee Code</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
+                    <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {archivedEmployees.map((emp: any) => (
+                    <TableRow key={emp.id} sx={{ '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.02)' } }}>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.employee_code}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{emp.name}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
+                      <TableCell align="right">
+                        <Tooltip title="Restore Employee">
+                          <IconButton
+                            onClick={() => {
+                              if (window.confirm(`Restore ${emp.name} to active status?`)) {
+                                restoreMutation.mutate(emp.id);
+                              }
+                            }}
+                            sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-success)' } }}
+                          >
+                            <RestoreIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
       )}
-
-      {canViewFinanceReports && (
-        <ReportSection title="Finance Reports" reports={financeReports} onDownload={downloadCsv} />
-      )}
-
-
     </Box>
   );
 };
