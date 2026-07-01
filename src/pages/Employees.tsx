@@ -3240,12 +3240,12 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 }}
                                 error={uanError}
                                 helperText={
-                                  uan && !/^\d{12}$/.test(uan)
-                                    ? 'UAN must be exactly 12 digits'
-                                    : pfApplies && !uan
-                                      ? 'UAN is required when PF is applicable'
-                                      : 'Enter 12-digit UAN' + (pfApplies ? ' (required)' : ' (optional)')
-                                }
+                                     pfApplies && !uan
+                                      ? 'UAN is required'
+                                       : uan && !/^\d{12}$/.test(uan)
+                                         ? 'UAN must be exactly 12 digits'
+                                          : ''
+}
                                 inputProps={{ maxLength: 12, inputMode: 'numeric' }}
                                 sx={inputStyles}
                               />
@@ -4260,7 +4260,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                     setFormData({ ...formData, pf_uan: val });
                   }}
                   error={!!formErrors.pf_uan}
-                  helperText={formErrors.pf_uan || 'Enter 12-digit UAN (numeric only)'}
+                  helperText={formErrors.pf_uan}
                   inputProps={{ maxLength: 12, pattern: '[0-9]*' }}
                   sx={inputStyles}
                 />

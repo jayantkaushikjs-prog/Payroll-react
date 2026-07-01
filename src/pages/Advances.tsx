@@ -751,7 +751,7 @@ const Advances: React.FC = () => {
                           },
                         }}
                       >
-                        Breakdown
+        
                       </Button>
                       {isFinanceOrAdmin && (
                         <>
@@ -962,8 +962,8 @@ const Advances: React.FC = () => {
                   onChange={(_, value) => value && setFormData({ ...formData, entry_type: value })}
                   sx={{ '& .MuiToggleButton-root': { color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)' } }}
                 >
-                  <ToggleButton value="manual">Manual</ToggleButton>
                   <ToggleButton value="payroll">Via Payroll</ToggleButton>
+                  <ToggleButton value="manual">Manual</ToggleButton>
                 </ToggleButtonGroup>
               </Grid>
               <Grid item xs={12}>
