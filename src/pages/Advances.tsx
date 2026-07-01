@@ -136,7 +136,7 @@ const Advances: React.FC = () => {
     start_month: new Date().getMonth() + 1,
     start_year: currentYear,
     is_advance_salary: false,
-    entry_type: 'manual' as 'manual' | 'payroll',
+    entry_type: 'payroll' as 'manual' | 'payroll',
   });
 
   const isFinanceOrAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);

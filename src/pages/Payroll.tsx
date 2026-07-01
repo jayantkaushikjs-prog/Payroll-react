@@ -85,6 +85,8 @@ const Payroll: React.FC = () => {
       case 'gross': return Number(pr.gross_salary ?? 0);
       case 'absent': return Number(pr.non_payable_deduction ?? 0);
       case 'late': return Number(pr.tax_breakdown_json?.lateArrivalDeduction ?? 0);
+      case 'employer_pf': return Number(pr.tax_breakdown_json?.employerPf ?? 0);
+      case 'employer_esi': return Number(pr.tax_breakdown_json?.employerEsi ?? 0);
       case 'pf': return Number(pr.pf_deduction ?? 0);
       case 'esi': return Number(pr.tax_breakdown_json?.employeeEsi ?? 0);
       case 'pt': return Number(pr.tax_breakdown_json?.professionalTax ?? 0);
@@ -393,8 +395,10 @@ const Payroll: React.FC = () => {
                   { label: 'Gross (A)', field: 'gross' },
                   { label: 'Absent', field: 'absent' },
                   { label: 'Late Ded', field: 'late' },
-                  { label: 'PF', field: 'pf' },
-                  { label: 'ESI', field: 'esi' },
+                  { label: 'Empr PF', field: 'employer_pf' },
+                  { label: 'Empr ESI', field: 'employer_esi' },
+                  { label: 'Emp PF', field: 'pf' },
+                  { label: 'Emp ESI', field: 'esi' },
                   { label: 'PT', field: 'pt' },
                   { label: 'Tax/TDS', field: 'tax' },
                   { label: 'Damages', field: 'damages' },
@@ -403,8 +407,8 @@ const Payroll: React.FC = () => {
                   { label: 'Net (A−B)', field: 'net' },
                   { label: 'Status', field: 'status' },
                 ].map((header) => (
-                  <TableCell key={header.label} align={['basic','hra','others','bonus','encash','gross','absent','late','pf','esi','pt','tax','damages','other_ded','advance','net'].includes(header.field) ? 'right' : header.field === 'status' ? 'center' : 'left'} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: ['basic','hra','others','bonus','encash','gross','absent','late','pf','esi','pt','tax','damages','other_ded','advance','net'].includes(header.field) ? 'flex-end' : header.field === 'status' ? 'center' : 'flex-start', gap: 0.5 }}>
+                  <TableCell key={header.label} align={['basic','hra','others','bonus','encash','gross','absent','late','employer_pf','employer_esi','pf','esi','pt','tax','damages','other_ded','advance','net'].includes(header.field) ? 'right' : header.field === 'status' ? 'center' : 'left'} sx={{ color: 'var(--color-text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: ['basic','hra','others','bonus','encash','gross','absent','late','employer_pf','employer_esi','pf','esi','pt','tax','damages','other_ded','advance','net'].includes(header.field) ? 'flex-end' : header.field === 'status' ? 'center' : 'flex-start', gap: 0.5 }}>
                       <span>{header.label}</span>
                       <IconButton size="small" onClick={() => handleSort(header.field)} sx={{ color: sortConfig.field === header.field ? 'var(--color-primary)' : 'var(--color-text-muted)', p: 0.25 }}>
                         {sortConfig.field !== header.field ? <UnfoldMore fontSize="small" /> : sortConfig.direction === 'asc' ? <ArrowUpward fontSize="small" /> : sortConfig.direction === 'desc' ? <ArrowDownward fontSize="small" /> : <UnfoldMore fontSize="small" />}
@@ -448,6 +452,8 @@ const Payroll: React.FC = () => {
                   </TableCell>
                   <TableCell align="right" sx={{ color: pr.non_payable_deduction > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{pr.non_payable_deduction > 0 ? `-${formatCurrency(pr.non_payable_deduction)}` : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: lateDed > 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>{lateDed > 0 ? `-${formatCurrency(lateDed)}` : '—'}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-info)' }}>{Number(pr.tax_breakdown_json?.employerPf) > 0 ? formatCurrency(pr.tax_breakdown_json?.employerPf) : '—'}</TableCell>
+                  <TableCell align="right" sx={{ color: 'var(--color-info)' }}>{Number(pr.tax_breakdown_json?.employerEsi) > 0 ? formatCurrency(pr.tax_breakdown_json?.employerEsi) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{formatCurrency(pr.pf_deduction)}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{employeeEsi > 0 ? formatCurrency(employeeEsi) : '—'}</TableCell>
                   <TableCell align="right" sx={{ color: 'var(--color-accent)' }}>{pt > 0 ? formatCurrency(pt) : '—'}</TableCell>

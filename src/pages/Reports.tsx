@@ -3,7 +3,8 @@ import { useAuth, Permission } from '../context/AuthContext';
 import {
   Box, Button, Typography, Paper, Grid, Select, MenuItem,
   FormControl, InputLabel, Tabs, Tab, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, IconButton, Tooltip, CircularProgress
+  TableContainer, TableHead, TableRow, IconButton, Tooltip, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -43,22 +44,20 @@ const Reports: React.FC = () => {
   const [yr, setYr] = useState(now.getFullYear());
   const [activeTab, setActiveTab] = useState(0);
 
-  const { data: allEmployees = [], isLoading: isLoadingAll } = useQuery(['allEmployees'], async () => {
-    const res = await api.get('/employees');
+  const { data: archivedEmployees = [], isLoading: isLoadingAll } = useQuery(['archivedEmployees'], async () => {
+    const res = await api.get('/employees?status=archived');
     return res.data;
   });
 
-  const archivedEmployees = allEmployees.filter((emp: any) => emp.active_status === false);
-
   const restoreMutation = useMutation(
     async (id: number) => {
-      const res = await api.put(`/employees/${id}`, { active_status: true });
+      const res = await api.post(`/employees/${id}/restore`);
       return res.data;
     },
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
-        queryClient.invalidateQueries(['allEmployees']);
+        queryClient.invalidateQueries(['archivedEmployees']);
         showToast('Employee restored successfully!', 'success');
       },
       onError: (err: any) => {
@@ -66,6 +65,8 @@ const Reports: React.FC = () => {
       },
     }
   );
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [employeeToRestore, setEmployeeToRestore] = useState<any>(null);
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const today = now.toISOString().split('T')[0];
@@ -197,9 +198,8 @@ const Reports: React.FC = () => {
                         <Tooltip title="Restore Employee">
                           <IconButton
                             onClick={() => {
-                              if (window.confirm(`Restore ${emp.name} to active status?`)) {
-                                restoreMutation.mutate(emp.id);
-                              }
+                              setEmployeeToRestore(emp);
+                              setRestoreDialogOpen(true);
                             }}
                             sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-success)' } }}
                           >
@@ -215,6 +215,64 @@ const Reports: React.FC = () => {
           )}
         </Paper>
       )}
+
+      {/* Restore Confirmation Dialog */}
+      <Dialog
+        open={restoreDialogOpen}
+        onClose={() => setRestoreDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            border: '1px solid var(--color-border)',
+            minWidth: '400px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: 'var(--color-text-primary)', pb: 1 }}>
+          Restore Employee
+        </DialogTitle>
+        <DialogContent sx={{ color: 'var(--color-text-secondary)' }}>
+          Are you sure you want to restore <strong>{employeeToRestore?.name}</strong> to active status? They will be moved back to the main employee directory.
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1.5 }}>
+          <Button
+            onClick={() => setRestoreDialogOpen(false)}
+            sx={{
+              color: 'var(--color-text-secondary)',
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (employeeToRestore) {
+                restoreMutation.mutate(employeeToRestore.id);
+              }
+              setRestoreDialogOpen(false);
+            }}
+            variant="contained"
+            disabled={restoreMutation.isPending}
+            sx={{
+              bgcolor: 'var(--color-success)',
+              color: '#fff',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px',
+              px: 3,
+              '&:hover': {
+                bgcolor: 'rgba(34, 197, 94, 0.8)',
+              }
+            }}
+          >
+            {restoreMutation.isPending ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'Restore'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

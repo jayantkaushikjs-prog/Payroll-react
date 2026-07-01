@@ -284,12 +284,18 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openImportPreview, setOpenImportPreview] = useState(false);
   const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [previewModifiedOnly, setPreviewModifiedOnly] = useState(false);
   const [importing, setImporting] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [employeeToArchive, setEmployeeToArchive] = useState<Employee | null>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [employeeToChangeStatus, setEmployeeToChangeStatus] = useState<Employee | null>(null);
   const [formErrors, setFormErrors] = useState({
     employee_code: '',
     name: '',
     email: '',
+    personal_email: '',
     phone: '',
     department: '',
     designation: '',
@@ -460,6 +466,22 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     const res = await api.get('/employees/designations');
     return res.data;
   });
+
+  const deleteEmployeeMutation = useMutation(
+    async (id: number) => {
+      const res = await api.delete(`/employees/${id}`);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['employees']);
+        showToast('Employee archived successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to archive employee', 'error');
+      },
+    }
+  );
 
   // Mutations for creating departments & designations
   const addDepartmentMutation = useMutation(
@@ -930,6 +952,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       employee_code: '',
       name: '',
       email: '',
+      personal_email: '',
       phone: '',
       department: '',
       designation: '',
@@ -1019,6 +1042,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       employee_code: '',
       name: '',
       email: '',
+      personal_email: '',
       phone: '',
       department: '',
       designation: '',
@@ -1056,6 +1080,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       employee_code: '',
       name: '',
       email: '',
+      personal_email: '',
       phone: '',
       department: '',
       designation: '',
@@ -1180,6 +1205,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       employee_code: '',
       name: '',
       email: '',
+      personal_email: '',
       phone: '',
       department: '',
       designation: '',
@@ -1207,6 +1233,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email || !emailRegex.test(formData.email.trim())) {
       nextErrors.email = 'Invalid email address format';
+      isValid = false;
+    }
+
+    if (formData.personal_email && !emailRegex.test(formData.personal_email.trim())) {
+      nextErrors.personal_email = 'Invalid personal email address format';
       isValid = false;
     }
 
@@ -1330,7 +1361,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     const headers = [
       'Employee Code',
       'Name',
-      'Email',
+      'Official Email',
       'Personal Email',
       'Phone',
       'Department',
@@ -1386,7 +1417,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         const val = values[index]?.trim() || '';
         if (header === 'employee code' || header === 'employee_code') obj.employee_code = val;
         else if (header === 'name') obj.name = val;
-        else if (header === 'email') obj.email = val;
+        else if (header === 'email' || header === 'official email') obj.email = val;
         else if (header === 'personal email' || header === 'personal_email') obj.personal_email = val;
         else if (header === 'phone') obj.phone = val;
         else if (header === 'department') obj.department = val;
@@ -1562,6 +1593,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   const previewEmployees = activeEmployees
     .filter((emp: Employee) => {
+      if (!previewModifiedOnly) return true;
       // Always include employees with actual HR-relevant inputs
       if (hasHrPreviewInput(emp)) return true;
       // Always include employees with a special employment status this month
@@ -1883,7 +1915,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       <TableRow>
                         <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Code</TableCell>
                         <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Name</TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Email</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Official Email</TableCell>
                         <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Department</TableCell>
                         <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Designation</TableCell>
                         <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
@@ -1909,6 +1941,13 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
                           <TableCell>
                             <Box
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isHRorAdmin) {
+                                  setEmployeeToChangeStatus(emp);
+                                  setStatusDialogOpen(true);
+                                }
+                              }}
                               sx={{
                                 display: 'inline-block',
                                 px: 1.5,
@@ -1916,8 +1955,13 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 borderRadius: '12px',
                                 fontSize: '0.75rem',
                                 fontWeight: 600,
+                                cursor: isHRorAdmin ? 'pointer' : 'default',
                                 bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                                 color: emp.active_status ? 'var(--color-success)' : 'var(--color-error)',
+                                transition: 'background-color 0.2s',
+                                '&:hover': isHRorAdmin ? {
+                                  bgcolor: emp.active_status ? 'rgba(16, 185, 129, 0.22)' : 'rgba(239, 68, 68, 0.22)',
+                                } : {}
                               }}
                             >
                               {emp.active_status ? 'Active' : 'Inactive'}
@@ -1929,9 +1973,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 <IconButton
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (window.confirm(`Archive ${emp.name}?`)) {
-                                      updateMutation.mutate({ id: emp.id, data: { active_status: false } });
-                                    }
+                                    setEmployeeToArchive(emp);
+                                    setArchiveDialogOpen(true);
                                   }}
                                   sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' }, mr: 0.5 }}
                                 >
@@ -2336,6 +2379,18 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               }}
             >
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={previewModifiedOnly}
+                      onChange={(e) => setPreviewModifiedOnly(e.target.checked)}
+                      sx={{ color: 'var(--color-text-muted)', '&.Mui-checked': { color: 'var(--color-primary)' } }}
+                    />
+                  }
+                  label="Modified Inputs Only"
+                  sx={{ color: 'var(--color-text-primary)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem', fontWeight: 600 } }}
+                />
+                <Box sx={{ height: 24, width: '1px', bgcolor: 'var(--color-border)', mx: 1 }} />
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -3044,10 +3099,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <TextField
-                            label="Professional Email"
+                            label="Official Email"
                             fullWidth
                             required
                             type="email"
+                            autoComplete="off"
                             disabled={!isHRorAdmin}
                             value={profileFormData.email}
                             onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
@@ -3059,6 +3115,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             label="Personal Email"
                             fullWidth
                             type="email"
+                            autoComplete="off"
                             disabled={!isHRorAdmin}
                             value={profileFormData.personal_email}
                             onChange={(e) => setProfileFormData({ ...profileFormData, personal_email: e.target.value })}
@@ -4003,10 +4060,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Professional Email"
+                  label="Official Email"
                   fullWidth
                   required
                   type="email"
+                  autoComplete="off"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   error={!!formErrors.email}
@@ -4019,8 +4077,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   label="Personal Email"
                   fullWidth
                   type="email"
+                  autoComplete="off"
                   value={formData.personal_email}
                   onChange={(e) => setFormData({ ...formData, personal_email: e.target.value })}
+                  error={!!formErrors.personal_email}
+                  helperText={formErrors.personal_email}
                   sx={inputStyles}
                 />
               </Grid>
@@ -4133,25 +4194,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   sx={inputStyles}
                 />
               </Grid>
-              {!!selectedEmp && (
-                <Grid item xs={12} sm={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formData.active_status}
-                        disabled={!formData.active_status}
-                        onChange={(e) => setFormData({ ...formData, active_status: e.target.checked })}
-                        sx={{
-                          '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                        }}
-                      />
-                    }
-                    label={formData.active_status ? 'Active Status' : 'Inactive (cannot re-activate here)'}
-                    sx={{ mt: 1.5, color: 'var(--color-text-secondary)' }}
-                  />
-                </Grid>
-              )}
+
               <Grid item xs={12} sm={6}>
                 <FormControlLabel
                   control={
@@ -4326,7 +4369,120 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           </Button>
         </DialogActions>
       </Dialog>
-
+      {/* Archive Confirmation Dialog */}
+      <Dialog
+        open={archiveDialogOpen}
+        onClose={() => setArchiveDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            border: '1px solid var(--color-border)',
+            minWidth: '400px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: 'var(--color-text-primary)', pb: 1 }}>
+          Archive Employee
+        </DialogTitle>
+        <DialogContent sx={{ color: 'var(--color-text-secondary)' }}>
+          Are you sure you want to archive <strong>{employeeToArchive?.name}</strong>? They will be removed from this list and moved to the Archived section.
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1.5 }}>
+          <Button
+            onClick={() => setArchiveDialogOpen(false)}
+            sx={{
+              color: 'var(--color-text-secondary)',
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (employeeToArchive) {
+                deleteEmployeeMutation.mutate(employeeToArchive.id);
+              }
+              setArchiveDialogOpen(false);
+            }}
+            variant="contained"
+            disabled={deleteEmployeeMutation.isPending}
+            sx={{
+              bgcolor: 'var(--color-error)',
+              color: '#fff',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px',
+              px: 3,
+              '&:hover': {
+                bgcolor: 'rgba(239, 68, 68, 0.8)',
+              }
+            }}
+          >
+            {deleteEmployeeMutation.isPending ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'Archive'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Status Change Confirmation Dialog */}
+      <Dialog
+        open={statusDialogOpen}
+        onClose={() => setStatusDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            border: '1px solid var(--color-border)',
+            minWidth: '400px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: 'var(--color-text-primary)', pb: 1 }}>
+          Change Employee Status
+        </DialogTitle>
+        <DialogContent sx={{ color: 'var(--color-text-secondary)' }}>
+          Are you sure you want to mark <strong>{employeeToChangeStatus?.name}</strong> as {employeeToChangeStatus?.active_status ? 'Inactive' : 'Active'}?
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1.5 }}>
+          <Button
+            onClick={() => setStatusDialogOpen(false)}
+            sx={{
+              color: 'var(--color-text-secondary)',
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (employeeToChangeStatus) {
+                updateMutation.mutate({ id: employeeToChangeStatus.id, data: { active_status: !employeeToChangeStatus.active_status } });
+              }
+              setStatusDialogOpen(false);
+            }}
+            variant="contained"
+            disabled={updateMutation.isPending}
+            sx={{
+              bgcolor: 'var(--color-primary)',
+              color: '#fff',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px',
+              px: 3,
+              '&:hover': {
+                bgcolor: 'var(--color-primary-hover)',
+              }
+            }}
+          >
+            {updateMutation.isPending ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
