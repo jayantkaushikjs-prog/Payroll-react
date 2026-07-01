@@ -292,26 +292,7 @@ const getDefaultDaysPresent = (emp: Employee, previewY: number, previewM: number
 
   return Math.max(0, totalDays - nonPayableDays);
 };
-        <Button
-          variant="text"
-          size="small"
-          onClick={() => setExpanded((current) => !current)}
-          sx={{
-            ml: 0.5,
-            minWidth: 'auto',
-            p: 0,
-            textTransform: 'none',
-            fontWeight: 700,
-            color: 'var(--color-primary-hover)',
-            verticalAlign: 'baseline',
-          }}
-        >
-          {expanded ? 'Read less' : 'Read more'}
-        </Button>
-      )}
-    </Box>
-  );
-};
+
 
 interface EmployeesProps {
   previewOnly?: boolean;
