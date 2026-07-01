@@ -1616,6 +1616,14 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
   const previewEmployees = activeEmployees
     .filter((emp: Employee) => {
+      // Exclude employees who joined after the selected preview month
+      if (emp.joining_date) {
+        const [jy, jm] = String(emp.joining_date).split('-').map(Number);
+        if (jy > previewY || (jy === previewY && jm > previewM)) {
+          return false;
+        }
+      }
+
       if (!previewModifiedOnly) return true;
       // Always include employees with actual HR-relevant inputs
       if (hasHrPreviewInput(emp)) return true;
