@@ -3155,6 +3155,9 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             onChange={(_, value) => {
                               const val = typeof value === 'string' ? value : value || '';
                               setProfileFormData({ ...profileFormData, department: val });
+                              if (val && !allDepartments.includes(val)) {
+                                addDepartmentMutation.mutate(val);
+                              }
                             }}
                             onInputChange={(_, newInputValue) => {
                               setProfileFormData({ ...profileFormData, department: newInputValue });
@@ -3174,6 +3177,9 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             onChange={(_, value) => {
                               const val = typeof value === 'string' ? value : value || '';
                               setProfileFormData({ ...profileFormData, designation: val });
+                              if (val && !allDesignations.includes(val)) {
+                                addDesignationMutation.mutate(val);
+                              }
                             }}
                             onInputChange={(_, newInputValue) => {
                               setProfileFormData({ ...profileFormData, designation: newInputValue });
@@ -4134,6 +4140,9 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                     const val = typeof value === 'string' ? value : value || '';
                     setFormData({ ...formData, department: val });
                     setFormErrors({ ...formErrors, department: val ? '' : 'Department is required' });
+                    if (val && !allDepartments.includes(val)) {
+                      addDepartmentMutation.mutate(val);
+                    }
                   }}
                   onInputChange={(_, newInputValue) => {
                     setFormData({ ...formData, department: newInputValue });
@@ -4162,6 +4171,9 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                     const val = typeof value === 'string' ? value : value || '';
                     setFormData({ ...formData, designation: val });
                     setFormErrors({ ...formErrors, designation: val ? '' : 'Designation is required' });
+                    if (val && !allDesignations.includes(val)) {
+                      addDesignationMutation.mutate(val);
+                    }
                   }}
                   onInputChange={(_, newInputValue) => {
                     setFormData({ ...formData, designation: newInputValue });
