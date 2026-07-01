@@ -152,9 +152,10 @@ const Dashboard: React.FC = () => {
   );
 
   const trendChartMaxValue = useMemo(() => {
-    const values = normalizedPayrollTrends.flatMap((entry: any) => [entry.payrollCost, entry.pf, entry.tax, entry.esi]);
+    const values = normalizedPayrollTrends.flatMap((entry: any) => [entry.pf, entry.tax, entry.esi]);
     const maxValue = Math.max(...values, 0);
-    return maxValue > 0 ? maxValue : 1;
+    // Add 10% padding to the top for better visualization
+    return maxValue > 0 ? maxValue * 1.1 : 1;
   }, [normalizedPayrollTrends]);
 
   if (isLoading) {
