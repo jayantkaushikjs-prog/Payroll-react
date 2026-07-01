@@ -1259,7 +1259,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       isValid = false;
     }
 
-    if (formData.personal_email && !emailRegex.test(formData.personal_email.trim())) {
+    if (!formData.personal_email || !emailRegex.test(formData.personal_email.trim())) {
       nextErrors.personal_email = 'Invalid personal email address format';
       isValid = false;
     }
@@ -3128,6 +3128,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             label="Personal Email"
                             fullWidth
                             type="email"
+                            required
                             autoComplete="off"
                             disabled={!isHRorAdmin}
                             value={profileFormData.personal_email}
@@ -4100,6 +4101,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   label="Personal Email"
                   fullWidth
                   type="email"
+                  required
                   autoComplete="off"
                   value={formData.personal_email}
                   onChange={(e) => setFormData({ ...formData, personal_email: e.target.value })}
