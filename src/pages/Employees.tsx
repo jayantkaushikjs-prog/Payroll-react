@@ -248,6 +248,50 @@ const PreviewRemarks: React.FC<{ remarks?: string | null }> = ({ remarks }) => {
         {displayText}
       </Typography>
       {shouldTruncate && (
+        <span
+          onClick={() => setExpanded(!expanded)}
+          style={{ color: 'var(--color-primary-hover)', cursor: 'pointer', marginLeft: '4px', fontSize: '0.85em', fontWeight: 600 }}
+        >
+          {expanded ? 'View Less' : 'View More'}
+        </span>
+      )}
+    </Box>
+  );
+};
+
+const getDefaultDaysPresent = (emp: Employee, previewY: number, previewM: number) => {
+  const totalDays = new Date(previewY, previewM, 0).getDate();
+  let nonPayableDays = 0;
+  
+  const monthStart = new Date(previewY, previewM - 1, 1);
+  const monthEnd = new Date(previewY, previewM, 0);
+
+  if (emp.joining_date) {
+    const [y, m, d] = emp.joining_date.split('-').map(Number);
+    const joiningDate = new Date(y, m - 1, d);
+    
+    if (joiningDate > monthEnd) {
+      return 0;
+    }
+    if (joiningDate.getFullYear() === previewY && joiningDate.getMonth() + 1 === previewM) {
+      nonPayableDays += Math.max(0, joiningDate.getDate() - 1);
+    }
+  }
+
+  if (emp.relieving_date) {
+    const [y, m, d] = emp.relieving_date.split('-').map(Number);
+    const relievingDate = new Date(y, m - 1, d);
+    
+    if (relievingDate < monthStart) {
+      return 0;
+    }
+    if (relievingDate.getFullYear() === previewY && relievingDate.getMonth() + 1 === previewM) {
+      nonPayableDays += Math.max(0, totalDays - relievingDate.getDate());
+    }
+  }
+
+  return Math.max(0, totalDays - nonPayableDays);
+};
         <Button
           variant="text"
           size="small"
@@ -722,7 +766,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       setConsoleFormData({
         employee_code: selectedConsoleEmp.employee_code || '',
         name: selectedConsoleEmp.name || '',
-        no_of_days_present: (selectedConsoleEmp.no_of_days_present !== undefined && selectedConsoleEmp.no_of_days_present !== null) ? selectedConsoleEmp.no_of_days_present : totalDaysInPreviewMonth,
+        no_of_days_present: (selectedConsoleEmp.no_of_days_present !== undefined && selectedConsoleEmp.no_of_days_present !== null) ? selectedConsoleEmp.no_of_days_present : getDefaultDaysPresent(selectedConsoleEmp, previewY, previewM),
         deduction_absent: selectedConsoleEmp.deduction_absent ? Number(selectedConsoleEmp.deduction_absent) : '',
         appraisal: selectedConsoleEmp.appraisal ? Number(selectedConsoleEmp.appraisal) : '',
         appraisal_effective_date: selectedConsoleEmp.appraisal_effective_date || '',
@@ -794,7 +838,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           tax_deduction: emp.tax_deduction !== false,
           relieving_date: emp.relieving_date || '',
           other_inputs: emp.other_inputs || '',
-          no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : totalDaysInPreviewMonth,
+          no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
           deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
           appraisal: emp.appraisal ? Number(emp.appraisal) : '',
           appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -1488,7 +1532,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const handleExportPreviewCsv = () => {
     const rows = previewEmployees.map((emp: Employee) => [
       emp.employee_code,
-      emp.no_of_days_present ?? totalDaysInPreviewMonth,
+      emp.no_of_days_present ?? getDefaultDaysPresent(emp, previewY, previewM),
       Number(emp.appraisal) || 0,
       emp.appraisal_effective_date || '',
       Number(emp.bonus_incentives) || 0,
@@ -1539,7 +1583,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         if (!emp) { errors.push(`Employee code not found: ${code}`); continue; }
         try {
           await api.put(`/employees/${emp.id}`, {
-            no_of_days_present: Number(daysPresent) || totalDaysInPreviewMonth,
+            no_of_days_present: Number(daysPresent) || getDefaultDaysPresent(emp, previewY, previewM),
             deduction_absent: Number(absent) || 0,
             appraisal: Number(appraisal) || 0,
             appraisal_effective_date: appraisalDate || null,
@@ -1577,7 +1621,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   );
 
   const hasHrPreviewInput = (emp: Employee) =>
-    Number(emp.no_of_days_present ?? totalDaysInPreviewMonth) !== totalDaysInPreviewMonth ||
+    Number(emp.no_of_days_present ?? getDefaultDaysPresent(emp, previewY, previewM)) !== getDefaultDaysPresent(emp, previewY, previewM) ||
     Number(emp.deduction_absent || 0) > 0 ||
     Number(emp.appraisal || 0) > 0 ||
     Number(emp.leave_encashment || 0) > 0 ||
@@ -2593,7 +2637,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             );
                           })()}
                         </TableCell>
-                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? totalDaysInPreviewMonth)}</TableCell>
+                        <TableCell sx={{ color: 'var(--color-text-primary)' }}>{previewValue(emp.no_of_days_present ?? getDefaultDaysPresent(emp, previewY, previewM))}</TableCell>
                         <TableCell sx={{ color: 'var(--color-text-primary)' }}>
                           {(() => {
                             const npd = nonPayableDays.find((n: any) => n.employee?.id === emp.id || n.employee_id === emp.id)?.days || 0;
@@ -2623,7 +2667,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                     setPreviewEditFormData({
                                       employee_code: emp.employee_code,
                                       name: emp.name,
-                                      no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : totalDaysInPreviewMonth,
+                                      no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
                                       deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
                                       appraisal: emp.appraisal ? Number(emp.appraisal) : '',
                                       appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -3804,7 +3848,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       setPreviewEditFormData({
                         employee_code: emp.employee_code,
                         name: emp.name,
-                        no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : totalDaysInPreviewMonth,
+                        no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
                         deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
                         appraisal: emp.appraisal ? Number(emp.appraisal) : '',
                         appraisal_effective_date: emp.appraisal_effective_date || '',
