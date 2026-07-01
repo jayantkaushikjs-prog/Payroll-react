@@ -937,8 +937,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const handleSavePreviewEdit = () => {
     if (!previewEditEmp) return;
 
-    const daysPresent = Number(previewEditFormData.no_of_days_present);
-    if (isNaN(daysPresent) || daysPresent < 0 || daysPresent > 31) {
+    const daysPresent = previewEditFormData.no_of_days_present === null ? null : Number(previewEditFormData.no_of_days_present);
+    if (daysPresent !== null && (isNaN(daysPresent) || daysPresent < 0 || daysPresent > 31)) {
       showToast('Days present must be a valid number between 0 and 31', 'error');
       return;
     }
