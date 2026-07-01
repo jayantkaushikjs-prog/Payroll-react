@@ -602,7 +602,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [previewEditFormData, setPreviewEditFormData] = useState<{
     employee_code: string;
     name: string;
-    no_of_days_present: number;
+    no_of_days_present: number | null;
     deduction_absent: string | number;
     appraisal: string | number;
     appraisal_effective_date: string;
@@ -3857,8 +3857,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                 label="No. of Days Present"
                 type="number"
                 fullWidth
-                value={previewEditFormData.no_of_days_present}
-                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, no_of_days_present: Number(e.target.value) })}
+                value={previewEditFormData.no_of_days_present === null ? '' : previewEditFormData.no_of_days_present}
+                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, no_of_days_present: e.target.value === '' ? null : Number(e.target.value) })}
                 sx={previewSheetInputStyles}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ min: 0, max: 31 }}
