@@ -100,7 +100,7 @@ const Reports: React.FC = () => {
   return (
     <Box>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>Reports & CSV Export</Typography>
+        <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>CSV Reports Export & Archives</Typography>
         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>Download reports and manage archived employees.</Typography>
       </Box>
 

@@ -329,7 +329,7 @@ const Advances: React.FC = () => {
       start_month: new Date().getMonth() + 1,
       start_year: currentYear,
       is_advance_salary: false,
-      entry_type: 'manual',
+      entry_type: 'payroll',
     });
     setOpenDialog(true);
   };
@@ -360,7 +360,7 @@ const Advances: React.FC = () => {
       start_month: adv.start_month,
       start_year: adv.start_year,
       is_advance_salary: adv.is_advance_salary || false,
-      entry_type: adv.entry_type || 'manual',
+      entry_type: adv.entry_type || 'payroll',
     });
     setOpenDialog(true);
   };
@@ -869,8 +869,8 @@ const Advances: React.FC = () => {
           <DialogContent sx={{ py: 3 }}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
-                <FormControl fullWidth required error={!!formErrors.employee_id} sx={selectStyles}>
-                  <InputLabel id="employee-select-label" sx={{ color: 'var(--color-text-secondary)' }}>Select Employee</InputLabel>
+                <FormControl fullWidth error={!!formErrors.employee_id} variant="outlined">
+                  <InputLabel shrink>Select Employee *</InputLabel>
                   <Select
                     labelId="employee-select-label"
                     value={formData.employee_id}
@@ -974,12 +974,12 @@ const Advances: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} sm={4}>
-                <FormControl fullWidth required error={!!formErrors.recovery_type} sx={selectStyles}>
-                  <InputLabel id="recovery-type-label" sx={{ color: 'var(--color-text-secondary)' }}>Recovery Type</InputLabel>
+                <FormControl fullWidth error={!!formErrors.recovery_type} variant="outlined">
+                  <InputLabel shrink>Recovery Method *</InputLabel>
                   <Select
                     labelId="recovery-type-label"
                     value={formData.recovery_type}
-                    label="Recovery Type"
+                    label="Recovery Method"
                     onChange={(e) => {
                       const recoveryType = e.target.value as 'one_time' | 'installment';
                       setFormData({
@@ -1027,8 +1027,8 @@ const Advances: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={6}>
-                <FormControl fullWidth error={!!formErrors.start_month} sx={selectStyles}>
-                  <InputLabel id="start-month-label" sx={{ color: 'var(--color-text-secondary)' }}>Start Month</InputLabel>
+                <FormControl fullWidth error={!!formErrors.start_month} variant="outlined">
+                  <InputLabel shrink>Start Month *</InputLabel>
                   <Select
                     labelId="start-month-label"
                     value={formData.start_month}
@@ -1253,7 +1253,7 @@ const inputStyles = {
     borderRadius: 'var(--radius-control)',
     '& fieldset': { borderColor: 'var(--color-border)' },
     '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' },
-    '&.Mui-disabled fieldset': { borderColor: 'rgba(255, 255, 255, 0.04)' },
+    '&.Mui-disabled fieldset': { borderColor: 'var(--color-border)' },
     '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
       '-webkit-appearance': 'none',
       margin: 0,

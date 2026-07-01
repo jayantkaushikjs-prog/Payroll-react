@@ -408,9 +408,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     { enabled: canViewPreview && Boolean(previewMonth) }
   );
 
-  const previewMonthObj = new Date(`${previewMonth}-01`);
-  const previewM = previewMonthObj.getMonth() + 1;
-  const previewY = previewMonthObj.getFullYear();
+  const [previewY, previewM] = previewMonth.split('-').map(Number);
   const totalDaysInPreviewMonth = new Date(previewY, previewM, 0).getDate();
 
   const { data: nonPayableDays = [] } = useQuery(
@@ -2348,7 +2346,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           {/* Title & Description */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-              Monthly Payroll Preview Sheet
+              Monthly Preview Sheet
             </Typography>
             <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
               Review and manage per-employee HR inputs for the selected month — including attendance, deductions, bonuses, appraisals, and remarks — before payroll is finalized and handed off to Finance.
@@ -3007,7 +3005,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       >
         <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
           <Typography variant="h6" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
-            Employee Profile & Financial Summary
+            {profileFormData.name ? `${profileFormData.name}'s Profile & Financial Summary` : 'Employee Profile & Financial Summary'}
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ py: 3 }}>
@@ -3065,25 +3063,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             value={profileFormData.employee_code}
                             onChange={(e) => setProfileFormData({ ...profileFormData, employee_code: e.target.value })}
                             sx={inputStyles}
-                            InputProps={{
-                              endAdornment: isHRorAdmin ? (
-                                <InputAdornment position="end">
-                                  <Button
-                                    onClick={handleGenerateCodeForProfile}
-                                    size="small"
-                                    variant="text"
-                                    sx={{
-                                      textTransform: 'none',
-                                      fontWeight: 600,
-                                      color: 'var(--color-primary-hover)',
-                                      mr: -1,
-                                    }}
-                                  >
-                                    Generate
-                                  </Button>
-                                </InputAdornment>
-                              ) : undefined
-                            }}
+
                           />
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -3175,7 +3155,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                 }}
                               />
                             }
-                            label={profileFormData.active_status ? 'Active' : 'Inactive (use Mark Inactive button to re-activate)'}
+                            label={profileFormData.active_status ? 'Active' : 'Inactive'}
                             sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
                           />
                         </Grid>
@@ -3466,15 +3446,15 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
 
                         {/* Annual / Monthly Toggle */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'var(--color-surface-subtle)', p: 0.5, borderRadius: 'var(--radius-control)', border: '1px solid var(--color-border)' }}>
-                          <Button size="small" onClick={() => setProfileViewMode('annual')}
-                            sx={{ textTransform: 'none', fontWeight: 600, px: 2, py: 0.4, borderRadius: 'calc(var(--radius-control) - 2px)', color: profileViewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)', background: profileViewMode === 'annual' ? 'var(--color-primary)' : 'transparent', '&:hover': { background: profileViewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)' } }}
-                          >
-                            Annual
-                          </Button>
                           <Button size="small" onClick={() => setProfileViewMode('monthly')}
                             sx={{ textTransform: 'none', fontWeight: 600, px: 2, py: 0.4, borderRadius: 'calc(var(--radius-control) - 2px)', color: profileViewMode === 'monthly' ? '#fff' : 'var(--color-text-secondary)', background: profileViewMode === 'monthly' ? 'var(--color-primary)' : 'transparent', '&:hover': { background: profileViewMode === 'monthly' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)' } }}
                           >
                             Monthly
+                          </Button>
+                          <Button size="small" onClick={() => setProfileViewMode('annual')}
+                            sx={{ textTransform: 'none', fontWeight: 600, px: 2, py: 0.4, borderRadius: 'calc(var(--radius-control) - 2px)', color: profileViewMode === 'annual' ? '#fff' : 'var(--color-text-secondary)', background: profileViewMode === 'annual' ? 'var(--color-primary)' : 'transparent', '&:hover': { background: profileViewMode === 'annual' ? 'var(--color-primary-hover)' : 'rgba(255,255,255,0.04)' } }}
+                          >
+                            Annual
                           </Button>
                         </Box>
 

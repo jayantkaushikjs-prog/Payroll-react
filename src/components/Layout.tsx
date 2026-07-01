@@ -214,7 +214,7 @@ const Layout: React.FC = () => {
       requireAny: true,
     },
     {
-      text: 'Preview Sheet',
+      text: 'Monthly Preview Sheet',
       icon: <PreviewSheetIcon />,
       path: '/preview-sheet',
       permissions: [Permission.VIEW_EMPLOYEE, Permission.MANAGE_SALARY_STRUCTURES],
@@ -261,7 +261,7 @@ const Layout: React.FC = () => {
       requireAny: true,
     },
     {
-      text: 'Reports & Export',
+      text: 'Reports & Archives',
       icon: <ReportsIcon />,
       path: '/reports',
       permissions: [Permission.VIEW_PAYROLL_REPORTS, Permission.VIEW_HR_REPORTS, Permission.VIEW_FINANCIAL_DASHBOARDS],
