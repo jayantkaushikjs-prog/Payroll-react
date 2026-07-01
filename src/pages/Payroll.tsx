@@ -100,6 +100,11 @@ const Payroll: React.FC = () => {
     }
   };
 
+  const totalDeductionsValue = React.useMemo(() => 
+    sumByField('absent') + sumByField('late') + sumByField('pf') + sumByField('esi') + 
+    sumByField('pt') + sumByField('tax') + sumByField('damages') + sumByField('other_ded') + sumByField('advance'), 
+  [payrolls, sumByField]);
+
   const sortedPayrolls = React.useMemo(() => {
     if (!sortConfig.field || sortConfig.direction === 'none') return payrolls;
     const sorted = [...payrolls].sort((a, b) => {
@@ -317,7 +322,7 @@ const Payroll: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <Box>
                 <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Total Deductions</Typography>
-                <Typography variant="h6" sx={{ color: 'var(--color-error)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(sum('tax_deduction') + sum('pf_deduction') + sum('non_payable_deduction'))}</Typography>
+                <Typography variant="h6" sx={{ color: 'var(--color-error)', fontWeight: 700, mt: 0.5 }}>{formatCurrency(totalDeductionsValue)}</Typography>
               </Box>
               <IconButton size="small" onClick={() => setExpandedTile(expandedTile === 'deductions' ? null : 'deductions')} sx={{ color: 'var(--color-text-secondary)', p: 0.25 }}>
                 {expandedTile === 'deductions' ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
@@ -364,7 +369,7 @@ const Payroll: React.FC = () => {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                   <span>Deductions</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>{formatCurrency(sum('tax_deduction') + sum('pf_deduction') + sum('non_payable_deduction'))}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>{formatCurrency(totalDeductionsValue)}</span>
                 </Box>
               </Box>
             )}
