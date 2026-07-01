@@ -3147,11 +3147,16 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <Autocomplete
+                            freeSolo
                             options={profileDeptOptions}
                             value={profileFormData.department || null}
                             disabled={!isHRorAdmin}
                             onChange={(_, value) => {
-                              setProfileFormData({ ...profileFormData, department: value || '' });
+                              const val = typeof value === 'string' ? value : value || '';
+                              setProfileFormData({ ...profileFormData, department: val });
+                            }}
+                            onInputChange={(_, newInputValue) => {
+                              setProfileFormData({ ...profileFormData, department: newInputValue });
                             }}
                             renderInput={(params) => (
                               <TextField {...params} label="Department" required sx={inputStyles} />
@@ -3161,11 +3166,16 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <Autocomplete
+                            freeSolo
                             options={profileDesigOptions}
                             value={profileFormData.designation || null}
                             disabled={!isHRorAdmin}
                             onChange={(_, value) => {
-                              setProfileFormData({ ...profileFormData, designation: value || '' });
+                              const val = typeof value === 'string' ? value : value || '';
+                              setProfileFormData({ ...profileFormData, designation: val });
+                            }}
+                            onInputChange={(_, newInputValue) => {
+                              setProfileFormData({ ...profileFormData, designation: newInputValue });
                             }}
                             renderInput={(params) => (
                               <TextField {...params} label="Designation" required sx={inputStyles} />
@@ -4115,11 +4125,17 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Autocomplete
+                  freeSolo
                   options={departmentOptions}
                   value={formData.department || null}
                   onChange={(_, value) => {
-                    setFormData({ ...formData, department: value || '' });
-                    setFormErrors({ ...formErrors, department: value ? '' : 'Department is required' });
+                    const val = typeof value === 'string' ? value : value || '';
+                    setFormData({ ...formData, department: val });
+                    setFormErrors({ ...formErrors, department: val ? '' : 'Department is required' });
+                  }}
+                  onInputChange={(_, newInputValue) => {
+                    setFormData({ ...formData, department: newInputValue });
+                    setFormErrors({ ...formErrors, department: newInputValue ? '' : 'Department is required' });
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -4137,11 +4153,17 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Autocomplete
+                  freeSolo
                   options={designationOptions}
                   value={formData.designation || null}
                   onChange={(_, value) => {
-                    setFormData({ ...formData, designation: value || '' });
-                    setFormErrors({ ...formErrors, designation: value ? '' : 'Designation is required' });
+                    const val = typeof value === 'string' ? value : value || '';
+                    setFormData({ ...formData, designation: val });
+                    setFormErrors({ ...formErrors, designation: val ? '' : 'Designation is required' });
+                  }}
+                  onInputChange={(_, newInputValue) => {
+                    setFormData({ ...formData, designation: newInputValue });
+                    setFormErrors({ ...formErrors, designation: newInputValue ? '' : 'Designation is required' });
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -4233,9 +4255,13 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   label="PF No. / UAN"
                   fullWidth
                   value={formData.pf_uan}
-                  onChange={(e) => setFormData({ ...formData, pf_uan: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                    setFormData({ ...formData, pf_uan: val });
+                  }}
                   error={!!formErrors.pf_uan}
-                  helperText={formErrors.pf_uan}
+                  helperText={formErrors.pf_uan || 'Enter 12-digit UAN (numeric only)'}
+                  inputProps={{ maxLength: 12, pattern: '[0-9]*' }}
                   sx={inputStyles}
                 />
               </Grid>
