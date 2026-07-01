@@ -260,33 +260,33 @@ const PreviewRemarks: React.FC<{ remarks?: string | null }> = ({ remarks }) => {
 };
 
 const getDefaultDaysPresent = (emp: Employee, previewY: number, previewM: number) => {
-  const totalDays = new Date(previewY, previewM, 0).getDate();
+  const totalDays = new Date(Date.UTC(previewY, previewM, 0)).getUTCDate();
   let nonPayableDays = 0;
   
-  const monthStart = new Date(previewY, previewM - 1, 1);
-  const monthEnd = new Date(previewY, previewM, 0);
+  const monthStart = new Date(Date.UTC(previewY, previewM - 1, 1));
+  const monthEnd = new Date(Date.UTC(previewY, previewM, 0));
 
   if (emp.joining_date) {
     const [y, m, d] = emp.joining_date.split('-').map(Number);
-    const joiningDate = new Date(y, m - 1, d);
+    const joiningDate = new Date(Date.UTC(y, m - 1, d));
     
     if (joiningDate > monthEnd) {
       return 0;
     }
-    if (joiningDate.getFullYear() === previewY && joiningDate.getMonth() + 1 === previewM) {
-      nonPayableDays += Math.max(0, joiningDate.getDate() - 1);
+    if (joiningDate.getUTCFullYear() === previewY && joiningDate.getUTCMonth() + 1 === previewM) {
+      nonPayableDays += Math.max(0, joiningDate.getUTCDate() - 1);
     }
   }
 
   if (emp.relieving_date) {
     const [y, m, d] = emp.relieving_date.split('-').map(Number);
-    const relievingDate = new Date(y, m - 1, d);
+    const relievingDate = new Date(Date.UTC(y, m - 1, d));
     
     if (relievingDate < monthStart) {
       return 0;
     }
-    if (relievingDate.getFullYear() === previewY && relievingDate.getMonth() + 1 === previewM) {
-      nonPayableDays += Math.max(0, totalDays - relievingDate.getDate());
+    if (relievingDate.getUTCFullYear() === previewY && relievingDate.getUTCMonth() + 1 === previewM) {
+      nonPayableDays += Math.max(0, totalDays - relievingDate.getUTCDate());
     }
   }
 
@@ -434,7 +434,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   );
 
   const [previewY, previewM] = previewMonth.split('-').map(Number);
-  const totalDaysInPreviewMonth = new Date(previewY, previewM, 0).getDate();
+  const totalDaysInPreviewMonth = new Date(Date.UTC(previewY, previewM, 0)).getUTCDate();
 
   const { data: nonPayableDays = [] } = useQuery(
     ['nonPayableDays', previewM, previewY],
