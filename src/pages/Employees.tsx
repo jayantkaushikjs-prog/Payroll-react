@@ -422,7 +422,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     const res = await api.get('/employees');
     return res.data;
   });
-  const activeEmployees = employees.filter((emp: Employee) => emp.active_status !== false);
+  const activeEmployees = employees; // Includes both Active and Inactive (non-archived) employees
 
   const { data: previewReview, isLoading: isPreviewReviewLoading } = useQuery(
     ['hrPreviewReview', previewMonth],
@@ -3172,7 +3172,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             control={
                               <Switch
                                 checked={profileFormData.active_status}
-                                disabled={!isHRorAdmin || !profileFormData.active_status}
+                                disabled={!isHRorAdmin}
                                 onChange={(e) => setProfileFormData({ ...profileFormData, active_status: e.target.checked })}
                                 sx={{
                                   '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
