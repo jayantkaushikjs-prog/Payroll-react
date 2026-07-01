@@ -536,6 +536,21 @@ const Advances: React.FC = () => {
       showToast('Return amount must be greater than 0.', 'error');
       return;
     }
+
+    if (selectedReturnAdvance.entry_type === 'payroll') {
+      const confirmSwitch = window.confirm(
+        'This advance is currently set to be recovered via payroll.\n\n' +
+        'By recording a manual return, the recovery mode will be permanently switched to Manual, and automatic payroll deductions will stop for this advance.\n\n' +
+        'Are you sure you want to proceed and change it to Manual?'
+      );
+      if (!confirmSwitch) return;
+      
+      updateMutation.mutate({
+        id: selectedReturnAdvance.id,
+        payload: { entry_type: 'manual' },
+      });
+    }
+
     manualReturnMutation.mutate({
       id: selectedReturnAdvance.id,
       payload: {

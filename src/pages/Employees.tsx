@@ -1991,7 +1991,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             </Box>
                           </TableCell>
                           <TableCell align="right">
-                            {isHRorAdmin && emp.active_status && (
+                            {isHRorAdmin && (
                               <Tooltip title="Archive">
                                 <IconButton
                                   onClick={(e) => {
