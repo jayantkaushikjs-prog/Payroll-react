@@ -2653,6 +2653,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                           if (isHRorAdmin) {
                             setPreviewEditEmp(emp);
                             setPreviewEditFormData({
+                              employee_code: emp.employee_code,
+                              name: emp.name,
+                              joining_date: emp.joining_date ? String(emp.joining_date) : '',
+                              relieving_date: emp.relieving_date ? String(emp.relieving_date) : '',
+                              other_inputs: emp.other_inputs || '',
                               no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
                               deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
                               appraisal: emp.appraisal ? Number(emp.appraisal) : '',
