@@ -861,6 +861,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary', profileEmpId, profileStartDate, profileEndDate]);
         queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['departments']);
+        queryClient.invalidateQueries(['designations']);
         showToast('Employee profile details saved successfully!', 'success');
         setOpenProfileDialog(false);
       },
@@ -1030,6 +1032,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['departments']);
+        queryClient.invalidateQueries(['designations']);
         showToast('Employee registered successfully!', 'success');
         setOpenDialog(false);
       },
@@ -1051,6 +1055,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['departments']);
+        queryClient.invalidateQueries(['designations']);
         showToast('Employee profile updated!', 'success');
         setOpenDialog(false);
       },
