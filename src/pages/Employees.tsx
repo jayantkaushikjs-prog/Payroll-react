@@ -611,7 +611,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [previewEditFormData, setPreviewEditFormData] = useState<{
     employee_code: string;
     name: string;
-    no_of_days_present: number | null;
     deduction_absent: string | number;
     appraisal: string | number;
     appraisal_effective_date: string;
@@ -627,7 +626,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   }>({
     employee_code: '',
     name: '',
-    no_of_days_present: 30,
     deduction_absent: '',
     appraisal: '',
     appraisal_effective_date: '',
@@ -967,14 +965,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const handleSavePreviewEdit = () => {
     if (!previewEditEmp) return;
 
-    const daysPresent = previewEditFormData.no_of_days_present === null ? null : Number(previewEditFormData.no_of_days_present);
-    if (daysPresent !== null && (isNaN(daysPresent) || daysPresent < 0 || daysPresent > 31)) {
-      showToast('Days present must be a valid number between 0 and 31', 'error');
-      return;
-    }
-
     const monthlyPayload = {
-      no_of_days_present: daysPresent,
       deduction_absent: Number(previewEditFormData.deduction_absent) || 0,
       leave_encashment: Number(previewEditFormData.leave_encashment) || 0,
       late_arrival_deduction: Number(previewEditFormData.late_arrival_deduction) || 0,
@@ -1617,7 +1608,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           };
           
           const monthlyPayload = {
-            no_of_days_present: Number(daysPresent) || getDefaultDaysPresent(emp, previewY, previewM),
             deduction_absent: Number(absent) || 0,
             bonus_incentives: Number(bonus) || 0,
             leave_encashment: Number(encashment) || 0,
@@ -2541,7 +2531,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       setPreviewEditFormData({
                         employee_code: '',
                         name: '',
-                        no_of_days_present: 30,
                         deduction_absent: '',
                         appraisal: '',
                         appraisal_effective_date: '',
@@ -2658,7 +2647,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                               joining_date: emp.joining_date ? String(emp.joining_date) : '',
                               relieving_date: emp.relieving_date ? String(emp.relieving_date) : '',
                               other_inputs: emp.other_inputs || '',
-                              no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
                               deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
                               appraisal: emp.appraisal ? Number(emp.appraisal) : '',
                               appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -2731,7 +2719,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                     setPreviewEditFormData({
                                       employee_code: emp.employee_code,
                                       name: emp.name,
-                                      no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
                                       deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
                                       appraisal: emp.appraisal ? Number(emp.appraisal) : '',
                                       appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -3912,7 +3899,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       setPreviewEditFormData({
                         employee_code: emp.employee_code,
                         name: emp.name,
-                        no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
                         deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
                         appraisal: emp.appraisal ? Number(emp.appraisal) : '',
                         appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -3935,18 +3921,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                 />
               </Grid>
             )}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="No. of Days Present"
-                type="number"
-                fullWidth
-                value={previewEditFormData.no_of_days_present === null ? '' : previewEditFormData.no_of_days_present}
-                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, no_of_days_present: e.target.value === '' ? null : Number(e.target.value) })}
-                sx={previewSheetInputStyles}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ min: 0, max: 31 }}
-              />
-            </Grid>
+
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Non-Payable Days (Absent)"
