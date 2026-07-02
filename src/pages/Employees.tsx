@@ -381,7 +381,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const [consoleFormData, setConsoleFormData] = useState<{
     employee_code: string;
     name: string;
-    no_of_days_present: number;
     deduction_absent: string | number;
     appraisal: string | number;
     appraisal_effective_date: string;
@@ -397,7 +396,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   }>({
     employee_code: '',
     name: '',
-    no_of_days_present: 30,
     deduction_absent: '',
     appraisal: '',
     appraisal_effective_date: '',
@@ -689,7 +687,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     tax_deduction: boolean;
     relieving_date: string;
     other_inputs: string;
-    no_of_days_present: number;
     deduction_absent: string | number;
     appraisal: string | number;
     appraisal_effective_date: string;
@@ -718,7 +715,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     tax_deduction: true,
     relieving_date: '',
     other_inputs: '',
-    no_of_days_present: 30,
     deduction_absent: '',
     appraisal: '',
     appraisal_effective_date: '',
@@ -754,7 +750,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       setConsoleFormData({
         employee_code: selectedConsoleEmp.employee_code || '',
         name: selectedConsoleEmp.name || '',
-        no_of_days_present: (selectedConsoleEmp.no_of_days_present !== undefined && selectedConsoleEmp.no_of_days_present !== null) ? selectedConsoleEmp.no_of_days_present : getDefaultDaysPresent(selectedConsoleEmp, previewY, previewM),
         deduction_absent: selectedConsoleEmp.deduction_absent ? Number(selectedConsoleEmp.deduction_absent) : '',
         appraisal: selectedConsoleEmp.appraisal ? Number(selectedConsoleEmp.appraisal) : '',
         appraisal_effective_date: selectedConsoleEmp.appraisal_effective_date || '',
@@ -844,7 +839,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           tax_deduction: emp.tax_deduction !== false,
           relieving_date: emp.relieving_date || '',
           other_inputs: emp.other_inputs || '',
-          no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
           deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
           appraisal: emp.appraisal ? Number(emp.appraisal) : '',
           appraisal_effective_date: emp.appraisal_effective_date || '',
@@ -934,17 +928,10 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   const handleSaveConsoleData = () => {
     if (!selectedConsoleEmp) return;
 
-    const daysPresent = Number(consoleFormData.no_of_days_present);
-    if (isNaN(daysPresent) || daysPresent < 0 || daysPresent > 31) {
-      showToast('Days present must be a valid number between 0 and 31', 'error');
-      return;
-    }
-
     const payload = {
       joining_date: consoleFormData.joining_date,
       relieving_date: consoleFormData.relieving_date || null,
       other_inputs: consoleFormData.other_inputs || null,
-      no_of_days_present: daysPresent,
       deduction_absent: Number(consoleFormData.deduction_absent) || 0,
       appraisal: Number(consoleFormData.appraisal) || 0,
       appraisal_effective_date: consoleFormData.appraisal_effective_date || null,
@@ -1195,7 +1182,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       tax_deduction: emp.tax_deduction !== false,
       relieving_date: emp.relieving_date || '',
       other_inputs: emp.other_inputs || '',
-      no_of_days_present: emp.no_of_days_present !== undefined ? emp.no_of_days_present : 30,
       deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
       appraisal: emp.appraisal ? Number(emp.appraisal) : '',
       appraisal_effective_date: emp.appraisal_effective_date || '',
