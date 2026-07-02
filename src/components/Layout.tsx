@@ -54,7 +54,7 @@ import {
   LockReset as LockResetIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { THPMSLogo } from './brand/THPMSLogo';
 
@@ -66,6 +66,7 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // Profile menu state
   const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
@@ -330,6 +331,14 @@ const Layout: React.FC = () => {
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
                 onClick={() => {
+                  if (item.path === '/preview-sheet') {
+                    queryClient.invalidateQueries(['preview-employees']);
+                    queryClient.invalidateQueries(['hrPreviewReview']);
+                    queryClient.invalidateQueries(['employees']);
+                  } else if (item.path === '/employees') {
+                    queryClient.invalidateQueries(['employees']);
+                  }
+
                   if (item.path === '/employees') {
                     window.dispatchEvent(new CustomEvent('openEmployeeDirectory'));
                     navigate('/employees?tab=directory');
