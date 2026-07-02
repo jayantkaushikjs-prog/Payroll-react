@@ -171,6 +171,8 @@ const SalaryStructures: React.FC = () => {
       onSuccess: () => {
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
+        queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['financialSummaryPage']);
         showToast('Salary structure revised successfully!', 'success');
         setOpenRevisionDialog(false);
       },
@@ -306,6 +308,8 @@ const SalaryStructures: React.FC = () => {
         const { imported, errors } = res.data;
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
+        queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['financialSummaryPage']);
         if (errors && errors.length > 0) {
           showToast(`Imported ${imported} structures. There were ${errors.length} warnings/errors (see console details).`, 'error');
           console.warn('Import CSV warnings/errors:', errors);

@@ -786,6 +786,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['financialSummaryPage']);
         showToast('HR global inputs saved successfully!', 'success');
         setSelectedConsoleEmp(null);
       },
@@ -861,6 +862,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary', profileEmpId, profileStartDate, profileEndDate]);
         queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['financialSummaryPage']);
         queryClient.invalidateQueries(['departments']);
         queryClient.invalidateQueries(['designations']);
         showToast('Employee profile details saved successfully!', 'success');
@@ -1032,6 +1034,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['financialSummaryPage']);
         queryClient.invalidateQueries(['departments']);
         queryClient.invalidateQueries(['designations']);
         showToast('Employee registered successfully!', 'success');
@@ -1055,6 +1058,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary']);
+        queryClient.invalidateQueries(['financialSummaryPage']);
         queryClient.invalidateQueries(['departments']);
         queryClient.invalidateQueries(['designations']);
         showToast('Employee profile updated!', 'success');
