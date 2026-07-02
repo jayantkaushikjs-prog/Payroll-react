@@ -228,8 +228,8 @@ const getPreviewTagMeta = (tag: PreviewTagFilter) => {
 const PF_WAGE_LIMIT = 15000;
 const getBasicSalaryFromMonthlyCtc = (monthlyCtc?: string | number | null) => (Number(monthlyCtc) || 0) * 0.5;
 const isPfRequiredByWageLimit = (monthlyCtc?: string | number | null) => {
-  const basicSalary = getBasicSalaryFromMonthlyCtc(monthlyCtc);
-  return basicSalary > 0 && basicSalary <= PF_WAGE_LIMIT;
+  const ctc = Number(monthlyCtc) || 0;
+  return ctc > 0 && ctc <= PF_WAGE_LIMIT;
 };
 
 const PreviewRemarks: React.FC<{ remarks?: string | null }> = ({ remarks }) => {
@@ -267,7 +267,7 @@ const getDefaultDaysPresent = (emp: Employee, previewY: number, previewM: number
   const monthEnd = new Date(Date.UTC(previewY, previewM, 0));
 
   if (emp.joining_date) {
-    const [y, m, d] = emp.joining_date.split('-').map(Number);
+    const [y, m, d] = String(emp.joining_date).split('T')[0].split('-').map(Number);
     const joiningDate = new Date(Date.UTC(y, m - 1, d));
     
     if (joiningDate > monthEnd) {
@@ -279,7 +279,7 @@ const getDefaultDaysPresent = (emp: Employee, previewY: number, previewM: number
   }
 
   if (emp.relieving_date) {
-    const [y, m, d] = emp.relieving_date.split('-').map(Number);
+    const [y, m, d] = String(emp.relieving_date).split('T')[0].split('-').map(Number);
     const relievingDate = new Date(Date.UTC(y, m - 1, d));
     
     if (relievingDate < monthStart) {
@@ -423,6 +423,15 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     return res.data;
   });
   const activeEmployees = employees; // Includes both Active and Inactive (non-archived) employees
+
+  const { data: previewEmployeesData = [], isLoading: isPreviewLoading } = useQuery(
+    ['preview-employees', previewMonth],
+    async () => {
+      const res = await api.get(`/employees/preview/${previewMonth}`);
+      return res.data;
+    },
+    { enabled: canViewPreview && Boolean(previewMonth) }
+  );
 
   const { data: previewReview, isLoading: isPreviewReviewLoading } = useQuery(
     ['hrPreviewReview', previewMonth],
@@ -783,6 +792,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['employees']);
+        queryClient.invalidateQueries(['preview-employees']);
         queryClient.invalidateQueries(['activeSalaries']);
         queryClient.invalidateQueries(['salaryHistory']);
         queryClient.invalidateQueries(['profileFinancialSummary']);
@@ -792,6 +802,22 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       },
       onError: (err: any) => {
         showToast(err.response?.data?.message || 'Failed to update HR inputs', 'error');
+      },
+    }
+  );
+
+  const savePreviewInputMutation = useMutation(
+    async ({ id, month, data }: { id: number; month: string; data: any }) => {
+      const res = await api.patch(`/employees/${id}/preview/${month}`, data);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['preview-employees']);
+        showToast('Monthly input saved successfully!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update monthly input', 'error');
       },
     }
   );
@@ -947,25 +973,37 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       return;
     }
 
-    const payload = {
+    const monthlyPayload = {
       no_of_days_present: daysPresent,
       deduction_absent: Number(previewEditFormData.deduction_absent) || 0,
-      appraisal: Number(previewEditFormData.appraisal) || 0,
-      appraisal_effective_date: previewEditFormData.appraisal_effective_date || null,
       leave_encashment: Number(previewEditFormData.leave_encashment) || 0,
       late_arrival_deduction: Number(previewEditFormData.late_arrival_deduction) || 0,
       damages_recovery: Number(previewEditFormData.damages_recovery) || 0,
       bonus_incentives: Number(previewEditFormData.bonus_incentives) || 0,
       other_deductions: Number(previewEditFormData.other_deductions) || 0,
       remarks: previewEditFormData.remarks || null,
+      other_inputs: previewEditEmp.other_inputs || null,
     };
 
+    const globalPayload = {
+      appraisal: Number(previewEditFormData.appraisal) || 0,
+      appraisal_effective_date: previewEditFormData.appraisal_effective_date || null,
+    };
+
+    // First save the global appraisal updates, then the monthly inputs
     saveConsoleMutation.mutate(
-      { id: previewEditEmp.id, data: payload },
+      { id: previewEditEmp.id, data: globalPayload },
       {
         onSuccess: () => {
-          setOpenPreviewEditDialog(false);
-          setPreviewEditEmp(null);
+          savePreviewInputMutation.mutate(
+            { id: previewEditEmp.id, month: previewMonth, data: monthlyPayload },
+            {
+              onSuccess: () => {
+                setOpenPreviewEditDialog(false);
+                setPreviewEditEmp(null);
+              },
+            }
+          );
         },
       }
     );
@@ -1573,18 +1611,24 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         const emp = employees.find((em: Employee) => em.employee_code === code);
         if (!emp) { errors.push(`Employee code not found: ${code}`); continue; }
         try {
-          await api.put(`/employees/${emp.id}`, {
-            no_of_days_present: Number(daysPresent) || getDefaultDaysPresent(emp, previewY, previewM),
-            deduction_absent: Number(absent) || 0,
+          const globalPayload = {
             appraisal: Number(appraisal) || 0,
             appraisal_effective_date: appraisalDate || null,
+          };
+          
+          const monthlyPayload = {
+            no_of_days_present: Number(daysPresent) || getDefaultDaysPresent(emp, previewY, previewM),
+            deduction_absent: Number(absent) || 0,
             bonus_incentives: Number(bonus) || 0,
             leave_encashment: Number(encashment) || 0,
             late_arrival_deduction: Number(lateArrival) || 0,
             damages_recovery: Number(damages) || 0,
             other_deductions: Number(otherDed) || 0,
             remarks: remarks || null,
-          });
+          };
+
+          await api.put(`/employees/${emp.id}`, globalPayload);
+          await api.patch(`/employees/${emp.id}/preview/${previewMonth}`, monthlyPayload);
           successCount++;
         } catch {
           errors.push(`Failed to update: ${code}`);
@@ -1611,27 +1655,24 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     emp.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const hasHrPreviewInput = (emp: Employee) =>
-    Number(emp.no_of_days_present ?? getDefaultDaysPresent(emp, previewY, previewM)) !== getDefaultDaysPresent(emp, previewY, previewM) ||
-    Number(emp.deduction_absent || 0) > 0 ||
+  const hasHrPreviewInput = (emp: any) =>
+    emp.has_monthly_input ||
     Number(emp.appraisal || 0) > 0 ||
-    Number(emp.leave_encashment || 0) > 0 ||
-    Number(emp.late_arrival_deduction || 0) > 0 ||
-    Number(emp.damages_recovery || 0) > 0 ||
-    Number(emp.bonus_incentives || 0) > 0 ||
-    Number(emp.other_deductions || 0) > 0 ||
-    Boolean(emp.remarks?.trim()) ||
-    Boolean(emp.relieving_date) ||
-    Boolean(emp.other_inputs?.trim());
+    Boolean(emp.relieving_date);
 
-  const previewEmployees = activeEmployees
+  const previewEmployees = previewEmployeesData
     .filter((emp: Employee) => {
       // Exclude employees who joined after the selected preview month
       if (emp.joining_date) {
-        const [jy, jm] = String(emp.joining_date).split('-').map(Number);
+        const [jy, jm] = String(emp.joining_date).split('T')[0].split('-').map(Number);
         if (jy > previewY || (jy === previewY && jm > previewM)) {
           return false;
         }
+      }
+
+      // Exclude inactive employees unless they are relieving in this specific month
+      if (emp.active_status === false && !isRelievingInMonth(emp, previewMonth)) {
+        return false;
       }
 
       if (!previewModifiedOnly) return true;
@@ -2608,7 +2649,26 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       <TableRow
                         key={emp.id}
                         hover
+                        onClick={() => {
+                          if (isHRorAdmin) {
+                            setPreviewEditEmp(emp);
+                            setPreviewEditFormData({
+                              no_of_days_present: (emp.no_of_days_present !== undefined && emp.no_of_days_present !== null) ? emp.no_of_days_present : getDefaultDaysPresent(emp, previewY, previewM),
+                              deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
+                              appraisal: emp.appraisal ? Number(emp.appraisal) : '',
+                              appraisal_effective_date: emp.appraisal_effective_date || '',
+                              leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
+                              late_arrival_deduction: emp.late_arrival_deduction ? Number(emp.late_arrival_deduction) : '',
+                              damages_recovery: emp.damages_recovery ? Number(emp.damages_recovery) : '',
+                              bonus_incentives: emp.bonus_incentives ? Number(emp.bonus_incentives) : '',
+                              other_deductions: emp.other_deductions ? Number(emp.other_deductions) : '',
+                              remarks: emp.remarks || '',
+                            });
+                            setOpenPreviewEditDialog(true);
+                          }
+                        }}
                         sx={{
+                          cursor: isHRorAdmin ? 'pointer' : 'default',
                           '&:last-child td, &:last-child th': { border: 0 },
                           '&:hover': { bgcolor: 'var(--color-row-hover)' },
                         }}
@@ -3202,24 +3262,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Grid>
 
 
-                        <Grid item xs={12} sm={6}>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={profileFormData.active_status}
-                                disabled={!isHRorAdmin}
-                                onChange={(e) => setProfileFormData({ ...profileFormData, active_status: e.target.checked })}
-                                sx={{
-                                  '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--color-primary)' },
-                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: 'var(--color-primary)' },
-                                }}
-                              />
-                            }
-                            label={profileFormData.active_status ? 'Active' : 'Inactive'}
-                            sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={4}>
                           <FormControlLabel
                             control={
                               <Switch
@@ -3239,7 +3282,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             sx={{ color: 'var(--color-text-secondary)', '& .MuiFormControlLabel-label': { fontSize: '0.8rem' } }}
                           />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid item xs={12} sm={8}>
                           {(() => {
                             const emp = employees.find((e: any) => e.id === profileEmpId);
                             const pfApplies = profileFormData.pf_deduction || isPfRequiredByWageLimit(emp?.monthly_ctc);
@@ -4144,37 +4187,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               <Grid item xs={12} sm={6}>
                 <Autocomplete
                   freeSolo
-                  options={departmentOptions}
-                  value={formData.department || null}
-                  onChange={(_, value) => {
-                    const val = typeof value === 'string' ? value : value || '';
-                    setFormData({ ...formData, department: val });
-                    setFormErrors({ ...formErrors, department: val ? '' : 'Department is required' });
-                    if (val && !allDepartments.includes(val)) {
-                      addDepartmentMutation.mutate(val);
-                    }
-                  }}
-                  onInputChange={(_, newInputValue) => {
-                    setFormData({ ...formData, department: newInputValue });
-                    setFormErrors({ ...formErrors, department: newInputValue ? '' : 'Department is required' });
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Department"
-                      fullWidth
-                      required
-                      error={!!formErrors.department}
-                      helperText={formErrors.department}
-                      sx={inputStyles}
-                    />
-                  )}
-                  ListboxProps={{ sx: dropdownListStyles }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Autocomplete
-                  freeSolo
                   options={designationOptions}
                   value={formData.designation || null}
                   onChange={(_, value) => {
@@ -4197,6 +4209,37 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                       required
                       error={!!formErrors.designation}
                       helperText={formErrors.designation}
+                      sx={inputStyles}
+                    />
+                  )}
+                  ListboxProps={{ sx: dropdownListStyles }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  freeSolo
+                  options={departmentOptions}
+                  value={formData.department || null}
+                  onChange={(_, value) => {
+                    const val = typeof value === 'string' ? value : value || '';
+                    setFormData({ ...formData, department: val });
+                    setFormErrors({ ...formErrors, department: val ? '' : 'Department is required' });
+                    if (val && !allDepartments.includes(val)) {
+                      addDepartmentMutation.mutate(val);
+                    }
+                  }}
+                  onInputChange={(_, newInputValue) => {
+                    setFormData({ ...formData, department: newInputValue });
+                    setFormErrors({ ...formErrors, department: newInputValue ? '' : 'Department is required' });
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Department"
+                      fullWidth
+                      required
+                      error={!!formErrors.department}
+                      helperText={formErrors.department}
                       sx={inputStyles}
                     />
                   )}
@@ -4234,7 +4277,12 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   value={formData.monthly_ctc}
                   onChange={(e) => {
                     const monthly = e.target.value;
-                    setFormData({ ...formData, monthly_ctc: monthly });
+                    const ctcNum = Number(monthly);
+                    setFormData({ 
+                      ...formData, 
+                      monthly_ctc: monthly,
+                      pf_deduction: (monthly === '' || ctcNum > 15000) ? false : formData.pf_deduction
+                    });
                   }}
                   inputProps={{ min: 0 }}
                   sx={inputStyles}
@@ -4276,7 +4324,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="PF No. / UAN"
+                  label={`PF No. / UAN${(formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc)) ? ' *' : ''}`}
                   fullWidth
                   value={formData.pf_uan}
                   onChange={(e) => {

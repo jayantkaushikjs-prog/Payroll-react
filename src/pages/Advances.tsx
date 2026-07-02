@@ -33,6 +33,9 @@ import {
   FormControlLabel,
   Switch,
   Chip,
+  Menu,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -42,6 +45,7 @@ import {
   Edit as EditIcon,
   HistoryEdu as LogIcon,
   CurrencyExchange as ReturnIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 
 interface Employee {
@@ -138,6 +142,19 @@ const Advances: React.FC = () => {
     is_advance_salary: false,
     entry_type: 'payroll' as 'manual' | 'payroll',
   });
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuAdvance, setMenuAdvance] = useState<EmployeeAdvance | null>(null);
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, adv: EmployeeAdvance) => {
+    setAnchorEl(event.currentTarget);
+    setMenuAdvance(adv);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setMenuAdvance(null);
+  };
 
   const isFinanceOrAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
 
@@ -733,45 +750,9 @@ const Advances: React.FC = () => {
                         {adv.entry_type === 'payroll' ? 'Via Payroll' : 'Manual'}
                       </TableCell>
                     <TableCell align="right">
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<LogIcon />}
-                        onClick={() => handleOpenBreakdown(adv)}
-                        sx={{
-                          mr: 1,
-                          borderColor: 'var(--color-border)',
-                          color: 'var(--color-text-secondary)',
-                          textTransform: 'none',
-                          borderRadius: 'var(--radius-control)',
-                          '&:hover': {
-                            borderColor: 'var(--color-primary)',
-                            color: 'var(--color-primary)',
-                            bgcolor: 'var(--color-surface-subtle)',
-                          },
-                        }}
-                      >
-        
-                      </Button>
-                      {isFinanceOrAdmin && (
-                        <>
-                          <Tooltip title="Record Manual Return">
-                            <IconButton onClick={() => handleOpenReturnDialog(adv)} sx={{ color: 'var(--color-accent)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}>
-                              <ReturnIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Edit Advance Record">
-                            <IconButton onClick={() => handleOpenEdit(adv)} sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-primary)' }, mr: 1 }}>
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete Advance Record">
-                            <IconButton onClick={() => handleDelete(adv.id)} sx={{ color: 'var(--color-error)' }}>
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </>
-                      )}
+                      <IconButton onClick={(e) => handleMenuClick(e, adv)} sx={{ color: 'var(--color-text-secondary)' }}>
+                        <MoreVertIcon />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                   );
@@ -1258,6 +1239,39 @@ const Advances: React.FC = () => {
           </DialogActions>
         </form>
       </Dialog>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            bgcolor: 'var(--color-surface)',
+            color: 'var(--color-text-primary)',
+            border: '1px solid var(--color-border)',
+            backgroundImage: 'none',
+          }
+        }}
+      >
+        <MenuItem onClick={() => { handleOpenBreakdown(menuAdvance!); handleMenuClose(); }}>
+          <ListItemIcon><LogIcon fontSize="small" sx={{ color: 'var(--color-text-secondary)' }} /></ListItemIcon>
+          <ListItemText>View Breakdown</ListItemText>
+        </MenuItem>
+        {isFinanceOrAdmin && [
+          <MenuItem key="return" onClick={() => { handleOpenReturnDialog(menuAdvance!); handleMenuClose(); }}>
+            <ListItemIcon><ReturnIcon fontSize="small" sx={{ color: 'var(--color-accent)' }} /></ListItemIcon>
+            <ListItemText>Record Manual Return</ListItemText>
+          </MenuItem>,
+          <MenuItem key="edit" onClick={() => { handleOpenEdit(menuAdvance!); handleMenuClose(); }}>
+            <ListItemIcon><EditIcon fontSize="small" sx={{ color: 'var(--color-text-secondary)' }} /></ListItemIcon>
+            <ListItemText>Edit Advance</ListItemText>
+          </MenuItem>,
+          <MenuItem key="delete" onClick={() => { handleDelete(menuAdvance!.id); handleMenuClose(); }}>
+            <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: 'var(--color-error)' }} /></ListItemIcon>
+            <ListItemText sx={{ color: 'var(--color-error)' }}>Delete Advance</ListItemText>
+          </MenuItem>
+        ]}
+      </Menu>
     </Box>
   );
 };

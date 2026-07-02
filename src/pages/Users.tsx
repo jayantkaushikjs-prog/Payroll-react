@@ -28,6 +28,7 @@ import {
   MenuItem,
   Chip,
   Alert,
+  InputAdornment,
 } from '@mui/material';
 import { useToast } from '../context/ToastContext';
 import {
@@ -37,6 +38,10 @@ import {
   Lock as LockIcon,
   Block as BlockIcon,
   LockOpen as LockOpenIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+  Edit as EditIcon,
+  Send as SendIcon,
 } from '@mui/icons-material';
 
 interface UserRecord {
@@ -58,6 +63,10 @@ const Users: React.FC = () => {
   const [role, setRole] = useState<Role>(Role.HR);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editUser, setEditUser] = useState<UserRecord | null>(null);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
 
   // Fetch users
   const { data: users = [], isLoading } = useQuery(['users'], async () => {
@@ -122,6 +131,41 @@ const Users: React.FC = () => {
     }
   );
 
+  // Update user mutation
+  const updateUserMutation = useMutation(
+    async (data: { id: number; payload: any }) => {
+      const res = await api.patch(`/users/${data.id}`, data.payload);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['users']);
+        showToast('User updated successfully!', 'success');
+        setOpenEditDialog(false);
+        setEditUser(null);
+        setPassword('');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to update user', 'error');
+      },
+    }
+  );
+
+  // Resend invitation mutation
+  const resendInvitationMutation = useMutation(
+    async (id: number) => {
+      await api.post(`/users/${id}/resend-invitation`);
+    },
+    {
+      onSuccess: () => {
+        showToast('Invitation email sent successfully.', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to send invitation', 'error');
+      },
+    }
+  );
+
   const handleOpenAddDialog = () => {
     setError(null);
     setEmail('');
@@ -138,6 +182,33 @@ const Users: React.FC = () => {
     }
 
     createUserMutation.mutate({ email, password, role });
+  };
+
+  const handleOpenEditDialog = (user: UserRecord) => {
+    setEditUser(user);
+    setEmail(user.email);
+    setRole(user.role);
+    setPassword('');
+    setError(null);
+    setOpenEditDialog(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    if (!email || !role) {
+      setError('Email and Role are required');
+      return;
+    }
+    const payload: any = { email, role };
+    if (password) payload.password = password;
+    updateUserMutation.mutate({ id: editUser.id, payload });
+  };
+
+  const handleResendInvitation = (user: UserRecord) => {
+    if (window.confirm(`Resend invitation email to ${user.email}?`)) {
+      resendInvitationMutation.mutate(user.id);
+    }
   };
 
   const handleDelete = (user: UserRecord) => {
@@ -308,6 +379,16 @@ const Users: React.FC = () => {
                         </Tooltip>
                       ) : (
                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                          <Tooltip title="Resend Invitation">
+                            <IconButton onClick={() => handleResendInvitation(u)} sx={{ color: 'var(--color-primary)' }}>
+                              <SendIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit User">
+                            <IconButton onClick={() => handleOpenEditDialog(u)} sx={{ color: 'var(--color-info)', colorAdjust: 'exact', filter: 'brightness(1.2)' }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title={u.is_blocked ? 'Unblock User' : 'Block User'}>
                             <IconButton
                               onClick={() => handleToggleBlock(u)}
@@ -349,7 +430,6 @@ const Users: React.FC = () => {
             backgroundImage: 'none',
             color: 'var(--color-text-primary)',
             borderRadius: 'var(--radius-card)',
-            border: '1px solid var(--color-border)',
           },
         }}
       >
@@ -378,12 +458,27 @@ const Users: React.FC = () => {
               <Grid item xs={12}>
                 <TextField
                   label="Password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   fullWidth
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   sx={inputStyles}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton 
+                          type="button"
+                          onClick={() => setShowPassword(prev => !prev)} 
+                          onMouseDown={(e) => e.preventDefault()}
+                          edge="end" 
+                          sx={{ color: 'var(--color-text-secondary)' }}
+                        >
+                          {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -423,6 +518,107 @@ const Users: React.FC = () => {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            color: 'var(--color-text-primary)',
+            borderRadius: 'var(--radius-card)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', pb: 2 }}>
+          Edit User
+        </DialogTitle>
+        <form onSubmit={handleEditSubmit}>
+          <DialogContent sx={{ py: 3 }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 3, bgcolor: 'rgba(244, 63, 94, 0.15)', color: 'var(--color-error)' }}>
+                {error}
+              </Alert>
+            )}
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  label="Email Address"
+                  type="email"
+                  fullWidth
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  sx={inputStyles}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Password (Leave blank to keep unchanged)"
+                  type={showEditPassword ? 'text' : 'password'}
+                  fullWidth
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  sx={inputStyles}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton 
+                          type="button"
+                          onClick={() => setShowEditPassword(prev => !prev)} 
+                          onMouseDown={(e) => e.preventDefault()}
+                          edge="end" 
+                          sx={{ color: 'var(--color-text-secondary)' }}
+                        >
+                          {showEditPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth sx={inputStyles}>
+                  <InputLabel id="edit-role-select-label">System Role</InputLabel>
+                  <Select
+                    labelId="edit-role-select-label"
+                    id="edit-role-select"
+                    value={role}
+                    label="System Role"
+                    onChange={(e) => setRole(e.target.value as Role)}
+                  >
+                    <MenuItem value={Role.FINANCE}>Finance</MenuItem>
+                    <MenuItem value={Role.HR}>HR</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <Button onClick={() => setOpenEditDialog(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={updateUserMutation.isLoading}
+              sx={{
+                background: 'var(--color-primary)',
+                borderRadius: 'var(--radius-control)',
+                px: 3,
+                textTransform: 'none',
+              }}
+            >
+              {updateUserMutation.isLoading ? <CircularProgress size={24} sx={{ color: 'var(--color-text-primary)' }} /> : 'Save Changes'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
 
 
     </Box>

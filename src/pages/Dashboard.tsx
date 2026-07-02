@@ -122,7 +122,7 @@ const formatValue = (value?: number, format: KpiConfig['format'] = 'number') =>
 const roleTitle = (role?: Role) => {
   if (role === Role.HR) return 'HR Dashboard';
   if (role === Role.FINANCE) return 'Finance Dashboard';
-  return 'Super Admin Dashboard';
+  return 'Dashboard';
 };
 
 const Dashboard: React.FC = () => {
@@ -273,9 +273,9 @@ const Dashboard: React.FC = () => {
           <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>
             {roleTitle(user?.role)}
           </Typography>
-          <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
+          {/* <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>
             Welcome back! Here is your business overview.
-          </Typography>
+          </Typography> */}
         </Box>
       </Box>
 

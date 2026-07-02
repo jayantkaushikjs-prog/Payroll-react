@@ -16,6 +16,7 @@ import {
   Timeline as JoiningIcon,
   Wallet as SalaryIcon,
   Restore as RestoreIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { downloadCsvFile } from '../utils/download';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -67,6 +68,39 @@ const Reports: React.FC = () => {
   );
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [employeeToRestore, setEmployeeToRestore] = useState<any>(null);
+  const [hardDeleteDialogOpen, setHardDeleteDialogOpen] = useState(false);
+  const [hardDeleteAllDialogOpen, setHardDeleteAllDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<any>(null);
+
+  const hardDeleteMutation = useMutation(
+    async (id: number) => {
+      await api.delete(`/employees/${id}/hard`);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['archivedEmployees']);
+        showToast('Employee permanently deleted!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to delete employee', 'error');
+      },
+    }
+  );
+
+  const hardDeleteAllMutation = useMutation(
+    async () => {
+      await api.delete('/employees/archived/hard-delete-all');
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['archivedEmployees']);
+        showToast('All archived employees permanently deleted!', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.response?.data?.message || 'Failed to delete employees', 'error');
+      },
+    }
+  );
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
   const today = now.toISOString().split('T')[0];
@@ -166,7 +200,20 @@ const Reports: React.FC = () => {
 
       {activeTab === 1 && (
         <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', p: 3 }}>
-          <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 3, letterSpacing: '0.5px' }}>ARCHIVED EMPLOYEES</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, letterSpacing: '0.5px' }}>ARCHIVED EMPLOYEES</Typography>
+            {archivedEmployees.length > 0 && (
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={() => setHardDeleteAllDialogOpen(true)}
+                sx={{ textTransform: 'none', borderRadius: 'var(--radius-control)' }}
+              >
+                Hard Delete All
+              </Button>
+            )}
+          </Box>
           {isLoadingAll ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
               <CircularProgress size={30} />
@@ -195,17 +242,30 @@ const Reports: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.department}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{emp.designation}</TableCell>
                       <TableCell align="right">
-                        <Tooltip title="Restore Employee">
-                          <IconButton
-                            onClick={() => {
-                              setEmployeeToRestore(emp);
-                              setRestoreDialogOpen(true);
-                            }}
-                            sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-success)' } }}
-                          >
-                            <RestoreIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                          <Tooltip title="Restore Employee">
+                            <IconButton
+                              onClick={() => {
+                                setEmployeeToRestore(emp);
+                                setRestoreDialogOpen(true);
+                              }}
+                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-success)' } }}
+                            >
+                              <RestoreIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Hard Delete">
+                            <IconButton
+                              onClick={() => {
+                                setEmployeeToDelete(emp);
+                                setHardDeleteDialogOpen(true);
+                              }}
+                              sx={{ color: 'var(--color-text-secondary)', '&:hover': { color: 'var(--color-error)' } }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -270,6 +330,88 @@ const Reports: React.FC = () => {
             }}
           >
             {restoreMutation.isPending ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'Restore'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Hard Delete Confirmation Dialog */}
+      <Dialog
+        open={hardDeleteDialogOpen}
+        onClose={() => setHardDeleteDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            border: '1px solid var(--color-border)',
+            minWidth: '400px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: 'var(--color-text-primary)', pb: 1 }}>
+          Hard Delete Employee
+        </DialogTitle>
+        <DialogContent sx={{ color: 'var(--color-text-secondary)' }}>
+          Are you sure you want to <strong>permanently delete</strong> {employeeToDelete?.name}? This action cannot be undone and will delete all associated payroll data.
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1.5 }}>
+          <Button onClick={() => setHardDeleteDialogOpen(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none', fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (employeeToDelete) {
+                hardDeleteMutation.mutate(employeeToDelete.id);
+              }
+              setHardDeleteDialogOpen(false);
+            }}
+            variant="contained"
+            color="error"
+            disabled={hardDeleteMutation.isLoading}
+            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 3 }}
+          >
+            {hardDeleteMutation.isLoading ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'Delete Permanently'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Hard Delete All Confirmation Dialog */}
+      <Dialog
+        open={hardDeleteAllDialogOpen}
+        onClose={() => setHardDeleteAllDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            bgcolor: 'var(--color-surface)',
+            backgroundImage: 'none',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            border: '1px solid var(--color-border)',
+            minWidth: '400px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: 'var(--color-text-primary)', pb: 1 }}>
+          Hard Delete All Archived
+        </DialogTitle>
+        <DialogContent sx={{ color: 'var(--color-text-secondary)' }}>
+          Are you sure you want to <strong>permanently delete all</strong> archived employees? This action cannot be undone and will delete all associated payroll data for these employees.
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1.5 }}>
+          <Button onClick={() => setHardDeleteAllDialogOpen(false)} sx={{ color: 'var(--color-text-secondary)', textTransform: 'none', fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              hardDeleteAllMutation.mutate();
+              setHardDeleteAllDialogOpen(false);
+            }}
+            variant="contained"
+            color="error"
+            disabled={hardDeleteAllMutation.isLoading}
+            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 3 }}
+          >
+            {hardDeleteAllMutation.isLoading ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'Delete All Permanently'}
           </Button>
         </DialogActions>
       </Dialog>
