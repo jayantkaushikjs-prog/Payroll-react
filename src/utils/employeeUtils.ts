@@ -17,6 +17,8 @@ export interface Employee {
   active_status: boolean;
   pf_deduction?: boolean;
   pf_uan?: string | null;
+  employer_pf?: number;
+  employer_esi?: number;
   esi_deduction?: boolean;
   tax_deduction?: boolean;
   relieving_date?: string | null;
@@ -212,6 +214,8 @@ export interface BaseEmployeeFormData {
   account_number: string;
   ifsc: string;
   pf_uan: string;
+  employer_pf?: number;
+  employer_esi?: number;
   tax_regime: string;
   active_status: boolean;
   pf_deduction: boolean;

@@ -185,6 +185,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     account_number: "",
     ifsc: "",
     pf_uan: "",
+    employer_pf: 0,
+    employer_esi: 0,
     tax_regime: "new",
     active_status: true,
     pf_deduction: false,
@@ -432,6 +434,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     account_number: "",
     ifsc: "",
     pf_uan: "",
+    employer_pf: 0,
+    employer_esi: 0,
     tax_regime: "new",
     active_status: true,
     pf_deduction: false,
@@ -575,6 +579,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
           tax_regime: emp.tax_regime || "new",
           active_status: emp.active_status !== false,
           pf_deduction: emp.pf_deduction !== false,
+          employer_pf: (emp as any).employer_pf || 0,
+          employer_esi: (emp as any).employer_esi || 0,
           tax_deduction: emp.tax_deduction !== false,
           relieving_date: emp.relieving_date || "",
           other_inputs: emp.other_inputs || "",
@@ -603,6 +609,23 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       }
     }
   }, [profileEmpId, employees]);
+
+  const computeEmployerPf = (monthlyCtc: string | number, pfDeduction: boolean) => {
+    const ctc = Number(monthlyCtc || 0);
+    if (!ctc || isNaN(ctc)) return 0;
+
+    const basicSalary = getBasicSalaryFromMonthlyCtc(monthlyCtc);
+    const pfApplies = pfDeduction || isPfRequiredByWageLimit(monthlyCtc);
+    if (!pfApplies) return 0;
+
+    return Number(Math.min(basicSalary * 0.12, 1800).toFixed(2));
+  };
+
+  const computeEmployerEsi = (monthlyCtc: string | number) => {
+    const basicSalary = getBasicSalaryFromMonthlyCtc(monthlyCtc);
+    if (basicSalary >= 21000) return 0;
+    return Number((basicSalary * 0.0325).toFixed(2));
+  };
 
   useEffect(() => {
     if (
@@ -3125,314 +3148,131 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                         </Paper>
                       </Grid>
 
-                      {/* Live deduction summaries */}
-                      <Grid item xs={12} sm={6}>
+                      {/* Consolidated Deductions & Tax Summary */}
+                      <Grid item xs={12}>
                         <Paper
                           sx={{
-                            p: 2.5,
+                            p: 3,
                             border: "1px solid var(--color-border)",
                             borderRadius: "var(--radius-control)",
                             background: "var(--color-surface-subtle)",
                           }}
                         >
                           <Typography
-                            variant="caption"
+                            variant="subtitle2"
                             sx={{
-                              color: "var(--color-text-secondary)",
-                              fontWeight: 600,
+                              color: "var(--color-primary-hover)",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.06em",
+                              mb: 2.5,
                             }}
                           >
-                            STATUTORY DEDUCTIONS
+                            Deductions & Statutory Summary
                           </Typography>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              mt: 1.5,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "var(--color-text-secondary)" }}
-                            >
-                              PF{" "}
-                              {profileViewMode === "annual"
-                                ? "Paid / Remaining:"
-                                : "Monthly Paid / Live:"}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              fontWeight="bold"
-                              sx={{ color: "var(--color-text-primary)" }}
-                            >
-                              {profileViewMode === "annual"
-                                ? `${formatSummaryValue(annualize(liveSummary.pfPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.pfRemaining, liveSummary.remainingMonths))}`
-                                : `${formatSummaryValue(liveSummary.pfPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.pfRemaining / Math.max(1, liveSummary.remainingMonths))}`}
-                            </Typography>
-                          </Box>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              mt: 1,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "var(--color-text-secondary)" }}
-                            >
-                              ESI{" "}
-                              {profileViewMode === "annual"
-                                ? "Paid / Remaining:"
-                                : "Monthly Paid / Live:"}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              fontWeight="bold"
-                              sx={{ color: "var(--color-text-primary)" }}
-                            >
-                              {profileViewMode === "annual"
-                                ? `${formatSummaryValue(annualize(liveSummary.esiPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.esiRemaining, liveSummary.remainingMonths))}`
-                                : `${formatSummaryValue(liveSummary.esiPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.esiRemaining / Math.max(1, liveSummary.remainingMonths))}`}
-                            </Typography>
-                          </Box>
-                        </Paper>
-                      </Grid>
-
-                      <Grid item xs={12} sm={6}>
-                        <Paper
-                          sx={{
-                            p: 2.5,
-                            border: "1px solid var(--color-border)",
-                            borderRadius: "var(--radius-control)",
-                            background: "var(--color-surface-subtle)",
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "var(--color-text-secondary)",
-                              fontWeight: 600,
-                            }}
-                          >
-                            TAX & ADVANCES
-                          </Typography>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              mt: 1.5,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "var(--color-text-secondary)" }}
-                            >
-                              TDS{" "}
-                              {profileViewMode === "annual"
-                                ? "Paid / Remaining:"
-                                : "Monthly Paid / Live:"}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              fontWeight="bold"
-                              sx={{ color: "var(--color-text-primary)" }}
-                            >
-                              {profileViewMode === "annual"
-                                ? `${formatSummaryValue(annualize(liveSummary.taxPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.taxRemaining, liveSummary.remainingMonths))}`
-                                : `${formatSummaryValue(liveSummary.taxPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.taxRemaining / Math.max(1, liveSummary.remainingMonths))}`}
-                            </Typography>
-                          </Box>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              mt: 1,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "var(--color-text-secondary)" }}
-                            >
-                              Professional Tax:
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              fontWeight="bold"
-                              sx={{ color: "var(--color-text-primary)" }}
-                            >
-                              {profileSummary.structure && profileSummary.structure.ctc
-                                ? (profileSummary.structure.ctc * 12 > 250000 ? formatCurrency(200) : formatCurrency(0))
-                                : formatCurrency(0)}
-                            </Typography>
-                          </Box>
-                        </Paper>
-                      </Grid>
-
-                      {/* Live Salary Structure */}
-                      {profileSummary.structure ? (
-                        <Grid item xs={12}>
-                          <Paper
-                            sx={{
-                              p: 2.5,
-                              border: "1px solid var(--color-border)",
-                              borderRadius: "var(--radius-control)",
-                              background: "var(--color-surface-subtle)",
-                            }}
-                          >
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: "var(--color-primary-hover)",
-                                fontWeight: 600,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.05em",
-                              }}
-                            >
-                              LIVE SALARY STRUCTURE
-                            </Typography>
-
-                            <Grid container spacing={2} sx={{ mt: 1.5 }}>
-                              <Grid item xs={6} sm={3}>
+                          <Grid container spacing={3}>
+                            {/* Employee PF */}
+                            <Grid item xs={6} sm={4} md={2.4}>
+                              <Box>
                                 <Typography
                                   variant="caption"
-                                  sx={{ color: "var(--color-text-secondary)" }}
+                                  sx={{
+                                    color: "var(--color-text-secondary)",
+                                    fontWeight: 600,
+                                    display: "block",
+                                    mb: 0.8,
+                                  }}
                                 >
-                                  CTC
+                                  Employee PF
                                 </Typography>
                                 <Typography
                                   variant="body2"
                                   fontWeight="bold"
-                                  sx={{
-                                    color: "var(--color-primary-hover)",
-                                    mt: 0.5,
-                                  }}
+                                  sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                 >
                                   {profileViewMode === "annual"
-                                    ? formatSummaryValue(
-                                        profileSummary.structure.ctc * 12,
-                                      )
-                                    : formatSummaryValue(
-                                        profileSummary.structure.ctc,
-                                      )}
+                                    ? `${formatSummaryValue(annualize(liveSummary.pfPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.pfRemaining, liveSummary.remainingMonths))}`
+                                    : `${formatSummaryValue(liveSummary.pfPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.pfRemaining / Math.max(1, liveSummary.remainingMonths))}`}
                                 </Typography>
-                              </Grid>
+                                <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
+                                  {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
+                                </Typography>
+                              </Box>
+                            </Grid>
 
-                              <Grid item xs={6} sm={3}>
+                            {/* Employer PF */}
+                            <Grid item xs={6} sm={4} md={2.4}>
+                              <Box>
                                 <Typography
                                   variant="caption"
-                                  sx={{ color: "var(--color-text-secondary)" }}
-                                >
-                                  Gross Salary
-                                </Typography>
-                                <Typography
-                                  variant="body2"
-                                  fontWeight="bold"
                                   sx={{
-                                    color: "var(--color-text-primary)",
-                                    mt: 0.5,
+                                    color: "var(--color-text-secondary)",
+                                    fontWeight: 600,
+                                    display: "block",
+                                    mb: 0.8,
                                   }}
-                                >
-                                  {profileViewMode === "annual"
-                                    ? formatSummaryValue(
-                                        profileSummary.structure.gross_salary *
-                                          12,
-                                      )
-                                    : formatSummaryValue(
-                                        profileSummary.structure.gross_salary,
-                                      )}
-                                </Typography>
-                              </Grid>
-
-                              <Grid item xs={6} sm={3}>
-                                <Typography
-                                  variant="caption"
-                                  sx={{ color: "var(--color-text-secondary)" }}
-                                >
-                                  Basic Salary
-                                </Typography>
-                                <Typography
-                                  variant="body2"
-                                  fontWeight="bold"
-                                  sx={{
-                                    color: "var(--color-text-primary)",
-                                    mt: 0.5,
-                                  }}
-                                >
-                                  {profileViewMode === "annual"
-                                    ? formatSummaryValue(
-                                        profileSummary.structure.basic_salary *
-                                          12,
-                                      )
-                                    : formatSummaryValue(
-                                        profileSummary.structure.basic_salary,
-                                      )}
-                                </Typography>
-                              </Grid>
-
-                              <Grid item xs={6} sm={3}>
-                                <Typography
-                                  variant="caption"
-                                  sx={{ color: "var(--color-text-secondary)" }}
-                                >
-                                  HRA
-                                </Typography>
-                                <Typography
-                                  variant="body2"
-                                  fontWeight="bold"
-                                  sx={{
-                                    color: "var(--color-text-primary)",
-                                    mt: 0.5,
-                                  }}
-                                >
-                                  {profileViewMode === "annual"
-                                    ? formatSummaryValue(
-                                        profileSummary.structure.hra * 12,
-                                      )
-                                    : formatSummaryValue(
-                                        profileSummary.structure.hra,
-                                      )}
-                                </Typography>
-                              </Grid>
-
-                              <Grid item xs={6} sm={3}>
-                                <Typography
-                                  variant="caption"
-                                  sx={{ color: "var(--color-text-secondary)" }}
                                 >
                                   Employer PF
                                 </Typography>
                                 <Typography
                                   variant="body2"
                                   fontWeight="bold"
+                                  sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
+                                >
+                                  {profileSummary.structure
+                                    ? formatSummaryValue(
+                                        profileViewMode === "annual"
+                                          ? (profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary) * 12
+                                          : (profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary)
+                                      )
+                                    : formatSummaryValue(0)}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
+                                  Contribution
+                                </Typography>
+                              </Box>
+                            </Grid>
+
+                            {/* Employee ESI */}
+                            <Grid item xs={6} sm={4} md={2.4}>
+                              <Box>
+                                <Typography
+                                  variant="caption"
                                   sx={{
-                                    color: "var(--color-text-primary)",
-                                    mt: 0.5,
+                                    color: "var(--color-text-secondary)",
+                                    fontWeight: 600,
+                                    display: "block",
+                                    mb: 0.8,
                                   }}
                                 >
-                                  {profileViewMode === "annual"
-                                    ? formatSummaryValue(
-                                        (profileSummary.structure.employer_pf ??
-                                          profileSummary.structure.ctc -
-                                            profileSummary.structure
-                                              .gross_salary) * 12,
-                                      )
-                                    : formatSummaryValue(
-                                        profileSummary.structure.employer_pf ??
-                                          profileSummary.structure.ctc -
-                                            profileSummary.structure
-                                              .gross_salary,
-                                      )}
+                                  Employee ESI
                                 </Typography>
-                              </Grid>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight="bold"
+                                  sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
+                                >
+                                  {profileViewMode === "annual"
+                                    ? `${formatSummaryValue(annualize(liveSummary.esiPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.esiRemaining, liveSummary.remainingMonths))}`
+                                    : `${formatSummaryValue(liveSummary.esiPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.esiRemaining / Math.max(1, liveSummary.remainingMonths))}`}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
+                                  {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
+                                </Typography>
+                              </Box>
+                            </Grid>
 
-                              {(profileSummary.structure.employer_esi ?? 0) >
-                                0 && (
-                                <Grid item xs={6} sm={3}>
+                            {/* Employer ESI - Conditional */}
+                            {(profileSummary.structure?.employer_esi ?? 0) > 0 && (
+                              <Grid item xs={6} sm={4} md={2.4}>
+                                <Box>
                                   <Typography
                                     variant="caption"
                                     sx={{
                                       color: "var(--color-text-secondary)",
+                                      fontWeight: 600,
+                                      display: "block",
+                                      mb: 0.8,
                                     }}
                                   >
                                     Employer ESI
@@ -3440,83 +3280,208 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                   <Typography
                                     variant="body2"
                                     fontWeight="bold"
-                                    sx={{
-                                      color: "var(--color-text-primary)",
-                                      mt: 0.5,
-                                    }}
+                                    sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                   >
-                                    {profileViewMode === "annual"
+                                    {profileSummary.structure
                                       ? formatSummaryValue(
-                                          profileSummary.structure
-                                            .employer_esi * 12,
+                                          profileViewMode === "annual"
+                                            ? profileSummary.structure.employer_esi * 12
+                                            : profileSummary.structure.employer_esi
                                         )
-                                      : formatSummaryValue(
-                                          profileSummary.structure.employer_esi,
-                                        )}
+                                      : formatSummaryValue(0)}
                                   </Typography>
+                                  <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
+                                    Contribution
+                                  </Typography>
+                                </Box>
+                              </Grid>
+                            )}
+
+                            {/* TDS */}
+                            <Grid item xs={6} sm={4} md={2.4}>
+                              <Box>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: "var(--color-text-secondary)",
+                                    fontWeight: 600,
+                                    display: "block",
+                                    mb: 0.8,
+                                  }}
+                                >
+                                  TDS
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight="bold"
+                                  sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
+                                >
+                                  {profileViewMode === "annual"
+                                    ? `${formatSummaryValue(annualize(liveSummary.taxPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.taxRemaining, liveSummary.remainingMonths))}`
+                                    : `${formatSummaryValue(liveSummary.taxPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.taxRemaining / Math.max(1, liveSummary.remainingMonths))}`}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
+                                  {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
+                                </Typography>
+                              </Box>
+                            </Grid>
+
+                            {/* Professional Tax */}
+                            <Grid item xs={6} sm={4} md={2.4}>
+                              <Box>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: "var(--color-text-secondary)",
+                                    fontWeight: 600,
+                                    display: "block",
+                                    mb: 0.8,
+                                  }}
+                                >
+                                  Prof. Tax
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight="bold"
+                                  sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
+                                >
+                                  {profileSummary.structure && profileSummary.structure.ctc
+                                    ? formatCurrency(profileSummary.structure.ctc * 12 > 250000 ? 200 : 0)
+                                    : formatCurrency(0)}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
+                                  Monthly
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        </Paper>
+                      </Grid>
+
+                      {/* Live Salary Structure - Revised UI */}
+                      {profileSummary.structure ? (
+                        <Grid item xs={12}>
+                          <Paper
+                            sx={{
+                              p: 3,
+                              border: "1px solid var(--color-border)",
+                              borderRadius: "var(--radius-control)",
+                              background: "var(--color-surface-subtle)",
+                            }}
+                          >
+                            <Box sx={{ mb: 2.5, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  color: "var(--color-primary-hover)",
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.08em",
+                                }}
+                              >
+                                Salary Structure Breakdown
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: "var(--color-text-secondary)" }}>
+                                {profileViewMode === "annual" ? "Annual figures" : "Monthly figures"}
+                              </Typography>
+                            </Box>
+
+                            <Grid container spacing={2.5}>
+                              <Grid item xs={12} sm={6} md={3}>
+                                <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                  <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                    CTC
+                                  </Typography>
+                                  <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                    {profileViewMode === "annual" ? formatSummaryValue(profileSummary.structure.ctc * 12) : formatSummaryValue(profileSummary.structure.ctc)}
+                                  </Typography>
+                                </Paper>
+                              </Grid>
+
+                              <Grid item xs={12} sm={6} md={3}>
+                                <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                  <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                    Gross Salary
+                                  </Typography>
+                                  <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                    {profileViewMode === "annual" ? formatSummaryValue(profileSummary.structure.gross_salary * 12) : formatSummaryValue(profileSummary.structure.gross_salary)}
+                                  </Typography>
+                                </Paper>
+                              </Grid>
+
+                              <Grid item xs={12} sm={6} md={3}>
+                                <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                  <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                    Basic Salary
+                                  </Typography>
+                                  <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                    {profileViewMode === "annual" ? formatSummaryValue(profileSummary.structure.basic_salary * 12) : formatSummaryValue(profileSummary.structure.basic_salary)}
+                                  </Typography>
+                                </Paper>
+                              </Grid>
+
+                              <Grid item xs={12} sm={6} md={3}>
+                                <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                  <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                    HRA
+                                  </Typography>
+                                  <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                    {profileViewMode === "annual" ? formatSummaryValue(profileSummary.structure.hra * 12) : formatSummaryValue(profileSummary.structure.hra)}
+                                  </Typography>
+                                </Paper>
+                              </Grid>
+
+                              <Grid item xs={12} sm={6} md={3}>
+                                <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                  <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                    Employer PF
+                                  </Typography>
+                                  <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                    {profileViewMode === "annual"
+                                      ? formatSummaryValue((profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary) * 12)
+                                      : formatSummaryValue(profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary)}
+                                  </Typography>
+                                </Paper>
+                              </Grid>
+
+                              {(profileSummary.structure.employer_esi ?? 0) > 0 && (
+                                <Grid item xs={12} sm={6} md={3}>
+                                  <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                    <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                      Employer ESI
+                                    </Typography>
+                                    <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                      {profileViewMode === "annual"
+                                        ? formatSummaryValue(profileSummary.structure.employer_esi * 12)
+                                        : formatSummaryValue(profileSummary.structure.employer_esi)}
+                                    </Typography>
+                                  </Paper>
                                 </Grid>
                               )}
 
-                              {profileSummary.structure.special_allowance >
-                                0 && (
-                                <Grid item xs={6} sm={3}>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{
-                                      color: "var(--color-text-secondary)",
-                                    }}
-                                  >
-                                    Special Allowance
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    fontWeight="bold"
-                                    sx={{
-                                      color: "var(--color-text-primary)",
-                                      mt: 0.5,
-                                    }}
-                                  >
-                                    {profileViewMode === "annual"
-                                      ? formatSummaryValue(
-                                          profileSummary.structure
-                                            .special_allowance * 12,
-                                        )
-                                      : formatSummaryValue(
-                                          profileSummary.structure
-                                            .special_allowance,
-                                        )}
-                                  </Typography>
+                              {profileSummary.structure.special_allowance > 0 && (
+                                <Grid item xs={12} sm={6} md={3}>
+                                  <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                    <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                      Special Allowance
+                                    </Typography>
+                                    <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                      {profileViewMode === "annual" ? formatSummaryValue(profileSummary.structure.special_allowance * 12) : formatSummaryValue(profileSummary.structure.special_allowance)}
+                                    </Typography>
+                                  </Paper>
                                 </Grid>
                               )}
 
                               {profileSummary.structure.other_allowance > 0 && (
-                                <Grid item xs={6} sm={3}>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{
-                                      color: "var(--color-text-secondary)",
-                                    }}
-                                  >
-                                    Other Allowance
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    fontWeight="bold"
-                                    sx={{
-                                      color: "var(--color-text-primary)",
-                                      mt: 0.5,
-                                    }}
-                                  >
-                                    {profileViewMode === "annual"
-                                      ? formatSummaryValue(
-                                          profileSummary.structure
-                                            .other_allowance * 12,
-                                        )
-                                      : formatSummaryValue(
-                                          profileSummary.structure
-                                            .other_allowance,
-                                        )}
-                                  </Typography>
+                                <Grid item xs={12} sm={6} md={3}>
+                                  <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
+                                    <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
+                                      Other Allowance
+                                    </Typography>
+                                    <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
+                                      {profileViewMode === "annual" ? formatSummaryValue(profileSummary.structure.other_allowance * 12) : formatSummaryValue(profileSummary.structure.other_allowance)}
+                                    </Typography>
+                                  </Paper>
                                 </Grid>
                               )}
                             </Grid>
@@ -4048,6 +4013,33 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                   disabled
                   // helperText="Auto-calculated (Monthly × 12)"
                   inputProps={{ min: 0 }}
+                  sx={inputStyles}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Employer PF"
+                  fullWidth
+                  value={String(
+                    computeEmployerPf(
+                      formData.monthly_ctc,
+                      formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc),
+                    ),
+                  )}
+                  InputProps={{ readOnly: true }}
+                  disabled
+                  sx={inputStyles}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Employer ESI"
+                  fullWidth
+                  value={String(computeEmployerEsi(formData.monthly_ctc))}
+                  InputProps={{ readOnly: true }}
+                  disabled
                   sx={inputStyles}
                 />
               </Grid>

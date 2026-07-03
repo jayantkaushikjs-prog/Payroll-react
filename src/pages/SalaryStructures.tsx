@@ -61,6 +61,8 @@ interface SalaryStructure {
   special_allowance: number;
   other_allowance: number;
   gross_salary: number;
+  employer_pf: number;
+  employer_esi: number;
   ctc: number;
   is_active: boolean;
   effective_from: string;
@@ -466,7 +468,8 @@ const SalaryStructures: React.FC = () => {
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Basic Salary</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>HRA</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Other Allowance</TableCell>
-                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer Contributions</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer PF</TableCell>
+                <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer ESI</TableCell>
                 <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Gross Salary</TableCell>
                 <TableCell align="right" sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Actions</TableCell>
               </TableRow>
@@ -525,9 +528,8 @@ const SalaryStructures: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.basic_salary) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.hra) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.other_allowance) : '—'}</TableCell>
-                      <TableCell sx={{ color: current ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: 700, fontFamily: 'Outfit' }}>
-                        {current ? formatCurrency(Number(current.ctc) - Number(current.gross_salary)) : '—'}
-                      </TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.employer_pf) : '—'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.employer_esi) : '—'}</TableCell>
                       <TableCell sx={{ color: current ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 700, fontFamily: 'Outfit' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           {current ? formatCurrency(current.gross_salary) : '—'}
@@ -850,7 +852,8 @@ const SalaryStructures: React.FC = () => {
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Basic</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>HRA</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Other</TableCell>
-                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer Contributions</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer PF</TableCell>
+                    <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Employer ESI</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Gross</TableCell>
                     <TableCell sx={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</TableCell>
                   </TableRow>
@@ -863,8 +866,9 @@ const SalaryStructures: React.FC = () => {
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.basic_salary)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.hra)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.other_allowance)}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{formatCurrency(Number(hist.ctc) - Number(hist.gross_salary))}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-success)', fontWeight: 600 }}>{formatCurrency(hist.gross_salary)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.employer_pf)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(hist.employer_esi)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{formatCurrency(hist.gross_salary)}</TableCell>
                       <TableCell>
                         <Box
                           sx={{
