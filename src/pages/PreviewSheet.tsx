@@ -280,34 +280,17 @@ const PreviewSheet: React.FC = () => {
       const hasActiveSubfilter = filterNew || filterOld || filterNotice || filterRelieving;
       if (!hasActiveSubfilter) return true; // Default behavior if nothing is checked
       
-      const joiningDate = emp.joining_date ? new Date(emp.joining_date) : null;
-      const relievingDate = emp.relieving_date ? new Date(emp.relieving_date) : null;
-      
-      let matchesCategory = false;
-      
-      if (filterNew && joiningDate) {
-        if (joiningDate >= startOfPreviewMonth && joiningDate <= endOfPreviewMonth) matchesCategory = true;
-      }
-      
-      if (filterOld && joiningDate) {
-        if (joiningDate < startOfPreviewMonth) matchesCategory = true;
-      }
-      
-      if (filterNotice && relievingDate) {
-        // On Notice means they are leaving in the future (after the end of the current preview month) or similar
-        const now = new Date();
-        if (relievingDate > now) matchesCategory = true;
-      }
-      
-      if (filterRelieving) {
-        if ((emp as any).preview_status) {
-          if ((emp as any).preview_status === 'relieving') matchesCategory = true;
-        } else if (relievingDate) {
-          if (relievingDate >= startOfPreviewMonth && relievingDate <= endOfPreviewMonth) matchesCategory = true;
-        }
-      }
-      
-      return matchesCategory;
+      // Determine effective status: prefer server-provided `preview_status`, otherwise derive
+      const effectiveStatus = (emp as any).preview_status || getPreviewStatus(emp, previewMonth);
+
+      // Map filters to statuses — treat `old` as exclusive (not on_notice or relieving)
+      const statusMatches =
+        (filterNew && effectiveStatus === 'new') ||
+        (filterOld && effectiveStatus === 'old') ||
+        (filterNotice && effectiveStatus === 'on_notice') ||
+        (filterRelieving && effectiveStatus === 'relieving');
+
+      return statusMatches;
     });
   }, [previewEmployees, previewSearch, modifiedOnly, filterAll, filterNew, filterOld, filterNotice, filterRelieving, previewMonth]);
 
