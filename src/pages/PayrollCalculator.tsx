@@ -72,12 +72,12 @@ const PayrollCalculator: React.FC = () => {
     const esiApplicable = basic <= esiWageLimit;
 
     // Employer side (benefits) – calculated only when applicable
-    const employerPf = pfApplicable ? Number(Math.min(ctc * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
-    const employerEsi = esiApplicable ? Number((ctc * esiEmployerRate).toFixed(2)) : 0;
+    const employerPf = pfApplicable ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
+    const employerEsi = esiApplicable ? Number((basic * esiEmployerRate).toFixed(2)) : 0;
 
     // Employee side (deductions) – calculated only when applicable
-    const employeePf = pfApplicable ? Number(Math.min(ctc * pfEmployeeRate, maxPfCap).toFixed(2)) : 0;
-    const employeeEsi = esiApplicable ? Number((ctc * esiEmployeeRate).toFixed(2)) : 0;
+    const employeePf = pfApplicable ? Number(Math.min(basic * pfEmployeeRate, maxPfCap).toFixed(2)) : 0;
+    const employeeEsi = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0;
 
     // Gross salary after subtracting employer contributions
     const gross = Number((ctc - employerPf - employerEsi).toFixed(2));
@@ -92,11 +92,10 @@ const PayrollCalculator: React.FC = () => {
     const ratio = daysInMonth > 0 ? payableDays / daysInMonth : 1;
     const payableGross = Number((gross * Math.max(0, Math.min(1, ratio))).toFixed(2));
     const payableBasic = Number((basic * Math.max(0, Math.min(1, ratio))).toFixed(2));
-    const payableCtc = Number((ctc * Math.max(0, Math.min(1, ratio))).toFixed(2));
     const nonPayableDeduction = Number((gross - payableGross).toFixed(2));
 
-    const employeePfDeduction = pfApplicable ? Number(Math.min(payableCtc * pfEmployeeRate, maxPfCap * Math.max(0, Math.min(1, ratio))).toFixed(2)) : 0;
-    const employeeEsiDeduction = esiApplicable ? Number((payableCtc * esiEmployeeRate).toFixed(2)) : 0;
+    const employeePfDeduction = pfApplicable ? Number(Math.min(payableBasic * pfEmployeeRate, maxPfCap * Math.max(0, Math.min(1, ratio))).toFixed(2)) : 0;
+    const employeeEsiDeduction = esiApplicable ? Number((payableBasic * esiEmployeeRate).toFixed(2)) : 0;
 
     const lateAbsentDays = extra.lateArrivals < 3 ? 0 : (extra.lateArrivals / 3) * 0.5;
     const lateArrivalDeductionAmount = Number(((gross / daysInMonth) * lateAbsentDays).toFixed(2));

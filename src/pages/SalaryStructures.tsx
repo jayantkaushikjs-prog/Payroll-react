@@ -142,8 +142,8 @@ const SalaryStructures: React.FC = () => {
       const basic = Number((ctc * 0.5).toFixed(2));
       const pfApplies = emp ? emp.pf_deduction !== false : true;
       const esiApplies = basic <= 21000;
-      const live_employer_pf = pfApplies ? Number(Math.min(ctc * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
-      const live_employer_esi = esiApplies ? Number((ctc * esiEmployerRate).toFixed(2)) : 0;
+      const live_employer_pf = pfApplies ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
+      const live_employer_esi = esiApplies ? Number((basic * esiEmployerRate).toFixed(2)) : 0;
       const live_gross = Number((ctc - live_employer_pf - live_employer_esi).toFixed(2));
       const live_other_allowance = Math.max(0, Number((live_gross - basic - Number((basic * 0.4).toFixed(2))).toFixed(2)));
       result[empId] = {
@@ -385,8 +385,8 @@ const SalaryStructures: React.FC = () => {
     const pfApplies = selectedEmp ? selectedEmp.pf_deduction !== false : true;
     const esiApplies = basic_salary <= 21000;
 
-    const employer_pf = pfApplies ? Number(Math.min(ctc * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
-    const employer_esi = esiApplies ? Number((ctc * esiEmployerRate).toFixed(2)) : 0;
+    const employer_pf = pfApplies ? Number(Math.min(basic_salary * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
+    const employer_esi = esiApplies ? Number((basic_salary * esiEmployerRate).toFixed(2)) : 0;
 
     const gross_salary = Number((ctc - employer_pf - employer_esi).toFixed(2));
     const special_allowance = 0;
