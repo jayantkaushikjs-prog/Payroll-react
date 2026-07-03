@@ -2664,7 +2664,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             },
                           }}
                         >
-                          📅 {profileStartDate} → {profileEndDate}
+                          Select Date Range
                         </Button>
 
                         {/* Range Popover */}
@@ -3254,15 +3254,16 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                               variant="body2"
                               sx={{ color: "var(--color-text-secondary)" }}
                             >
-                              Advance recovered / open:
+                              Professional Tax:
                             </Typography>
                             <Typography
                               variant="body2"
                               fontWeight="bold"
                               sx={{ color: "var(--color-text-primary)" }}
                             >
-                              {formatCurrency(liveSummary.advanceRecovered)} /{" "}
-                              {formatCurrency(liveSummary.advanceOutstanding)}
+                              {profileSummary.structure && profileSummary.structure.ctc
+                                ? (profileSummary.structure.ctc * 12 > 250000 ? formatCurrency(200) : formatCurrency(0))
+                                : formatCurrency(0)}
                             </Typography>
                           </Box>
                         </Paper>

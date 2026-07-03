@@ -294,10 +294,15 @@ const PreviewSheet: React.FC = () => {
     });
   }, [previewEmployees, previewSearch, modifiedOnly, filterAll, filterNew, filterOld, filterNotice, filterRelieving, previewMonth]);
 
+  const sortedPreview = useMemo(() => {
+    // Sort by employee id in ascending order
+    return [...filteredPreview].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  }, [filteredPreview]);
+
   const paginatedPreview = useMemo(() => {
     const startIndex = previewPage * previewRowsPerPage;
-    return filteredPreview.slice(startIndex, startIndex + previewRowsPerPage);
-  }, [filteredPreview, previewPage, previewRowsPerPage]);
+    return sortedPreview.slice(startIndex, startIndex + previewRowsPerPage);
+  }, [sortedPreview, previewPage, previewRowsPerPage]);
 
   const previewLocked = useMemo(() => {
     return Array.isArray(previewEmployees) && previewEmployees.some((e: any) => e.preview_locked);
