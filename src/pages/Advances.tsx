@@ -159,11 +159,19 @@ const Advances: React.FC = () => {
   const isFinanceOrAdmin = user && (user.role === Role.SUPER_ADMIN || user.role === Role.FINANCE);
 
   // Fetch active employees through a finance-authorized payroll endpoint
-  const { data: employees = [] } = useQuery(['employees'], async () => {
+  // NOTE: using a distinct query key ('employees-for-advances') to avoid
+  // polluting the shared ['employees'] cache that Employees.tsx uses.
+  const { data: employees = [] } = useQuery(['employees-for-advances'], async () => {
     const res = await api.get('/salary-structures/active');
+    const seen = new Set<number>();
     return res.data
       .map((s: SalaryStructure) => s.employee)
-      .filter((e: Employee & { active_status?: boolean }) => e && e.active_status !== false);
+      .filter((e: Employee & { active_status?: boolean }) => {
+        if (!e || e.active_status === false) return false;
+        if (seen.has(e.id)) return false; // deduplicate by employee ID
+        seen.add(e.id);
+        return true;
+      });
   });
 
   // Fetch all advances

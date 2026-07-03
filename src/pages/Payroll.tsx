@@ -82,7 +82,7 @@ const Payroll: React.FC = () => {
       case 'others': return Number(pr.tax_breakdown_json?.othersAllowance ?? Math.max(0, Number(pr.gross_salary) - (Number(pr.tax_breakdown_json?.basic ?? pr.tax_breakdown_json?.basicSalary ?? 0)) - (Number(pr.tax_breakdown_json?.hra ?? 0))));
       case 'bonus': return Number(pr.tax_breakdown_json?.bonus ?? 0);
       case 'encash': return Number(pr.tax_breakdown_json?.leaveEncashment ?? 0);
-      case 'gross': return Number(pr.gross_salary ?? 0);
+      case 'gross': return Number(pr.tax_breakdown_json?.gross ?? pr.gross_salary ?? 0);
       case 'absent': return Number(pr.non_payable_deduction ?? 0);
       case 'late': return Number(pr.tax_breakdown_json?.lateArrivalDeduction ?? 0);
       case 'employer_pf': return Number(pr.tax_breakdown_json?.employerPf ?? 0);

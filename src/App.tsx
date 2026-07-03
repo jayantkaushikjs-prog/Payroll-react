@@ -14,6 +14,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
+import PreviewSheet from './pages/PreviewSheet';
 import FinancialSummary from './pages/FinancialSummary';
 import SalaryStructures from './pages/SalaryStructures';
 import NonPayableDays from './pages/NonPayableDays';
@@ -81,7 +82,7 @@ const App: React.FC = () => {
                     path="preview-sheet"
                     element={
                       <RoleProtectedRoute requiredPermissions={[Permission.VIEW_EMPLOYEE, Permission.MANAGE_SALARY_STRUCTURES]} requireAll={false}>
-                        <Employees previewOnly />
+                        <PreviewSheet />
                       </RoleProtectedRoute>
                     }
                   />

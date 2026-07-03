@@ -85,7 +85,8 @@ const PayrollCalculator: React.FC = () => {
     // Other allowance represents the remaining amount after Basic and HRA
     const othersAllowance = Math.max(0, Number((gross - basic - hra).toFixed(2)));
 
-    const daysInMonth = 30;
+    const now = new Date();
+    const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
     const absentDays = Math.max(0, Number(extra.nonPayableDays || 0));
     const payableDays = Math.max(0, daysInMonth - absentDays);
     const ratio = daysInMonth > 0 ? payableDays / daysInMonth : 1;
@@ -101,9 +102,9 @@ const PayrollCalculator: React.FC = () => {
 
     const ptAmount = extra.professionalTax !== undefined && extra.professionalTax !== '' ? Number(extra.professionalTax) : professionalTax;
     const appliedPt = (ctc * 12) <= 250000 ? 0 : Number(ptAmount.toFixed(2));
-    const totalDeductions = Number((employeePfDeduction + employeeEsiDeduction + appliedPt + lateArrivalDeductionAmount + extra.damages + extra.otherDeductions).toFixed(2));
+    const totalDeductions = Number((employeePfDeduction + employeeEsiDeduction + appliedPt + lateArrivalDeductionAmount + extra.damages + extra.otherDeductions + nonPayableDeduction).toFixed(2));
 
-    const totalEarnings = Number((payableGross + extra.bonus + extra.leaveEncashment).toFixed(2));
+    const totalEarnings = Number((gross + extra.bonus + extra.leaveEncashment).toFixed(2));
     const net = Number(Math.max(0, totalEarnings - totalDeductions).toFixed(2));
 
     return {
@@ -253,8 +254,8 @@ const PayrollCalculator: React.FC = () => {
               <TextField value={leaveEncashment} onChange={(e) => setLeaveEncashment(e.target.value)} type="number" placeholder="Amt" variant="outlined" size="small" fullWidth />
             </Box>
             <Box sx={{ flex: 1, minWidth: 150 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Late Arrivals (Days)</Typography>
-              <TextField value={lateArrivals} onChange={(e) => setLateArrivals(e.target.value)} type="number" placeholder="Days" variant="outlined" size="small" fullWidth />
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Late Arrivals (count)</Typography>
+              <TextField value={lateArrivals} onChange={(e) => setLateArrivals(e.target.value)} type="number" placeholder="Count" variant="outlined" size="small" fullWidth />
             </Box>
             <Box sx={{ flex: 1, minWidth: 150 }}>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Non-Payable Days</Typography>
