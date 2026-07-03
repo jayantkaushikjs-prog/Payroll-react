@@ -97,7 +97,7 @@ const PayrollCalculator: React.FC = () => {
     const employeePfDeduction = pfApplicable ? Number(Math.min(payableBasic * pfEmployeeRate, maxPfCap * Math.max(0, Math.min(1, ratio))).toFixed(2)) : 0;
     const employeeEsiDeduction = esiApplicable ? Number((payableBasic * esiEmployeeRate).toFixed(2)) : 0;
 
-    const lateAbsentDays = Math.floor(extra.lateArrivals / 3) * 0.5;
+    const lateAbsentDays = extra.lateArrivals < 3 ? 0 : (extra.lateArrivals / 3) * 0.5;
     const lateArrivalDeductionAmount = Number(((gross / daysInMonth) * lateAbsentDays).toFixed(2));
 
     const ptAmount = extra.professionalTax !== undefined && extra.professionalTax !== '' ? Number(extra.professionalTax) : professionalTax;

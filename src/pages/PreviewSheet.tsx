@@ -300,8 +300,8 @@ const PreviewSheet: React.FC = () => {
       }
       
       if (filterRelieving) {
-        if (emp.preview_status) {
-          if (emp.preview_status === 'relieving') matchesCategory = true;
+        if ((emp as any).preview_status) {
+          if ((emp as any).preview_status === 'relieving') matchesCategory = true;
         } else if (relievingDate) {
           if (relievingDate >= startOfPreviewMonth && relievingDate <= endOfPreviewMonth) matchesCategory = true;
         }
@@ -347,12 +347,12 @@ const PreviewSheet: React.FC = () => {
     try {
       // Let axios/browser set the multipart Content-Type (including boundary)
       const response = await api.post('/employees/preview-csv-import', formData);
-      showToast(`Imported ${response.data.imported} records.`, 'success');
-      if (response.data.errors?.length > 0) {
-         showToast(response.data.errors.join('\n'), 'warning');
+      showToast(`Imported ${(response.data as any).imported} records.`, 'success');
+      if ((response.data as any).errors?.length > 0) {
+         showToast((response.data as any).errors.join('\n'), 'warning');
       }
       queryClient.invalidateQueries(['preview-employees', previewMonth]);
-    } catch (error) {
+    } catch (error: any) {
       const msg = error.response?.data?.message || error.message || 'Failed to import CSV';
       showToast(msg, 'error');
     }
@@ -373,7 +373,7 @@ const PreviewSheet: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch (error) {
+    } catch (error: any) {
       const msg = error.response?.data?.message || error.message || 'Failed to export CSV';
       showToast(msg, 'error');
     }
@@ -494,7 +494,7 @@ const PreviewSheet: React.FC = () => {
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.bonus_incentives ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.leave_encashment ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>
-                        {emp.has_monthly_input ? `${Number(emp.late_arrival_deduction ?? 0).toFixed(0)} (→ ${Math.floor(Number(emp.late_arrival_deduction || 0) / 3) * 0.5} days)` : '-'}
+                        {emp.has_monthly_input ? `${Number(emp.late_arrival_deduction ?? 0).toFixed(0)} (→ ${(Number(emp.late_arrival_deduction || 0) < 3 ? 0 : (Number(emp.late_arrival_deduction || 0) / 3) * 0.5).toFixed(2)} days)` : '-'}
                       </TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.damages_recovery ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.other_deductions ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
