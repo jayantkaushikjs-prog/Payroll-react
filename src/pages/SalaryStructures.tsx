@@ -121,6 +121,44 @@ const SalaryStructures: React.FC = () => {
     return indexed;
   }, [activeSalaryRows]);
 
+  // Latest PF settings (most recent by effective_date)
+  const latestPfSetting = useMemo(() => {
+    if (!pfList || pfList.length === 0) return null;
+    return [...pfList].sort((a: any, b: any) => b.effective_date.localeCompare(a.effective_date))[0];
+  }, [pfList]);
+
+  // Live-computed salary table rows — recalculates employer_pf and employer_esi
+  // from the stored CTC and the latest PF settings every time the tab is viewed.
+  const liveActiveSalaries = useMemo(() => {
+    const pfEmployerRate = latestPfSetting ? Number(latestPfSetting.employer_contribution_rate) / 100 : 0.12;
+    const esiEmployerRate = latestPfSetting ? Number(latestPfSetting.esi_contribution_rate) / 100 : 0.0325;
+    const maxPfCap = latestPfSetting ? Number(latestPfSetting.max_pf_cap || 1800) : 1800;
+
+    const result: Record<number, SalaryStructure & { live_employer_pf: number; live_employer_esi: number }> = {};
+    Object.entries(activeSalaries).forEach(([empIdStr, structure]) => {
+      const empId = Number(empIdStr);
+      const emp = employees.find((e: Employee) => e.id === empId);
+      const ctc = Number(structure.ctc);
+      const basic = Number((ctc * 0.5).toFixed(2));
+      const pfApplies = emp ? emp.pf_deduction !== false : true;
+      const esiApplies = basic <= 21000;
+      const live_employer_pf = pfApplies ? Number(Math.min(basic * pfEmployerRate, maxPfCap).toFixed(2)) : 0;
+      const live_employer_esi = esiApplies ? Number((basic * esiEmployerRate).toFixed(2)) : 0;
+      const live_gross = Number((ctc - live_employer_pf - live_employer_esi).toFixed(2));
+      const live_other_allowance = Math.max(0, Number((live_gross - basic - Number((basic * 0.4).toFixed(2))).toFixed(2)));
+      result[empId] = {
+        ...structure,
+        employer_pf: live_employer_pf,
+        employer_esi: live_employer_esi,
+        gross_salary: live_gross,
+        other_allowance: live_other_allowance,
+        live_employer_pf,
+        live_employer_esi,
+      };
+    });
+    return result;
+  }, [activeSalaries, employees, latestPfSetting]);
+
   // Fetch history for selected employee
   const { data: salaryHistory = [], isLoading: loadingHistory } = useQuery(
     ['salaryHistory', selectedEmp?.id],
@@ -527,14 +565,14 @@ const SalaryStructures: React.FC = () => {
                       </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.basic_salary) : '—'}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.hra) : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.other_allowance) : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.employer_pf) : '—'}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(current.employer_esi) : '—'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(liveActiveSalaries[emp.id]?.other_allowance ?? current.other_allowance) : '—'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(liveActiveSalaries[emp.id]?.employer_pf ?? current.employer_pf) : '—'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)', fontFamily: 'Outfit' }}>{current ? formatCurrency(liveActiveSalaries[emp.id]?.employer_esi ?? current.employer_esi) : '—'}</TableCell>
                       <TableCell sx={{ color: current ? 'var(--color-success)' : 'var(--color-text-muted)', fontWeight: 700, fontFamily: 'Outfit' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {current ? formatCurrency(current.gross_salary) : '—'}
+                          {current ? formatCurrency(liveActiveSalaries[emp.id]?.gross_salary ?? current.gross_salary) : '—'}
                           {current && (
-                            <Tooltip title={`Breakdown: Basic Salary (${formatCurrency(current.basic_salary)}) + HRA (${formatCurrency(current.hra)}) + Other Allowance (${formatCurrency(current.other_allowance)})`} arrow>
+                            <Tooltip title={`Breakdown: Basic Salary (${formatCurrency(current.basic_salary)}) + HRA (${formatCurrency(current.hra)}) + Other Allowance (${formatCurrency(liveActiveSalaries[emp.id]?.other_allowance ?? current.other_allowance)})`} arrow>
                               <IconButton size="small" sx={{ p: 0.2, ml: 0.5, color: 'var(--color-text-secondary)', '& svg': { fontSize: '0.85rem' } }}>
                                 <HelpOutlineIcon />
                               </IconButton>

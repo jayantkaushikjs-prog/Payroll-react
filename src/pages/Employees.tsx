@@ -3219,13 +3219,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                   fontWeight="bold"
                                   sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                 >
-                                  {profileSummary.structure
-                                    ? formatSummaryValue(
-                                        profileViewMode === "annual"
-                                          ? (profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary) * 12
-                                          : (profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary)
-                                      )
-                                    : formatSummaryValue(0)}
+                                  {formatSummaryValue(
+                                    profileViewMode === "annual"
+                                      ? computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction) * 12
+                                      : computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction)
+                                  )}
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
                                   Contribution
@@ -3263,7 +3261,7 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                             </Grid>
 
                             {/* Employer ESI - Conditional */}
-                            {(profileSummary.structure?.employer_esi ?? 0) > 0 && (
+                            {computeEmployerEsi(profileFormData.monthly_ctc) > 0 && (
                               <Grid item xs={6} sm={4} md={2.4}>
                                 <Box>
                                   <Typography
@@ -3282,13 +3280,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                     fontWeight="bold"
                                     sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                   >
-                                    {profileSummary.structure
-                                      ? formatSummaryValue(
-                                          profileViewMode === "annual"
-                                            ? profileSummary.structure.employer_esi * 12
-                                            : profileSummary.structure.employer_esi
-                                        )
-                                      : formatSummaryValue(0)}
+                                    {formatSummaryValue(
+                                      profileViewMode === "annual"
+                                        ? computeEmployerEsi(profileFormData.monthly_ctc) * 12
+                                        : computeEmployerEsi(profileFormData.monthly_ctc)
+                                    )}
                                   </Typography>
                                   <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
                                     Contribution
@@ -3438,13 +3434,13 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                   </Typography>
                                   <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
                                     {profileViewMode === "annual"
-                                      ? formatSummaryValue((profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary) * 12)
-                                      : formatSummaryValue(profileSummary.structure.employer_pf ?? profileSummary.structure.ctc - profileSummary.structure.gross_salary)}
+                                      ? formatSummaryValue(computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction) * 12)
+                                      : formatSummaryValue(computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction))}
                                   </Typography>
                                 </Paper>
                               </Grid>
 
-                              {(profileSummary.structure.employer_esi ?? 0) > 0 && (
+                              {(profileSummary.structure?.employer_esi ?? computeEmployerEsi(profileFormData.monthly_ctc)) > 0 && (
                                 <Grid item xs={12} sm={6} md={3}>
                                   <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
                                     <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
@@ -3452,8 +3448,8 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
                                     </Typography>
                                     <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
                                       {profileViewMode === "annual"
-                                        ? formatSummaryValue(profileSummary.structure.employer_esi * 12)
-                                        : formatSummaryValue(profileSummary.structure.employer_esi)}
+                                        ? formatSummaryValue((profileSummary.structure?.employer_esi ?? computeEmployerEsi(profileFormData.monthly_ctc)) * 12)
+                                        : formatSummaryValue(profileSummary.structure?.employer_esi ?? computeEmployerEsi(profileFormData.monthly_ctc))}
                                     </Typography>
                                   </Paper>
                                 </Grid>

@@ -61,6 +61,8 @@ interface FinancialSummaryData {
     hra: number;
     special_allowance: number;
     other_allowance: number;
+    employer_pf: number;
+    employer_esi: number;
   };
 }
 
@@ -485,10 +487,21 @@ const FinancialSummary: React.FC = () => {
                     <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer PF</Typography>
                     <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
                       {viewMode === 'annual'
-                        ? formatCurrency((summary.structure.ctc - summary.structure.gross_salary) * 12)
-                        : formatCurrency(summary.structure.ctc - summary.structure.gross_salary)}
+                        ? formatCurrency((summary.structure.employer_pf ?? (summary.structure.ctc - summary.structure.gross_salary)) * 12)
+                        : formatCurrency(summary.structure.employer_pf ?? (summary.structure.ctc - summary.structure.gross_salary))}
                     </Typography>
                   </Grid>
+
+                  {(summary.structure.employer_esi ?? 0) > 0 && (
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" sx={{ color: 'var(--color-text-secondary)' }}>Employer ESI</Typography>
+                      <Typography variant="body1" fontWeight="bold" sx={{ color: 'var(--color-text-primary)', mt: 0.5 }}>
+                        {viewMode === 'annual'
+                          ? formatCurrency((summary.structure.employer_esi ?? 0) * 12)
+                          : formatCurrency(summary.structure.employer_esi ?? 0)}
+                      </Typography>
+                    </Grid>
+                  )}
 
                   {summary.structure.special_allowance > 0 && (
                     <Grid item xs={6} sm={3}>
