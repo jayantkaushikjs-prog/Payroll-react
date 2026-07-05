@@ -510,7 +510,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     const requestedTab = params.get("tab");
     if (requestedTab === "directory") {
       setCurrentMainTab(0);
-      setCurrentSubTab(0);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
     if (openProfileId && employees.length > 0) {
@@ -531,7 +530,6 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
   useEffect(() => {
     const openDirectory = () => {
       setCurrentMainTab(0);
-      setCurrentSubTab(0);
     };
 
     window.addEventListener("openEmployeeDirectory", openDirectory);
