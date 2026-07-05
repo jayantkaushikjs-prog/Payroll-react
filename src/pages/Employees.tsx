@@ -289,10 +289,25 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     return Number(Math.min(basicSalary * 0.12, 1800).toFixed(2));
   };
 
+  const computeEmployeePf = (monthlyCtc: string | number, pfDeduction: boolean) => {
+    return computeEmployerPf(monthlyCtc, pfDeduction);
+  };
+
   const computeEmployerEsi = (monthlyCtc: string | number) => {
     const basicSalary = getBasicSalaryFromMonthlyCtc(monthlyCtc);
     if (basicSalary >= 21000) return 0;
     return Number((basicSalary * 0.0325).toFixed(2));
+  };
+
+  const computeEmployeeEsi = (monthlyCtc: string | number) => {
+    const basicSalary = getBasicSalaryFromMonthlyCtc(monthlyCtc);
+    if (basicSalary >= 21000) return 0;
+    return Number((basicSalary * 0.0075).toFixed(2));
+  };
+
+  const computeProfTax = (monthlyCtc: string | number) => {
+    const ctc = Number(monthlyCtc || 0);
+    return (ctc * 12) > 250000 ? 200 : 0;
   };
 
   useEffect(() => {
@@ -909,8 +924,14 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       ),
       pfPaid: summaryNumber(profileSummary.pfDeducted),
       pfRemaining: summaryNumber(profileSummary.expectedPFRemaining),
+      employerPfPaid: summaryNumber(profileSummary.employerPfPaid),
+      employerPfRemaining: summaryNumber(profileSummary.expectedEmployerPFRemaining),
       esiPaid: summaryNumber(profileSummary.esiDeducted),
       esiRemaining: summaryNumber(profileSummary.expectedESIRemaining),
+      employerEsiPaid: summaryNumber(profileSummary.employerEsiPaid),
+      employerEsiRemaining: summaryNumber(profileSummary.expectedEmployerESIRemaining),
+      profTaxPaid: summaryNumber(profileSummary.profTaxPaid),
+      profTaxRemaining: summaryNumber(profileSummary.expectedProfTaxRemaining),
       taxPaid: summaryNumber(profileSummary.taxDeducted),
       taxRemaining: summaryNumber(profileSummary.expectedTaxRemaining),
       advanceRecovered: summaryNumber(profileSummary.advanceRecovered),
@@ -923,11 +944,46 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
     }
     : null;
 
+  const getActiveMonthsInRange = (
+    joiningDateStr: string,
+    relievingDateStr: string | null | undefined,
+    rangeStartStr: string,
+    rangeEndStr: string
+  ): number => {
+    if (!joiningDateStr) return 12;
+
+    const rangeStart = new Date(rangeStartStr);
+    const rangeEnd = new Date(rangeEndStr);
+    const empStart = new Date(joiningDateStr);
+    const empEnd = relievingDateStr ? new Date(relievingDateStr) : rangeEnd;
+
+    const start = empStart > rangeStart ? empStart : rangeStart;
+    const end = empEnd < rangeEnd ? empEnd : rangeEnd;
+
+    if (start > end) return 0;
+
+    const startYear = start.getFullYear();
+    const startMonth = start.getMonth();
+    const endYear = end.getFullYear();
+    const endMonth = end.getMonth();
+
+    return Math.max(0, (endYear - startYear) * 12 + (endMonth - startMonth) + 1);
+  };
+
+  const activeMonths = liveSummary
+    ? getActiveMonthsInRange(
+        profileFormData.joining_date,
+        profileFormData.relieving_date,
+        profileStartDate,
+        profileEndDate
+      )
+    : 12;
+
   const annualize = (value: number, months: number) =>
     months > 0 ? (value / months) * 12 : 0;
   const annualizeRemaining = (value: number, months: number) =>
     months > 0 ? (value / months) * 12 : value * 12;
-  const formatSummaryValue = (value: number) => formatCurrencyCrores(value);
+  const formatSummaryValue = (value: number) => formatCurrency(value);
 
   return (
     <Box>
@@ -1198,6 +1254,10 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
         formatSummaryValue={formatSummaryValue}
         computeEmployerPf={computeEmployerPf}
         computeEmployerEsi={computeEmployerEsi}
+        computeEmployeePf={computeEmployeePf}
+        computeEmployeeEsi={computeEmployeeEsi}
+        computeProfTax={computeProfTax}
+        activeMonths={activeMonths}
         inputStyles={inputStyles}
         dropdownListStyles={dropdownListStyles}
       />

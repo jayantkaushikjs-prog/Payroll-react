@@ -91,11 +91,11 @@ const PayrollCalculator: React.FC = () => {
     const payableDays = Math.max(0, daysInMonth - absentDays);
     const ratio = daysInMonth > 0 ? payableDays / daysInMonth : 1;
     const payableGross = Number((gross * Math.max(0, Math.min(1, ratio))).toFixed(2));
-    const payableBasic = Number((basic * Math.max(0, Math.min(1, ratio))).toFixed(2));
+    const payableBasic = basic;
     const nonPayableDeduction = Number((gross - payableGross).toFixed(2));
 
-    const employeePfDeduction = pfApplicable ? Number(Math.min(payableBasic * pfEmployeeRate, maxPfCap * Math.max(0, Math.min(1, ratio))).toFixed(2)) : 0;
-    const employeeEsiDeduction = esiApplicable ? Number((payableBasic * esiEmployeeRate).toFixed(2)) : 0;
+    const employeePfDeduction = pfApplicable ? Number(Math.min(basic * pfEmployeeRate, maxPfCap).toFixed(2)) : 0;
+    const employeeEsiDeduction = esiApplicable ? Number((basic * esiEmployeeRate).toFixed(2)) : 0;
 
     const lateAbsentDays = extra.lateArrivals < 3 ? 0 : (extra.lateArrivals / 3) * 0.5;
     const lateArrivalDeductionAmount = Number(((gross / daysInMonth) * lateAbsentDays).toFixed(2));

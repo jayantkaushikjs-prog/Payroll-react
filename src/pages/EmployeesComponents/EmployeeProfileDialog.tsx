@@ -72,6 +72,10 @@ interface EmployeeProfileDialogProps {
   formatSummaryValue: (value: number) => string;
   computeEmployerPf: (monthlyCtc: string | number, pfDeduction: boolean) => number;
   computeEmployerEsi: (monthlyCtc: string | number) => number;
+  computeEmployeePf: (monthlyCtc: string | number, pfDeduction: boolean) => number;
+  computeEmployeeEsi: (monthlyCtc: string | number) => number;
+  computeProfTax: (monthlyCtc: string | number) => number;
+  activeMonths: number;
   inputStyles: any;
   dropdownListStyles: any;
 }
@@ -102,6 +106,9 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
   liveSummary, annualize, annualizeRemaining,
   formatSummaryValue,
   computeEmployerPf, computeEmployerEsi,
+  computeEmployeePf, computeEmployeeEsi,
+  computeProfTax,
+  activeMonths,
   inputStyles, dropdownListStyles,
 }) => {
   const currentYear = new Date().getFullYear();
@@ -1177,8 +1184,8 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                                   sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                 >
                                   {profileViewMode === "annual"
-                                    ? `${formatSummaryValue(annualize(liveSummary.pfPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.pfRemaining, liveSummary.remainingMonths))}`
-                                    : `${formatSummaryValue(liveSummary.pfPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.pfRemaining / Math.max(1, liveSummary.remainingMonths))}`}
+                                    ? `${formatSummaryValue(liveSummary.pfPaid)} / ${formatSummaryValue(computeEmployeePf(profileFormData.monthly_ctc, profileFormData.pf_deduction) * activeMonths)}`
+                                    : `${formatSummaryValue(liveSummary.pfPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(computeEmployeePf(profileFormData.monthly_ctc, profileFormData.pf_deduction))}`}
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
                                   {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
@@ -1205,14 +1212,12 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                                   fontWeight="bold"
                                   sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                 >
-                                  {formatSummaryValue(
-                                    profileViewMode === "annual"
-                                      ? computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction) * 12
-                                      : computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction)
-                                  )}
+                                  {profileViewMode === "annual"
+                                    ? `${formatSummaryValue(liveSummary.employerPfPaid)} / ${formatSummaryValue(computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction) * activeMonths)}`
+                                    : `${formatSummaryValue(liveSummary.employerPfPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction))}`}
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
-                                  Contribution
+                                  {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
                                 </Typography>
                               </Box>
                             </Grid>
@@ -1237,8 +1242,8 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                                   sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                 >
                                   {profileViewMode === "annual"
-                                    ? `${formatSummaryValue(annualize(liveSummary.esiPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.esiRemaining, liveSummary.remainingMonths))}`
-                                    : `${formatSummaryValue(liveSummary.esiPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.esiRemaining / Math.max(1, liveSummary.remainingMonths))}`}
+                                    ? `${formatSummaryValue(liveSummary.esiPaid)} / ${formatSummaryValue(computeEmployeeEsi(profileFormData.monthly_ctc) * activeMonths)}`
+                                    : `${formatSummaryValue(liveSummary.esiPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(computeEmployeeEsi(profileFormData.monthly_ctc))}`}
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
                                   {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
@@ -1246,8 +1251,8 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                               </Box>
                             </Grid>
 
-                            {/* Employer ESI - Conditional */}
-                            {computeEmployerEsi(profileFormData.monthly_ctc) > 0 && (
+                            {/* Employer ESI */}
+                            {(liveSummary.employerEsiPaid > 0 || computeEmployerEsi(profileFormData.monthly_ctc) > 0) && (
                               <Grid item xs={6} sm={4} md={2.4}>
                                 <Box>
                                   <Typography
@@ -1266,14 +1271,12 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                                     fontWeight="bold"
                                     sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                   >
-                                    {formatSummaryValue(
-                                      profileViewMode === "annual"
-                                        ? computeEmployerEsi(profileFormData.monthly_ctc) * 12
-                                        : computeEmployerEsi(profileFormData.monthly_ctc)
-                                    )}
+                                    {profileViewMode === "annual"
+                                      ? `${formatSummaryValue(liveSummary.employerEsiPaid)} / ${formatSummaryValue(computeEmployerEsi(profileFormData.monthly_ctc) * activeMonths)}`
+                                      : `${formatSummaryValue(liveSummary.employerEsiPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(computeEmployerEsi(profileFormData.monthly_ctc))}`}
                                   </Typography>
                                   <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
-                                    Contribution
+                                    {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
                                   </Typography>
                                 </Box>
                               </Grid>
@@ -1299,7 +1302,7 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                                   sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                 >
                                   {profileViewMode === "annual"
-                                    ? `${formatSummaryValue(annualize(liveSummary.taxPaid, liveSummary.paidMonths))} / ${formatSummaryValue(annualizeRemaining(liveSummary.taxRemaining, liveSummary.remainingMonths))}`
+                                    ? `${formatSummaryValue(liveSummary.taxPaid)} / ${formatSummaryValue((liveSummary.taxRemaining / Math.max(1, liveSummary.remainingMonths)) * activeMonths)}`
                                     : `${formatSummaryValue(liveSummary.taxPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(liveSummary.taxRemaining / Math.max(1, liveSummary.remainingMonths))}`}
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
@@ -1327,12 +1330,12 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                                   fontWeight="bold"
                                   sx={{ color: "var(--color-text-primary)", mb: 0.5 }}
                                 >
-                                  {profileSummary.structure && profileSummary.structure.ctc
-                                    ? formatCurrency(profileSummary.structure.ctc * 12 > 250000 ? 200 : 0)
-                                    : formatCurrency(0)}
+                                  {profileViewMode === "annual"
+                                    ? `${formatSummaryValue(liveSummary.profTaxPaid)} / ${formatSummaryValue(computeProfTax(profileFormData.monthly_ctc) * activeMonths)}`
+                                    : `${formatSummaryValue(liveSummary.profTaxPaid / Math.max(1, liveSummary.paidMonths))} / ${formatSummaryValue(computeProfTax(profileFormData.monthly_ctc))}`}
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", fontSize: "0.7rem" }}>
-                                  Monthly
+                                  {profileViewMode === "annual" ? "Paid / Remaining" : "Paid / Live"}
                                 </Typography>
                               </Box>
                             </Grid>
