@@ -15,6 +15,7 @@ import {
   Autocomplete,
 } from "@mui/material";
 import { Employee, BaseEmployeeFormData, isPfRequiredByWageLimit } from "../../utils/employeeUtils";
+import { computeEmployerPf, computeEmployerEsi } from "../../utils/statutoryCalculations";
 
 interface AddEditEmployeeDialogProps {
   open: boolean;
@@ -32,8 +33,6 @@ interface AddEditEmployeeDialogProps {
   addDepartmentMutation: any;
   addDesignationMutation: any;
   setFormErrors: (errors: any) => void;
-  computeEmployerPf: (monthlyCtc: string | number, pfDeduction: boolean) => number;
-  computeEmployerEsi: (monthlyCtc: string | number) => number;
   inputStyles: any;
   dropdownListStyles: any;
 }
@@ -54,8 +53,6 @@ export const AddEditEmployeeDialog: React.FC<AddEditEmployeeDialogProps> = ({
   addDepartmentMutation,
   addDesignationMutation,
   setFormErrors,
-  computeEmployerPf,
-  computeEmployerEsi,
   inputStyles,
   dropdownListStyles,
 }) => {

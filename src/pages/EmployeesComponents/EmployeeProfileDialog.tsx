@@ -19,6 +19,13 @@ import {
 } from '@mui/icons-material';
 import { formatCurrency, formatCurrencyCrores } from '../../constants/currency';
 import {
+  computeEmployerPf,
+  computeEmployeePf,
+  computeEmployerEsi,
+  computeEmployeeEsi,
+  computeProfTax,
+} from '../../utils/statutoryCalculations';
+import {
   Employee, ProfileFormData, isPfRequiredByWageLimit,
   getBasicSalaryFromMonthlyCtc, formatMonthLabel
 } from '../../utils/employeeUtils';
@@ -70,11 +77,6 @@ interface EmployeeProfileDialogProps {
   annualize: (value: number, months: number) => number;
   annualizeRemaining: (value: number, months: number) => number;
   formatSummaryValue: (value: number) => string;
-  computeEmployerPf: (monthlyCtc: string | number, pfDeduction: boolean) => number;
-  computeEmployerEsi: (monthlyCtc: string | number) => number;
-  computeEmployeePf: (monthlyCtc: string | number, pfDeduction: boolean) => number;
-  computeEmployeeEsi: (monthlyCtc: string | number) => number;
-  computeProfTax: (monthlyCtc: string | number) => number;
   activeMonths: number;
   inputStyles: any;
   dropdownListStyles: any;
@@ -105,9 +107,6 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
   addDepartmentMutation, addDesignationMutation,
   liveSummary, annualize, annualizeRemaining,
   formatSummaryValue,
-  computeEmployerPf, computeEmployerEsi,
-  computeEmployeePf, computeEmployeeEsi,
-  computeProfTax,
   activeMonths,
   inputStyles, dropdownListStyles,
 }) => {
