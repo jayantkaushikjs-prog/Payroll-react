@@ -437,28 +437,28 @@ const PreviewSheet: React.FC = () => {
               <Table sx={{ minWidth: 1600 }} size="small">
                 <TableHead sx={{ bgcolor: 'var(--color-surface-subtle)' }}>
                   <TableRow>
-                    <TableCell align="left" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Employee Code</TableCell>
-                    <TableCell align="left" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Employee Name</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Status</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Days Present</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Non-Payable Days</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Appraisal (₹)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Bonus / Incentives (₹)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Leave Encashment (₹)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Late Arrivals (count)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Damages Recovery (₹)</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Other Deductions (₹)</TableCell>
-                    <TableCell align="left" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Remarks</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Employee Code</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Employee Name</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Status</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Days Present</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Non-Payable Days</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Appraisal (₹)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Bonus / Incentives (₹)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Leave Encashment (₹)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Late Arrivals (count)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Damages Recovery (₹)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Other Deductions (₹)</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Remarks</TableCell>
                     {isHRorAdmin && (
-                      <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase' }}>Actions</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 600, fontSize: '11px', color: 'text.secondary', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Actions</TableCell>
                     )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {paginatedPreview.map((emp) => (
                     <TableRow key={emp.id} hover onClick={() => handleOpenPreviewEdit(emp)} sx={{ cursor: (emp as any).preview_locked ? 'default' : 'pointer', '& td, & th': { color: 'text.primary' }, '&:last-child td, &:last-child th': { border: 0 } }}>
-                      <TableCell align="left" sx={{ fontSize: '13px' }}>{emp.employee_code}</TableCell>
-                      <TableCell align="left" sx={{ fontWeight: 500, fontSize: '13px' }}>{emp.name}</TableCell>
+                      <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.employee_code}</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 500, fontSize: '13px' }}>{emp.name}</TableCell>
                       <TableCell align="center">
                         {(() => {
                           const status = getPreviewStatus(emp, previewMonth);
@@ -471,7 +471,7 @@ const PreviewSheet: React.FC = () => {
                       </TableCell>
                       <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.no_of_days_present ?? getTheoreticalDaysPresent(emp, previewMonth)}</TableCell>
                       <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `${emp.deduction_absent ?? 0}` : '-'}</TableCell>
-                      <TableCell align="right">
+                      <TableCell align="center">
                         {emp.has_monthly_input ? (
                           <Tooltip title={`Effective: ${emp.appraisal_effective_date ? new Date(emp.appraisal_effective_date).toLocaleDateString() : 'N/A'}`}>
                             <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>₹{Number(emp.appraisal ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
@@ -480,18 +480,18 @@ const PreviewSheet: React.FC = () => {
                           <Typography sx={{ color: 'text.disabled', fontSize: '13px' }}>-</Typography>
                         )}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.bonus_incentives ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
-                      <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.leave_encashment ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
-                      <TableCell align="right" sx={{ fontSize: '13px' }}>
+                      <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.bonus_incentives ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
+                      <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.leave_encashment ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
+                      <TableCell align="center" sx={{ fontSize: '13px' }}>
                         {emp.has_monthly_input ? (() => {
                           const lateCount = Number(emp.late_arrival_deduction ?? 0);
                           const lateDays = lateCount < 3 ? 0 : (lateCount / 3) * 0.5;
                           return `${lateCount.toFixed(0)} (→ ${lateDays.toFixed(2)} ${lateDays === 1 ? 'day' : 'days'})`;
                         })() : '-'}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.damages_recovery ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
-                      <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.other_deductions ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
-                      <TableCell align="left" sx={{ maxWidth: 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
+                      <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.damages_recovery ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
+                      <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.other_deductions ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
+                      <TableCell align="center" sx={{ maxWidth: 150, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
                         {emp.has_monthly_input ? (emp.remarks || '-') : '-'}
                       </TableCell>
                       {isHRorAdmin && (
