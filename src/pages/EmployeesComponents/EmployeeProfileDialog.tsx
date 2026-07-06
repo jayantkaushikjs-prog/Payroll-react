@@ -284,6 +284,7 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                           <TextField
                             label="Phone Number"
                             fullWidth
+                            required
                             disabled={!isHRorAdmin}
                             value={profileFormData.phone}
                             onChange={(e) =>

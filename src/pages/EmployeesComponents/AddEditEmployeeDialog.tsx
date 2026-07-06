@@ -167,6 +167,7 @@ export const AddEditEmployeeDialog: React.FC<AddEditEmployeeDialogProps> = ({
               <TextField
                 label="Phone Number"
                 fullWidth
+                required
                 value={formData.phone}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, "").slice(0, 10);

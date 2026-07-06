@@ -227,6 +227,16 @@ export const useEmployeeProfile = (employees: Employee[]) => {
     e.preventDefault();
     if (!profileEmpId) return;
 
+    const phone = profileFormData.phone.trim();
+    if (!phone) {
+      showToast("Phone number is required", "error");
+      return;
+    }
+    if (!/^\d{10}$/.test(phone)) {
+      showToast("Phone number must be numeric and exactly 10 digits", "error");
+      return;
+    }
+
     const uan = profileFormData.pf_uan.trim();
     if (uan && !/^\d{12}$/.test(uan)) {
       showToast("UAN must be exactly 12 digits (numeric only)", "error");

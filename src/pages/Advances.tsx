@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { formatCurrency } from '../constants/currency';
 import { useAuth, Role } from '../context/AuthContext';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import {
   Box,
   Button,
@@ -723,7 +724,7 @@ const Advances: React.FC = () => {
                     <TableRow key={adv.id} sx={{ '&:hover': { bgcolor: 'var(--color-row-hover)' }, borderColor: 'rgba(255, 255, 255, 0.05)' }}>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{adv.employee?.employee_code}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{adv.employee?.name}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(adv.date).toLocaleDateString('en-IN')}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatDateDDMMYYYY(adv.date)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(adv.amount)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
                         {adv.recovery_type.replace('_', ' ')}
@@ -1117,7 +1118,7 @@ const Advances: React.FC = () => {
                 {selectedAdvanceForBreakdown.employee?.employee_code} - {selectedAdvanceForBreakdown.employee?.name}
               </Typography>
               <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mb: 3 }}>
-                Issued {new Date(selectedAdvanceForBreakdown.date).toLocaleDateString('en-IN')} · Remaining {formatCurrency(selectedAdvanceForBreakdown.remaining_amount)}
+                Issued {formatDateDDMMYYYY(selectedAdvanceForBreakdown.date)} · Remaining {formatCurrency(selectedAdvanceForBreakdown.remaining_amount)}
               </Typography>
 
               <TableContainer component={Paper} sx={{ background: 'var(--color-surface-subtle)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)' }}>
@@ -1139,7 +1140,7 @@ const Advances: React.FC = () => {
                     ) : (
                       breakdownLogs.map((log: AdvanceLog) => (
                         <TableRow key={log.id} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
-                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{new Date(log.borrowed_date).toLocaleDateString('en-IN')}</TableCell>
+                          <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatDateDDMMYYYY(log.borrowed_date)}</TableCell>
                           <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatCurrency(log.amount)}</TableCell>
                           <TableCell sx={{ color: 'var(--color-success)' }}>{Number(log.amount_returned) > 0 ? formatCurrency(log.amount_returned) : '—'}</TableCell>
                           <TableCell sx={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{log.status.replace('_', ' ')}</TableCell>

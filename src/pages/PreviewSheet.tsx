@@ -27,12 +27,13 @@ import {
   SearchOutlined,
   CalendarMonthOutlined, AddOutlined, DownloadOutlined, UploadOutlined,
 } from '@mui/icons-material';
-import { FormControlLabel, Checkbox, Chip, CircularProgress, Divider } from '@mui/material';
+import { FormControlLabel, Checkbox, Chip, CircularProgress, Divider, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { EmployeeService } from '../services/employee.service';
 import api from '../services/api';
 import { Employee } from '../utils/employeeUtils';
 import { useAuth, Permission, Role } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 
 export interface PreviewEditFormData {
   deduction_absent: number | string;
@@ -44,6 +45,9 @@ export interface PreviewEditFormData {
   appraisal: number | string;
   appraisal_effective_date: string;
   remarks: string;
+  damages_recovery_type: 'one_time' | 'installment';
+  damages_recovery_total: number | string;
+  damages_recovery_installments: number | string;
 }
 
 
@@ -143,6 +147,7 @@ const PreviewSheet: React.FC = () => {
     queryKey: ['preview-review', previewMonth],
     queryFn: () => EmployeeService.getPreviewReview(previewMonth),
     enabled: hasPermission(Permission.VIEW_EMPLOYEE),
+    refetchOnWindowFocus: true,
   });
 
   const updateReviewStatusMutation = useMutation(
@@ -171,6 +176,9 @@ const PreviewSheet: React.FC = () => {
     appraisal: '',
     appraisal_effective_date: '',
     remarks: '',
+    damages_recovery_type: 'one_time',
+    damages_recovery_total: '',
+    damages_recovery_installments: '',
   });
 
   // Queries
@@ -182,6 +190,7 @@ const PreviewSheet: React.FC = () => {
     queryKey: ['preview-employees', previewMonth],
     queryFn: () => EmployeeService.getPreview(previewMonth),
     enabled: hasPermission(Permission.VIEW_EMPLOYEE),
+    refetchOnWindowFocus: true,
   });
 
   // Mutations
@@ -209,6 +218,19 @@ const PreviewSheet: React.FC = () => {
       return;
     }
     setPreviewEditEmp(emp);
+    let damages_recovery_type: 'one_time' | 'installment' = 'one_time';
+    let damages_recovery_total: number | string = emp.damages_recovery ? Number(emp.damages_recovery) : '';
+    let damages_recovery_installments: number | string = '';
+
+    if (emp.other_inputs) {
+      try {
+        const other = JSON.parse(emp.other_inputs);
+        if (other.damages_recovery_type) damages_recovery_type = other.damages_recovery_type;
+        if (other.damages_recovery_total) damages_recovery_total = other.damages_recovery_total;
+        if (other.damages_recovery_installments) damages_recovery_installments = other.damages_recovery_installments;
+      } catch (e) {}
+    }
+
     setPreviewEditFormData({
       deduction_absent: emp.deduction_absent ? Number(emp.deduction_absent) : '',
       leave_encashment: emp.leave_encashment ? Number(emp.leave_encashment) : '',
@@ -219,6 +241,9 @@ const PreviewSheet: React.FC = () => {
       appraisal: emp.appraisal ? Number(emp.appraisal) : '',
       appraisal_effective_date: emp.appraisal_effective_date || '',
       remarks: emp.remarks || '',
+      damages_recovery_type,
+      damages_recovery_total,
+      damages_recovery_installments,
     });
     setOpenPreviewEditDialog(true);
   };
@@ -229,6 +254,18 @@ const PreviewSheet: React.FC = () => {
       showToast('Cannot save inputs — preview is locked for this month', 'error');
       return;
     }
+    let existingOtherInputs: any = {};
+    if (previewEditEmp.other_inputs) {
+      try {
+        existingOtherInputs = JSON.parse(previewEditEmp.other_inputs);
+      } catch (e) {}
+    }
+    const otherInputsObj = {
+      ...existingOtherInputs,
+      damages_recovery_type: previewEditFormData.damages_recovery_type,
+      damages_recovery_total: Number(previewEditFormData.damages_recovery_total) || 0,
+      damages_recovery_installments: Number(previewEditFormData.damages_recovery_installments) || 0,
+    };
 
     const monthlyPayload = {
       appraisal: Number(previewEditFormData.appraisal) || 0,
@@ -240,7 +277,7 @@ const PreviewSheet: React.FC = () => {
       bonus_incentives: Number(previewEditFormData.bonus_incentives) || 0,
       other_deductions: Number(previewEditFormData.other_deductions) || 0,
       remarks: previewEditFormData.remarks || null,
-      other_inputs: previewEditEmp.other_inputs || null,
+      other_inputs: JSON.stringify(otherInputsObj),
     };
 
     savePreviewInputMutation.mutate(
@@ -473,7 +510,7 @@ const PreviewSheet: React.FC = () => {
                       <TableCell align="center" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `${emp.deduction_absent ?? 0}` : '-'}</TableCell>
                       <TableCell align="center">
                         {emp.has_monthly_input ? (
-                          <Tooltip title={`Effective: ${emp.appraisal_effective_date ? new Date(emp.appraisal_effective_date).toLocaleDateString() : 'N/A'}`}>
+                          <Tooltip title={`Effective: ${emp.appraisal_effective_date ? formatDateDDMMYYYY(emp.appraisal_effective_date) : 'N/A'}`}>
                             <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>₹{Number(emp.appraisal ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                           </Tooltip>
                         ) : (
@@ -571,16 +608,107 @@ const PreviewSheet: React.FC = () => {
                 InputProps={{ endAdornment: <InputAdornment position="end">occurrences</InputAdornment> }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Damages Recovery"
-                fullWidth
-                type="number"
-                value={previewEditFormData.damages_recovery}
-                onChange={(e) => setPreviewEditFormData({ ...previewEditFormData, damages_recovery: e.target.value })}
-                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
-              />
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 1 }}>
+                Damages Recovery Options
+              </Typography>
+              <Divider />
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth variant="outlined">
+                <InputLabel shrink>Recovery Option</InputLabel>
+                <Select
+                  value={previewEditFormData.damages_recovery_type}
+                  label="Recovery Option"
+                  onChange={(e) => {
+                    const type = e.target.value as 'one_time' | 'installment';
+                    const total = Number(previewEditFormData.damages_recovery_total) || 0;
+                    const inst = Number(previewEditFormData.damages_recovery_installments) || 1;
+                    const monthlyVal = type === 'installment' ? (inst > 0 ? Number((total / inst).toFixed(2)) : 0) : total;
+                    setPreviewEditFormData({
+                      ...previewEditFormData,
+                      damages_recovery_type: type,
+                      damages_recovery: monthlyVal || '',
+                    });
+                  }}
+                >
+                  <MenuItem value="one_time">One-Time Recovery</MenuItem>
+                  <MenuItem value="installment">Monthly Installment</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            {previewEditFormData.damages_recovery_type === 'one_time' ? (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Damage Amount (₹)"
+                  fullWidth
+                  type="number"
+                  value={previewEditFormData.damages_recovery_total}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPreviewEditFormData({
+                      ...previewEditFormData,
+                      damages_recovery_total: val,
+                      damages_recovery: val,
+                    });
+                  }}
+                  InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                />
+              </Grid>
+            ) : (
+              <>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Total Damage Amount (₹)"
+                    fullWidth
+                    type="number"
+                    value={previewEditFormData.damages_recovery_total}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const total = Number(val) || 0;
+                      const inst = Number(previewEditFormData.damages_recovery_installments) || 1;
+                      const monthlyVal = inst > 0 ? Number((total / inst).toFixed(2)) : 0;
+                      setPreviewEditFormData({
+                        ...previewEditFormData,
+                        damages_recovery_total: val,
+                        damages_recovery: monthlyVal || '',
+                      });
+                    }}
+                    InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="No. of Installments"
+                    fullWidth
+                    type="number"
+                    value={previewEditFormData.damages_recovery_installments}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const total = Number(previewEditFormData.damages_recovery_total) || 0;
+                      const inst = Number(val) || 1;
+                      const monthlyVal = inst > 0 ? Number((total / inst).toFixed(2)) : 0;
+                      setPreviewEditFormData({
+                        ...previewEditFormData,
+                        damages_recovery_installments: val,
+                        damages_recovery: monthlyVal || '',
+                      });
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Calculated Monthly Recovery (₹)"
+                    fullWidth
+                    type="number"
+                    disabled
+                    value={previewEditFormData.damages_recovery}
+                    helperText="Auto-calculated (Total / Installments)"
+                    InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                  />
+                </Grid>
+              </>
+            )}
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Bonus / Incentives"

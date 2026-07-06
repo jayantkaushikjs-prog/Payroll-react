@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth, Role } from '../context/AuthContext';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import {
   Box,
   Button,
@@ -360,13 +361,7 @@ const Users: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell sx={{ color: 'var(--color-text-primary)' }}>
-                      {new Date(u.created_at).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatDateDDMMYYYY(u.created_at)} {new Date(u.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                     </TableCell>
                     <TableCell align="right">
                       {u.role === Role.SUPER_ADMIN ? (

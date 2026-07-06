@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth, Role } from '../context/AuthContext';
 import { formatCurrency } from '../constants/currency';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import {
   Box,
   Button,
@@ -931,10 +932,10 @@ const Expenses: React.FC = () => {
                           }}
                         />
                       </TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{exp.date}</TableCell>
-                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{exp.startDate || '-'}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatDateDDMMYYYY(exp.date)}</TableCell>
+                      <TableCell sx={{ color: 'var(--color-text-primary)' }}>{formatDateDDMMYYYY(exp.startDate)}</TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)' }}>
-                        {exp.endDate ? exp.endDate : <span style={{ fontStyle: 'italic', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Not Confirmed</span>}
+                        {exp.endDate ? formatDateDDMMYYYY(exp.endDate) : <span style={{ fontStyle: 'italic', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Not Confirmed</span>}
                       </TableCell>
                       <TableCell sx={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>
                         {formatCurrency(exp.amount)}

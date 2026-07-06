@@ -583,8 +583,11 @@ const Employees: React.FC<EmployeesProps> = ({ previewOnly = false }) => {
       isValid = false;
     }
 
-    // Phone (optional)
-    if (formData.phone && !/^\d{10}$/.test(formData.phone.trim())) {
+    // Phone (mandatory)
+    if (!formData.phone || !formData.phone.trim()) {
+      nextErrors.phone = "Phone number is required";
+      isValid = false;
+    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
       nextErrors.phone = "Phone number must be numeric and exactly 10 digits";
       isValid = false;
     }
