@@ -1416,18 +1416,7 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                                 </Paper>
                               </Grid>
 
-                              <Grid item xs={12} sm={6} md={3}>
-                                <Paper sx={{ p: 2, borderRadius: "var(--radius-control)", border: "1px solid var(--color-border)", bgcolor: "var(--color-surface)" }}>
-                                  <Typography variant="caption" sx={{ color: "var(--color-text-secondary)", mb: 0.5, display: "block" }}>
-                                    Employer PF
-                                  </Typography>
-                                  <Typography variant="h6" fontWeight={700} sx={{ color: "var(--color-text-primary)" }}>
-                                    {profileViewMode === "annual"
-                                      ? formatSummaryValue(computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction) * 12)
-                                      : formatSummaryValue(computeEmployerPf(profileFormData.monthly_ctc, profileFormData.pf_deduction))}
-                                  </Typography>
-                                </Paper>
-                              </Grid>
+
 
                               {(profileSummary.structure?.employer_esi ?? computeEmployerEsi(profileFormData.monthly_ctc)) > 0 && (
                                 <Grid item xs={12} sm={6} md={3}>

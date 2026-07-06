@@ -183,6 +183,22 @@ export const AddEditEmployeeDialog: React.FC<AddEditEmployeeDialogProps> = ({
               />
             </Grid>
             <Grid item xs={12} sm={6}>
+              <TextField
+                label="Joining Date"
+                type="date"
+                fullWidth
+                required
+                value={formData.joining_date}
+                onChange={(e) =>
+                  setFormData({ ...formData, joining_date: e.target.value })
+                }
+                InputLabelProps={{ shrink: true }}
+                error={!!formErrors.joining_date}
+                helperText={formErrors.joining_date}
+                sx={inputStyles}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
               <Autocomplete
                 freeSolo
                 options={designationOptions}
@@ -256,22 +272,6 @@ export const AddEditEmployeeDialog: React.FC<AddEditEmployeeDialogProps> = ({
                 ListboxProps={{ sx: dropdownListStyles }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Joining Date"
-                type="date"
-                fullWidth
-                required
-                value={formData.joining_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, joining_date: e.target.value })
-                }
-                InputLabelProps={{ shrink: true }}
-                error={!!formErrors.joining_date}
-                helperText={formErrors.joining_date}
-                sx={inputStyles}
-              />
-            </Grid>
 
             {/* CTC Section */}
             <Grid item xs={12}>
@@ -323,33 +323,6 @@ export const AddEditEmployeeDialog: React.FC<AddEditEmployeeDialogProps> = ({
                 InputProps={{ readOnly: true }}
                 disabled
                 inputProps={{ min: 0 }}
-                sx={inputStyles}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Employer PF"
-                fullWidth
-                value={String(
-                  computeEmployerPf(
-                    formData.monthly_ctc,
-                    formData.pf_deduction || isPfRequiredByWageLimit(formData.monthly_ctc),
-                  ),
-                )}
-                InputProps={{ readOnly: true }}
-                disabled
-                sx={inputStyles}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Employer ESI"
-                fullWidth
-                value={String(computeEmployerEsi(formData.monthly_ctc))}
-                InputProps={{ readOnly: true }}
-                disabled
                 sx={inputStyles}
               />
             </Grid>

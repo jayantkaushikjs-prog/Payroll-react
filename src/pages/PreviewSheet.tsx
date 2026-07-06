@@ -100,7 +100,12 @@ const getPreviewStatus = (emp: any, previewMonth: string) => {
     date && date.getUTCFullYear() === selectedMonth.getUTCFullYear() && date.getUTCMonth() === selectedMonth.getUTCMonth();
 
   if (relieving && monthMatches(relieving)) return 'relieving';
-  if (relieving && relieving > selectedMonthEnd) return 'on_notice';
+  if (relieving && relieving > selectedMonthEnd) {
+    if (emp && emp.preview_locked) {
+      return joining && monthMatches(joining) ? 'new' : 'old';
+    }
+    return 'on_notice';
+  }
   if (joining && monthMatches(joining)) return 'new';
   return 'old';
 };
@@ -132,6 +137,7 @@ const PreviewSheet: React.FC = () => {
   const [filterOld, setFilterOld] = useState(false);
   const [filterNotice, setFilterNotice] = useState(false);
   const [filterRelieving, setFilterRelieving] = useState(false);
+  const [filterRelieved, setFilterRelieved] = useState(false);
 
   const { data: previewReview, isLoading: isReviewLoading } = useQuery({
     queryKey: ['preview-review', previewMonth],
@@ -276,23 +282,17 @@ const PreviewSheet: React.FC = () => {
       if (filterAll) return true;
       
       // If NO sub-filters are checked but All is false, maybe we default to All? 
-      // We'll require at least one condition to match if any sub-filter is active.
-      const hasActiveSubfilter = filterNew || filterOld || filterNotice || filterRelieving;
-      if (!hasActiveSubfilter) return true; // Default behavior if nothing is checked
+      const hasActiveSubfilter = filterNew || filterOld || filterNotice || filterRelieving || filterRelieved;
+      if (!hasActiveSubfilter) return true;
       
-      // Determine effective status: prefer server-provided `preview_status`, otherwise derive
-      const effectiveStatus = (emp as any).preview_status || getPreviewStatus(emp, previewMonth);
-
-      // Map filters to statuses — treat `old` as exclusive (not on_notice or relieving)
-      const statusMatches =
-        (filterNew && effectiveStatus === 'new') ||
+      const effectiveStatus = getPreviewStatus(emp, previewMonth);
+      return (filterNew && effectiveStatus === 'new') ||
         (filterOld && effectiveStatus === 'old') ||
         (filterNotice && effectiveStatus === 'on_notice') ||
-        (filterRelieving && effectiveStatus === 'relieving');
-
-      return statusMatches;
+        (filterRelieving && effectiveStatus === 'relieving') ||
+        (filterRelieved && effectiveStatus === 'relieved');
     });
-  }, [previewEmployees, previewSearch, modifiedOnly, filterAll, filterNew, filterOld, filterNotice, filterRelieving, previewMonth]);
+  }, [previewEmployees, previewSearch, modifiedOnly, filterAll, filterNew, filterOld, filterNotice, filterRelieving, filterRelieved, previewMonth]);
 
   const sortedPreview = useMemo(() => {
     // Sort by employee id in ascending order
@@ -400,6 +400,7 @@ const PreviewSheet: React.FC = () => {
         <FormControlLabel control={<Checkbox size="small" checked={filterOld} onChange={(e) => setFilterOld(e.target.checked)} />} label={<Typography variant="body2">Old</Typography>} />
         <FormControlLabel control={<Checkbox size="small" checked={filterNotice} onChange={(e) => setFilterNotice(e.target.checked)} />} label={<Typography variant="body2">On Notice</Typography>} />
         <FormControlLabel control={<Checkbox size="small" checked={filterRelieving} onChange={(e) => setFilterRelieving(e.target.checked)} />} label={<Typography variant="body2">Relieving</Typography>} />
+        <FormControlLabel control={<Checkbox size="small" checked={filterRelieved} onChange={(e) => setFilterRelieved(e.target.checked)} />} label={<Typography variant="body2">Relieved</Typography>} />
         
         <Box sx={{ flexGrow: 1 }} />
         
@@ -482,7 +483,11 @@ const PreviewSheet: React.FC = () => {
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.bonus_incentives ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.leave_encashment ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>
-                        {emp.has_monthly_input ? `${Number(emp.late_arrival_deduction ?? 0).toFixed(0)} (→ ${(Number(emp.late_arrival_deduction || 0) < 3 ? 0 : (Number(emp.late_arrival_deduction || 0) / 3) * 0.5).toFixed(2)} days)` : '-'}
+                        {emp.has_monthly_input ? (() => {
+                          const lateCount = Number(emp.late_arrival_deduction ?? 0);
+                          const lateDays = lateCount < 3 ? 0 : (lateCount / 3) * 0.5;
+                          return `${lateCount.toFixed(0)} (→ ${lateDays.toFixed(2)} ${lateDays === 1 ? 'day' : 'days'})`;
+                        })() : '-'}
                       </TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.damages_recovery ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
                       <TableCell align="right" sx={{ fontSize: '13px' }}>{emp.has_monthly_input ? `₹${Number(emp.other_deductions ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</TableCell>
@@ -527,7 +532,11 @@ const PreviewSheet: React.FC = () => {
       {/* Edit Dialog */}
       <Dialog open={openPreviewEditDialog} onClose={() => setOpenPreviewEditDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontFamily: 'Outfit', fontWeight: 600 }}>
-          Edit HR Inputs - {previewEditEmp?.name}
+          {previewEditEmp?.name} - {(() => {
+            const [y, m] = previewMonth.split('-');
+            const d = new Date(Number(y), Number(m) - 1);
+            return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+          })()}
         </DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={3}>
