@@ -44,6 +44,7 @@ const Reports: React.FC = () => {
   const [mo, setMo] = useState(now.getMonth() + 1);
   const [yr, setYr] = useState(now.getFullYear());
   const [activeTab, setActiveTab] = useState(0);
+  const [filterType, setFilterType] = useState<'cumulative' | 'filtered'>('cumulative');
 
   const { data: archivedEmployees = [], isLoading: isLoadingAll } = useQuery(['archivedEmployees'], async () => {
     const res = await api.get('/employees?status=archived');
@@ -118,17 +119,19 @@ const Reports: React.FC = () => {
     }
   };
 
+  const querySuffix = filterType === 'filtered' ? `?month=${mo}&year=${yr}` : '';
+
   const hrReports = [
-    { title: 'Employee Master Data', desc: 'Employee profile roster without finance-sensitive bank or salary data.', icon: <PeopleIcon />, gradient: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-pressed))', url: '/reports/employee-master/csv', file: `employee-master_${today}.csv` },
-    { title: 'Joining/Exit Records', desc: 'Joining dates and active/inactive status records.', icon: <JoiningIcon />, gradient: 'linear-gradient(135deg,var(--color-success),var(--color-success))', url: '/reports/joining-exit/csv', file: `joining-exit-records_${today}.csv` },
-    { title: 'Preview Sheet', desc: 'Monthly HR inputs for all active employees — attendance, deductions, bonuses and remarks.', icon: <PayrollIcon />, gradient: 'linear-gradient(135deg,var(--color-accent),var(--color-accent))', url: `/reports/preview-sheet/csv?month=${mo}&year=${yr}`, file: `preview-sheet_${today}.csv` },
+    { title: 'Employee Master Data', desc: filterType === 'filtered' ? 'Employee roster active/joining/relieving in the selected month.' : 'All-time employee roster without bank or salary details.', icon: <PeopleIcon />, gradient: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-pressed))', url: `/reports/employee-master/csv${querySuffix}`, file: `employee-master_${filterType === 'filtered' ? `${yr}-${mo}` : 'all-time'}.csv` },
+    { title: 'Joining/Exit Records', desc: filterType === 'filtered' ? 'Joining and Exit records registered in the selected month.' : 'All joining dates and active/inactive status records.', icon: <JoiningIcon />, gradient: 'linear-gradient(135deg,var(--color-success),var(--color-success))', url: `/reports/joining-exit/csv${querySuffix}`, file: `joining-exit-records_${filterType === 'filtered' ? `${yr}-${mo}` : 'all-time'}.csv` },
+    { title: 'Preview Sheet', desc: 'Monthly HR inputs for all active employees — attendance, deductions, bonuses and remarks.', icon: <PayrollIcon />, gradient: 'linear-gradient(135deg,var(--color-accent),var(--color-accent))', url: `/reports/preview-sheet/csv?month=${mo}&year=${yr}`, file: `preview-sheet_${yr}-${mo}.csv` },
   ];
 
   const financeReports = [
-    { title: 'Payroll Register', desc: 'Full payroll breakdown for the selected period.', icon: <PayrollIcon />, gradient: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-pressed))', url: `/reports/payroll/csv?month=${mo}&year=${yr}`, file: `payroll_${today}.csv` },
-    { title: 'Bank Transfer Sheet', desc: 'Net salaries mapped to bank accounts for bulk transfer.', icon: <BankIcon />, gradient: 'linear-gradient(135deg,var(--color-success),var(--color-success))', url: `/reports/bank-transfer/csv?month=${mo}&year=${yr}`, file: `bank-transfer_${today}.csv` },
-    { title: 'Salary Components', desc: 'Active salary components and gross salary values.', icon: <SalaryIcon />, gradient: 'linear-gradient(135deg,#0ea5e9,#0369a1)', url: '/reports/salary-components/csv', file: `salary-components_${today}.csv` },
-    { title: 'Advances Report', desc: 'All advances with recovery status.', icon: <AdvancesIcon />, gradient: 'linear-gradient(135deg,#f97316,#c2410c)', url: '/reports/advances/csv', file: `advances-report_${today}.csv` },
+    { title: 'Payroll Register', desc: 'Full payroll breakdown for the selected period.', icon: <PayrollIcon />, gradient: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-pressed))', url: `/reports/payroll/csv?month=${mo}&year=${yr}`, file: `payroll_${yr}-${mo}.csv` },
+    { title: 'Bank Transfer Sheet', desc: 'Net salaries mapped to bank accounts for bulk transfer.', icon: <BankIcon />, gradient: 'linear-gradient(135deg,var(--color-success),var(--color-success))', url: `/reports/bank-transfer/csv?month=${mo}&year=${yr}`, file: `bank-transfer_${yr}-${mo}.csv` },
+    { title: 'Salary Components', desc: filterType === 'filtered' ? 'Salary structure components active in the selected month.' : 'All active salary components and gross salary values.', icon: <SalaryIcon />, gradient: 'linear-gradient(135deg,#0ea5e9,#0369a1)', url: `/reports/salary-components/csv${querySuffix}`, file: `salary-components_${filterType === 'filtered' ? `${yr}-${mo}` : 'all-time'}.csv` },
+    { title: 'Advances Report', desc: filterType === 'filtered' ? 'Advances initiated in the selected month with recovery status.' : 'All historical advances with recovery status.', icon: <AdvancesIcon />, gradient: 'linear-gradient(135deg,#f97316,#c2410c)', url: `/reports/advances/csv${querySuffix}`, file: `advances-report_${filterType === 'filtered' ? `${yr}-${mo}` : 'all-time'}.csv` },
   ];
 
   return (
@@ -137,8 +140,8 @@ const Reports: React.FC = () => {
         <Typography variant="h5" fontWeight="bold" fontFamily="Outfit" sx={{ color: 'var(--color-text-primary)' }}>CSV Reports Export & Archives</Typography>
         <Typography variant="body2" sx={{ color: 'var(--color-text-secondary)', mt: 0.5 }}>Download reports and manage archived employees.</Typography>
       </Box>
-
-      <Tabs
+ 
+       <Tabs
         value={activeTab}
         onChange={(_, val) => setActiveTab(val)}
         sx={{
@@ -163,12 +166,12 @@ const Reports: React.FC = () => {
         <Tab label="Export Reports" />
         <Tab label={`Archived Employees (${archivedEmployees.length})`} />
       </Tabs>
-
-      {activeTab === 0 && (
+ 
+       {activeTab === 0 && (
         <>
-          {canViewFinanceReports && (
+          {(canViewFinanceReports || canViewHrReports) && (
             <Paper sx={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', p: 3, mb: 4 }}>
-              <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 2, letterSpacing: '0.5px' }}>REPORT PERIOD</Typography>
+              <Typography variant="subtitle2" sx={{ color: 'var(--color-primary-hover)', fontWeight: 600, mb: 2, letterSpacing: '0.5px' }}>REPORT PERIOD & SCOPE</Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
                   <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Month</InputLabel>
@@ -181,6 +184,14 @@ const Reports: React.FC = () => {
                   <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Year</InputLabel>
                     <Select value={yr} label="Year" onChange={e => setYr(e.target.value as number)}>
                       {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth sx={ss}><InputLabel sx={{ color: 'var(--color-text-secondary)' }}>Export Scope</InputLabel>
+                    <Select value={filterType} label="Export Scope" onChange={e => setFilterType(e.target.value as 'cumulative' | 'filtered')}>
+                      <MenuItem value="cumulative">Cumulative (All Time)</MenuItem>
+                      <MenuItem value="filtered">Filtered (Selected Period)</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
