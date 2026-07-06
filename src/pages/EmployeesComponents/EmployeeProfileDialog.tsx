@@ -560,9 +560,10 @@ export const EmployeeProfileDialog: React.FC<EmployeeProfileDialogProps> = ({
                             onChange={(e) =>
                               setProfileFormData({
                                 ...profileFormData,
-                                ifsc: e.target.value,
+                                ifsc: e.target.value.toUpperCase().slice(0, 11),
                               })
                             }
+                            inputProps={{ maxLength: 11 }}
                             sx={inputStyles}
                           />
                         </Grid>

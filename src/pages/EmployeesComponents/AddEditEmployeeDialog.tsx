@@ -450,10 +450,11 @@ export const AddEditEmployeeDialog: React.FC<AddEditEmployeeDialogProps> = ({
                 required
                 value={formData.ifsc}
                 onChange={(e) =>
-                  setFormData({ ...formData, ifsc: e.target.value })
+                  setFormData({ ...formData, ifsc: e.target.value.toUpperCase().slice(0, 11) })
                 }
                 error={!!formErrors.ifsc}
                 helperText={formErrors.ifsc}
+                inputProps={{ maxLength: 11 }}
                 sx={inputStyles}
               />
             </Grid>
